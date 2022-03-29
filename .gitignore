@@ -1,3 +1,4 @@
 
 .ipynb_checkpoints/WBot-checkpoint.ipynb
 *.exe
+chrome/chromedriver
