@@ -1,0 +1,37 @@
+{
+    "name": {
+        "brand": "brand",
+        "name": "name"
+    },
+    "stars": "5",
+    "price": "11111",
+    "description": "description",
+    "characters": [
+        {
+            "name": "name",
+            "characters": [
+                {
+                    "name": "name",
+                    "value": "value"
+                },
+                {
+                    "name": "name",
+                    "value": "value"
+                }
+            ]
+        },
+        {
+            "name": "name",
+            "characters": [
+                {
+                    "name": "name",
+                    "value": "value"
+                },
+                {
+                    "name": "name",
+                    "value": "value"
+                }
+            ]
+        }
+    ]
+}
