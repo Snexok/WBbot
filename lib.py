@@ -1,4 +1,3 @@
-from tkinter import E
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver import Keys
@@ -8,11 +7,14 @@ import random
 import json
 
 class Bot:
-    def __init__(self):
-        self.driver = webdriver.Chrome("./chrome/chromedriver")
+    def __init__(self, driver=False):
+        if driver == False:
+            self.driver = webdriver.Chrome("./chrome/chromedriver.exe")
+        else:
+            self.driver=driver
 
     def open_browser(self):
-        self.driver = webdriver.Chrome("./chrome/chromedriver")
+        self.driver = webdriver.Chrome("./chrome/chromedriver.exe")
 
     def open(self, site):
         self.driver.get(site)
@@ -26,6 +28,8 @@ class Bot:
 
     def search(self, key):
         self.driver.find_element(By.ID, 'searchInput').click()
+        self.driver.find_element(By.ID, 'searchInput').send_keys(Keys.CONTROL + "a") 
+        self.driver.find_element(By.ID, 'searchInput').send_keys(Keys.DELETE)
         self.driver.find_element(By.ID, 'searchInput').send_keys(key)
         self.driver.find_element(By.ID, 'searchInput').send_keys(Keys.ENTER)
         
@@ -33,40 +37,19 @@ class Bot:
         hover = ActionChains(self.driver)
         card_finded = False
         scroll_step = 500
+        articul = str(articul)
         while not card_finded:
             Y = 150
             card_cnt = 4
 
             cards = self.driver.find_elements(By.XPATH, '//div[contains(@class, "product-card j-card-item")]')
             for card in cards:
-                print(card.get_attribute("id")[1:])
-                if scrolling: # Каждые 4 провереных товара скролим экран
-                    if card_cnt == 4:
-                        self.driver.execute_script("window.scrollTo({top: "+str(Y+random.randint(-20, 20))+",behavior: 'smooth'})")
-                        sleep(random.uniform(1,5))
-                        Y = Y+scroll_step
-                        print(Y)
-                        card_cnt = 0
-                    card_cnt += 1
-                if fake_choose:
-                    if random.randint(1,10) == 8:
-                        _articul = card.get_attribute("id")
-                        img = self.driver.find_element(By.XPATH, '//div[@id="'+ _articul +'"]/div/a/div/div/img')
-                        hover.move_to_element(img).perform()
-                        sleep(1.5)
-                        card_button = self.driver.find_element(By.XPATH, '//div[@id="'+ _articul +'"]/div/a/div/button')
-                        card_button.click()
-                        sleep(random.uniform(3,7))
-    #                     if random.randint(1,5) == 3:
-                        if random.randint(1,3) == 3:
-                            if random.randint(1,2) == 2:
-                                self.see_images()
-                            self.card_to_basket()
-                            sleep(2.5)
-                        sleep(random.uniform(2,5))
-                        self.close_card_modal()
+                if card.get_attribute("id")[1:] == articul:
+                    print('card in page')
+            for card in cards:
                 # Проверяем товар по артиклу
                 sleep(random.uniform(0,1))
+                print(card.get_attribute("id")[1:])
                 if card.get_attribute("id")[1:] == articul:
                     _articul = card.get_attribute("id")
                     img = self.driver.find_element(By.XPATH, '//div[@id="'+ _articul +'"]/div/a/div/div/img')
@@ -82,6 +65,30 @@ class Bot:
                     sleep(random.uniform(3,5))
                     self.close_card_modal()
                     return
+                if scrolling: # Каждые 4 провереных товара скролим экран
+                    if card_cnt == 4:
+                        self.driver.execute_script("window.scrollTo({top: "+str(Y+random.randint(-20, 20))+",behavior: 'smooth'})")
+                        sleep(1)
+                        Y = Y+scroll_step
+                        card_cnt = 0
+                    card_cnt += 1
+                if fake_choose:
+                    if random.randint(1,10) == 8:
+                        _articul = card.get_attribute("id")
+                        img = self.driver.find_element(By.XPATH, '//div[@id="'+ _articul +'"]/div/a/div/div/img')
+                        hover.move_to_element(img).perform()
+                        sleep(1)
+                        card_button = self.driver.find_element(By.XPATH, '//div[@id="'+ _articul +'"]/div/a/div/button')
+                        card_button.click()
+                        sleep(random.uniform(1,5))
+    #                     if random.randint(1,5) == 3:
+                        if random.randint(1,20) == 3:
+                            if random.randint(1,3) == 2:
+                                self.see_images()
+                            self.card_to_basket()
+                            sleep(2.5)
+                        sleep(random.uniform(1,3))
+                        self.close_card_modal()
 
             if not card_finded:
                 self.next_page()
@@ -111,18 +118,20 @@ class Bot:
         
     def like(self):
         self.driver.find_element(By.CLASS_NAME, 'btn-heart').click()
-        
-    def delete_other_cards_in_basket(self, articul):
+
+    # Рефакторинг под множество артикулов
+    def delete_other_cards_in_basket(self, articles):
         hover = ActionChains(self.driver)
         while True:
             card_names = self.driver.find_elements(By.XPATH, '//a[contains(@href, "catalog") and @class="good-info__title j-product-popup"]')
             card_name = card_names[random.choice(list(range(len(card_names))))]
-            if card_name.get_attribute('href').find(articul) <= 0:
+            card_name_href = card_name.get_attribute('href')
+            if not any(a in card_name_href for a in articles):
                 counter = card_name.find_element(By.XPATH, '../../../div[contains(@class,"count")]')
                 hover.move_to_element(counter).perform()
                 sleep(random.uniform(1,5))
                 counter.find_element(By.CLASS_NAME, 'btn__del').click()
-            if len(card_names)<=1:
+            if len(card_names)<=len(articles):
                 return
                 
     def card_to_basket(self):
