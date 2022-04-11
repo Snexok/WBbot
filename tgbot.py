@@ -2,6 +2,7 @@
 import os
 import json
 import logging
+import pandas as pd
 
 # For telegram api
 # pip install python-telegram-bot --upgrade
@@ -71,7 +72,7 @@ def docs_handler(update: Update, context: CallbackContext):
         orders += [row.tolist()]
         pvzs += [pvz]
     max_bots = max(pvzs)
-    _bots - bot[:max_bots]
+    _bots = bot[:max_bots]
     data_for_bots = []
     for i in range(max_bots):
         articul, search_key, quantity, pvz = orders[i]

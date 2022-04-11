@@ -5,8 +5,8 @@ import random
 
 
 class Basket():
-    def __init__(self, driver) -> None:
-        self.driver = driver
+    def __init__(self, browser) -> None:
+        self.driver = browser.driver
 
     # Рефакторинг под множество артикулов
     def delete_other_cards_in_basket(self, articles):
