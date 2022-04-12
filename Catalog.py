@@ -4,6 +4,8 @@ from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import random
 
+from selenium.webdriver.support.wait import WebDriverWait
+
 SCROLL_STEP = 500
 
 
@@ -27,27 +29,33 @@ class Catalog():
     get_cards = lambda self: self.driver.find_elements(By.XPATH, '//div[contains(@class, "product-card j-card-item")]')
     like = lambda self: self.driver.find_element(By.CLASS_NAME, 'btn-heart').click()
 
-    def card_search(self, articuls, scrolling=True, fake_choose=True):
+    def card_search(self, articles, scrolling=True, fake_choose=True):
         # data transform
-        map(str, list(articuls))
+        articles = list(map(str, articles if type(articles) == list else [articles]))
+
+        cnt = 0
 
         # resolve
         while True:
-            card_cnt = 0
+            card_cnt_for_scroll = 0
             self.Y = 150
 
             cards = self.get_cards()
             for card in cards:
                 sleep(random.uniform(0, 1))
 
-                articul = card.get_attribute("id")
+                article = card.get_attribute("id")
 
                 if scrolling:
-                    self.scroll(card_cnt)
-                if articul[1:] in articuls:
-                    self.add_card(articul, target=True)
+                    card_cnt_for_scroll = self.scroll(card_cnt_for_scroll)
+                if articul[1:] in articles:
+                    self.add_card(article, target=True)
+
+                    cnt+=1
+                    if cnt>=len(articles):
+                        return
                 elif fake_choose:
-                    self.add_card(articul, target=False)
+                    self.add_card(article, target=False)
 
             self.next_page()
             sleep(2)
@@ -59,7 +67,7 @@ class Catalog():
             sleep(1)
             self.Y = self.Y + SCROLL_STEP
             card_cnt = 4
-        card_cnt -= 1
+        return card_cnt - 1
 
     def choose_filter_checkbox(self, filter_name, value):
         labels = self.driver.find_elements(By.XPATH,
@@ -93,8 +101,11 @@ class Catalog():
         max_price_field.send_keys(max_price)
 
     def add_card(self, articul, target=False):
+        # vars
         img = self.driver.find_element(By.XPATH, '//div[@id="' + articul + '"]/div/a/div/div/img')
         hover = ActionChains(self.driver)
+
+        # resolve
         hover.move_to_element(img).perform()
 
         sleep(random.uniform(2, 4))

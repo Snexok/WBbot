@@ -17,29 +17,29 @@ class Bot:
         self.basket = Basket(self.browser)
         self.page = 'main'
 
-    def buy(self, datas, post_place):
+    def buy(self, data):
         order_name = ""
-        for data in datas:
-            articul_num, search_name, quantity = data
-            order_name+=articul_num
+        for d in data:
+            article_num, search_name, quantity = d
+            order_name += article_num
 
             self.page = self.utils.search(search_name)  # catalog
             sleep(2)
 
-            self.catalog.card_search(articul_num)
+            self.catalog.card_search(article_num)
         self.page = self.utils.go_to_basket()  # basket
         sleep(1)
-        self.basket.delete_other_cards_in_basket([data[0] for data in datas])
+        self.basket.delete_other_cards_in_basket([str(d[0]) for d in data])
         sleep(3)
         post_place = "123"
         self.basket.choose_post_place(post_place)
         self.basket.choose_payment_method()
         self.basket.get_qr_code('order_' + order_name + '.png')
 
-    def get_data_cart(self, articul, SAVE=False):
+    def get_data_cart(self, article, SAVE=False):
         self.driver.get("https://www.wildberries.ru/")
         sleep(2)
-        self.driver.get("https://www.wildberries.ru/catalog/" + articul + "/detail.aspx?targetUrl=MI")
+        self.driver.get("https://www.wildberries.ru/catalog/" + article + "/detail.aspx?targetUrl=MI")
 
         data = {}
 
@@ -98,7 +98,7 @@ class Bot:
             pass
 
         if SAVE:
-            with open('card_data/' + articul + '.json', 'w', encoding='utf-8') as f:
+            with open('card_data/' + article + '.json', 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False)
         else:
             return data

@@ -36,6 +36,8 @@ class Utils():
         search_input.send_keys(key)
         search_input.send_keys(ENTER)
 
+        return 'catalog'
+
     def go_to_basket(self):
         self.driver.find_element(By.CLASS_NAME, 'navbar-pc__icon--basket').click()
         return 'basket' #page
