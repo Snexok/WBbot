@@ -10,6 +10,8 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, \
     CallbackQueryHandler, TypeHandler, ConversationHandler
 
+from Bot import Bot
+
 logger = logging.getLogger(__name__)
 
 # Enable logging
@@ -54,36 +56,48 @@ def track_users_handler(update: Update, context: CallbackContext) -> None:
 def order_callback_handler(update: Update, context: CallbackContext):
     query = update.callback_query
     query.answer()
-
-    print('query', query.data)
+    answer = query.data
+    if answer == "Файл":
+        run_by_doc(update, context)
+    elif answer == 'Чат':
+        pass
 
     return MAIN
 
 def docs_handler(update: Update, context: CallbackContext):
-    context.bot.get_file(update.message.document).download()
+    run_by_doc(update, context)
+
+def run_by_doc(update: Update, context: CallbackContext):
     id = str(update.effective_user.id)
-    with open("users_data/" + id + "_order.xlsx", 'wb') as f:
+    file_path = "users_data/" + id + "_order.xlsx"
+    with open(file_path, 'wb') as f:
         context.bot.get_file(update.message.document).download(out=f)
-    df = pd.read_excel("users_data/" + id + "_order.xlsx")
+    df = pd.read_excel(file_path)
     pvzs = []
     orders = []
+
+    # refactor
     for index, row in df.iterrows():
         articul, search_key, quantity, pvz = row.tolist()
         orders += [row.tolist()]
         pvzs += [pvz]
+
+
     max_bots = max(pvzs)
+    bot = [Bot() for _ in range(10)]
     _bots = bot[:max_bots]
-    data_for_bots = []
-    for i in range(max_bots):
-        articul, search_key, quantity, pvz = orders[i]
-        if pvz!=0:
-            data_for_bots += [articul, search_key, quantity]
-        pvz-=1
+    data_for_bots = [[] for _ in range(max_bots)]
+    for j, order in enumerate(orders):
+        articul, search_key, quantity, pvz = order
+        for i in range(max_bots):
+            if pvz>0:
+                data_for_bots[i] += [[articul, search_key, quantity]]
+            pvz-=1
     print(data_for_bots)
     for i, bot in enumerate(_bots):
         bot.open_browser()
         bot.open('https://www.wildberries.ru')
-#         bot.login('9104499982')
+        #         bot.login('9104499982')
         bot.buy(data_for_bots[i])
     update.message.reply_text('принял, понял')
 
@@ -91,6 +105,10 @@ def get_config():
     file = open("config/config.config").read()
     config = eval(file)
     return config
+
+
+def order_handler(args):
+    pass
 
 
 def main() -> None:
@@ -109,7 +127,8 @@ def main() -> None:
                 MessageHandler(Filters.text & ~Filters.command, main_handler)
             ],
             ORDER: [
-                CallbackQueryHandler(order_callback_handler)
+                CallbackQueryHandler(order_callback_handler),
+                MessageHandler(Filters.text & ~Filters.command, order_handler)
             ],
             PVZ: [
                 MessageHandler(Filters.text & ~Filters.command, main_handler)
