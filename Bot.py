@@ -9,34 +9,33 @@ from Utils import Utils
 
 
 class Bot:
-    def __init__(self, driver=False):
+    def __init__(self, name="", driver=False):
         self.browser = Browser(driver)
         self.driver = self.browser.driver
-        self.utils = Utils(self.browser)
         self.catalog = Catalog(self.browser)
         self.basket = Basket(self.browser)
         self.page = 'main'
+        self.name = name
 
-    def buy(self, data):
-        order_name = ""
+    def buy(self, data, post_place, order_id):
+        self.driver.maximize_window()
+        self.browser.open_site('https://www.wildberries.ru')
         report = {}
         for d in data:
             article_num, search_name, quantity = d
-            order_name += article_num
 
-            self.page = self.utils.search(search_name)  # catalog
+            self.page = Utils.search(self.driver, search_name)  # catalog
             sleep(2)
 
             self.catalog.card_search(article_num)
-        self.page = self.utils.go_to_basket()  # basket
+        self.page = Utils.go_to_basket(self.driver)  # basket
         sleep(1)
         articles = [str(d[0]) for d in data]
         self.basket.delete_other_cards_in_basket(articles)
         sleep(3)
-        post_place = "123"
         self.basket.choose_post_place(post_place)
         self.basket.choose_payment_method()
-        report['qr_code'] = self.basket.get_qr_code('order_' + order_name + '.png')
+        report['qr_code'] = self.basket.get_qr_code('order_' + order_id + self.name + '.png')
 
     def get_data_cart(self, article, SAVE=False):
         self.driver.get("https://www.wildberries.ru/")

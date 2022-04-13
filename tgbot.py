@@ -42,7 +42,7 @@ def main_handler(update: Update, context: CallbackContext):
 
         return ORDER
     elif "inside" in msg:
-        update.message.reply_text('Я тебя понял, понял')
+        update.message.reply_text('Я тебя понял, понял, кидай заказ')
         return INSIDE
     return MAIN
 
@@ -71,6 +71,8 @@ def order_callback_handler(update: Update, context: CallbackContext):
 def inside_handler(update: Update, context: CallbackContext):
     run_by_doc(update, context, True)
 
+    return MAIN
+
 
 def run_by_doc(update, context, inside=False):
     id = str(update.effective_user.id)
@@ -83,8 +85,8 @@ def run_by_doc(update, context, inside=False):
     orders = [row.tolist() for i, row in df.iterrows()]
 
     max_bots = max([order[3] for order in orders])
-    bot = [Bot() for _ in range(5)]
-    _bots = bot[:max_bots]
+    bots = [Bot(name=i) for i in range(5)]
+    _bots = bots[:max_bots]
     data_for_bots = [[] for _ in range(max_bots)]
 
     for _, order in enumerate(orders):
@@ -99,12 +101,14 @@ def run_by_doc(update, context, inside=False):
             pvz_cnt -= 1
     print(data_for_bots)
 
+    post_places = [order[5] for order in orders][:max_bots]
+    order_id = str(orders[0][4])
+
+    print(order_id, post_places)
+
     report = []
     for i, bot in enumerate(_bots):
-        bot.open_browser()
-        bot.open('https://www.wildberries.ru')
-        #         bot.login('9104499982')
-        report += bot.buy(data_for_bots[i])
+        report += bot.buy(data_for_bots[i], post_places[i], order_id)
 
     update.message.reply_text('принял, понял')
 

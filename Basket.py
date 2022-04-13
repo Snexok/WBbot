@@ -24,16 +24,20 @@ class Basket():
         hover = ActionChains(self.driver)
         while True:
             card_names = self.driver.find_elements(By.XPATH, '//a[contains(@href, "catalog") and @class="good-info__title j-product-popup"]')
-            card_name = card_names[random.choice(list(range(len(card_names))))]
-            card_name_href = card_name.get_attribute('href')
+            card = card_names[random.choice(list(range(len(card_names))))]
+            card_name_href = card.get_attribute('href')
+            card_name = card_name_href[len('https://www.wildberries.ru/catalog/'):len('https://www.wildberries.ru/catalog/')+8]
             if not any(a in card_name_href for a in articles):
                 counter = card_name.find_element(By.XPATH, '../../../div[contains(@class,"count")]')
                 hover.move_to_element(counter).perform()
                 sleep(random.uniform(1,5))
                 counter.find_element(By.CLASS_NAME, 'btn__del').click()
             if len(card_names)<=len(articles):
+                card_names = [card.get_attribute('href')[len('https://www.wildberries.ru/catalog/'):len('https://www.wildberries.ru/catalog/')+8] for card in card_names]
                 card_names.sort()
                 articles.sort()
+                print(card_names)
+                print(articles)
                 if card_names != articles:
                     for card_name in card_names:
                         if card_name in articles:
@@ -41,6 +45,8 @@ class Basket():
                             hover.move_to_element(counter).perform()
                             sleep(random.uniform(1, 5))
                             counter.find_element(By.CLASS_NAME, 'btn__del').click()
+                else:
+                    return
 
 
 
@@ -87,4 +93,3 @@ class Basket():
 
     def save_qr_code(self, svg, file_name):
         svg.screenshot(file_name)
-    def list(set(articuls) & set(card_names)

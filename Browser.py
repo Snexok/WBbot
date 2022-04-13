@@ -1,6 +1,6 @@
 from selenium import webdriver
 import pickle
-
+import sys
 
 class Browser():
     def __init__(self, driver=False) -> None:
@@ -8,9 +8,11 @@ class Browser():
             self.driver = driver
         else:
             self.open()
+            self.driver.minimize_window()
 
     def open(self, path="./chrome/chromedriver"):
         '''Open Browser by path'''
+        path = path+".exe" if sys.platform == "win32" else path
         self.driver = webdriver.Chrome(path)
 
     def open_site(self, url):

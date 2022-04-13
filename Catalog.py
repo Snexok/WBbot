@@ -8,7 +8,7 @@ from Utils import Utils
 from selenium.webdriver.support.wait import WebDriverWait
 
 SCROLL_STEP = 500
-
+SPEED = 0 # 1 << 0
 
 class Catalog():
     def __init__(self, browser) -> None:
@@ -24,40 +24,43 @@ class Catalog():
                                                                       '//span[text()="' + filter_name + '" and contains(@class,"filter__name")]/../../div/div/input')
     card_button = lambda self, articul: self.driver.find_element(By.XPATH,
                                                                  '//div[@id="' + articul + '"]/div/a/div/button')
-    basket_btn = lambda driver: driver.find_element(By.XPATH, '//span[contains(text(), "Добавить в корзину")]/..')
+    basket_btn = lambda self: self.driver.find_element(By.XPATH, '//span[contains(text(), "Добавить в корзину")]/..')
     next_page = lambda self: self.driver.find_element(By.CLASS_NAME, 'pagination__next').click()
     get_cards = lambda self: self.driver.find_elements(By.XPATH, '//div[contains(@class, "product-card j-card-item")]')
     like = lambda self: self.driver.find_element(By.CLASS_NAME, 'btn-heart').click()
-    get_sort_by = lambda self, filter: self.driver.find_element(By.XPATH, '//div[@class="sort"]/a/span[text()="'+filter+'"]')
+    get_sort_by = lambda self, filter: self.driver.find_element(By.XPATH,
+                                                                '//div[@class="sort"]/a/span[text()="' + filter + '"]')
 
     def card_search(self, articles, scrolling=True, fake_choose=True):
         # data transform
         articles = list(map(str, articles if type(articles) == list else [articles]))
 
+        # vars
         cnt = 0
-        # data transform
-        map(str, list(articles))
+
         # resolve
         while True:
             card_cnt_for_scroll = 0
             self.Y = 150
 
+            sleep(2)
             cards = self.get_cards()
             for card in cards:
-                sleep(random.uniform(0, 1))
+                sleep(SPEED*random.uniform(0, 1))
 
                 article = card.get_attribute("id")
-
+                print(article, articles)
                 if scrolling:
                     card_cnt_for_scroll = self.scroll(card_cnt_for_scroll)
                 if article[1:] in articles:
                     self.add_card(article, target=True)
 
-                    cnt+=1
-                    if cnt>=len(articles):
+                    cnt += 1
+                    if cnt >= len(articles):
                         return
                 elif fake_choose:
-                    self.add_card(article, target=False)
+                    if random.randint(0,5) == 3:
+                        self.add_card(article, target=False)
 
             self.next_page()
             sleep(2)
@@ -122,22 +125,22 @@ class Catalog():
         # resolve
         hover.move_to_element(img).perform()
 
-        sleep(random.uniform(2, 4))
+        sleep(SPEED*random.uniform(2, 4)+1)
         self.card_button(articul).click()
-
+        sleep(1)
         if target:
-            sleep(random.uniform(3, 7))
+            sleep(SPEED*random.uniform(3, 7))
             if random.randint(1, 2) == 2:
                 self.see_images()
             self.card_to_basket()
         else:
-            sleep(random.uniform(1, 5))
+            sleep(SPEED*random.uniform(1, 5))
             if random.randint(1, 20) == 3:
                 if random.randint(1, 3) == 2:
                     self.see_images()
                 self.card_to_basket()
-                sleep(2.5)
-        sleep(random.uniform(3, 5))
+                sleep(SPEED*2.5)
+        sleep(SPEED*random.uniform(3, 5))
         Utils.close_card_modal(self.driver)
 
         del hover
@@ -147,6 +150,6 @@ class Catalog():
 
         for slide in self.driver.find_elements(By.CLASS_NAME, 'slide'):
             hover.move_to_element(slide).perform()
-            sleep(random.uniform(1, 5))
+            sleep(SPEED*random.uniform(1, 5))
             if random.randint(1, 4) == 3:
                 return
