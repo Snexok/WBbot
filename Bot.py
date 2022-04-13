@@ -30,7 +30,8 @@ class Bot:
             self.catalog.card_search(article_num)
         self.page = self.utils.go_to_basket()  # basket
         sleep(1)
-        self.basket.delete_other_cards_in_basket([str(d[0]) for d in data])
+        articles = [str(d[0]) for d in data]
+        self.basket.delete_other_cards_in_basket(articles)
         sleep(3)
         post_place = "123"
         self.basket.choose_post_place(post_place)
