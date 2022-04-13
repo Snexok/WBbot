@@ -8,15 +8,17 @@ DELETE = Keys.DELETE
 ENTER = Keys.ENTER
 
 
-class Utils():
-    def __init__(self, browser) -> None:
-        self.driver = browser.driver
+class Utils:
 
-    def login(self, number):
+    # functions
+    page_back = lambda self: self.driver.back()
+
+    @staticmethod
+    def login(driver, number):
         # vars
-        to_login_btn = self.driver.find_element(By.CLASS_NAME, 'j-main-login')
-        login_input = self.driver.find_element(By.CLASS_NAME, 'input-item')
-        login_btn = self.driver.find_element(By.CLASS_NAME, 'login__btn')
+        to_login_btn = driver.find_element(By.CLASS_NAME, 'j-main-login')
+        login_input = driver.find_element(By.CLASS_NAME, 'input-item')
+        login_btn = driver.find_element(By.CLASS_NAME, 'login__btn')
 
         # resolve
         to_login_btn.click()
@@ -25,9 +27,10 @@ class Utils():
         sleep(random.uniform(2, 4))
         login_btn.click()
 
-    def search(self, key):
+    @staticmethod
+    def search(driver, key):
         # vars
-        search_input = self.driver.find_element(By.ID, 'searchInput')
+        search_input = driver.find_element(By.ID, 'searchInput')
 
         # resolve
         search_input.click()
@@ -38,6 +41,15 @@ class Utils():
 
         return 'catalog'
 
-    def go_to_basket(self):
-        self.driver.find_element(By.CLASS_NAME, 'navbar-pc__icon--basket').click()
+    @staticmethod
+    def go_to_basket(driver):
+        driver.find_element(By.CLASS_NAME, 'navbar-pc__icon--basket').click()
         return 'basket' #page
+
+    @staticmethod
+    def close_card_modal(driver):
+        try:
+            driver.find_element(By.CLASS_NAME, 'popup__close').click()
+        except:
+            Utils.page_back(driver)
+            sleep(2.5)

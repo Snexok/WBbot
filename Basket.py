@@ -3,6 +3,8 @@ from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import random
 
+from Utils import Utils
+
 
 class Basket():
     def __init__(self, browser) -> None:
@@ -12,12 +14,9 @@ class Basket():
         card_names = self.driver.find_elements(By.XPATH,'//a[contains(@href, "catalog") and @class="good-info__title j-product-popup"]')
         card_name = card_names[random.choice(list(range(len(card_names))))]
         card_name_href = card_name.get_attribute('href')
+
         sleep(random.uniform(4,9))
-        try:
-            self.driver.find_element(By.CLASS_NAME, 'popup__close').click()
-        except:
-            self.page_back()
-            sleep(2.5)
+        Utils.close_card_modal(self.driver)
 
 
     # Рефакторинг под множество артикулов
@@ -33,8 +32,15 @@ class Basket():
                 sleep(random.uniform(1,5))
                 counter.find_element(By.CLASS_NAME, 'btn__del').click()
             if len(card_names)<=len(articles):
-                if list(set(card_names) & set(articles))
-                return
+                card_names.sort()
+                articles.sort()
+                if card_names != articles:
+                    for card_name in card_names:
+                        if card_name in articles:
+                            counter = card_name.find_element(By.XPATH, '../../../div[contains(@class,"count")]')
+                            hover.move_to_element(counter).perform()
+                            sleep(random.uniform(1, 5))
+                            counter.find_element(By.CLASS_NAME, 'btn__del').click()
 
 
 
@@ -81,3 +87,4 @@ class Basket():
 
     def save_qr_code(self, svg, file_name):
         svg.screenshot(file_name)
+    def list(set(articuls) & set(card_names)
