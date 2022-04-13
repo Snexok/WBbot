@@ -5,8 +5,8 @@ import random
 
 
 class Basket():
-    def __init__(self, driver) -> None:
-        self.driver = driver
+    def __init__(self, browser) -> None:
+        self.driver = browser.driver
 
     def check_random_cards(self, articles):
         card_names = self.driver.find_elements(By.XPATH,'//a[contains(@href, "catalog") and @class="good-info__title j-product-popup"]')
