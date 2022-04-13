@@ -19,6 +19,7 @@ class Bot:
 
     def buy(self, data):
         order_name = ""
+        report = {}
         for d in data:
             article_num, search_name, quantity = d
             order_name += article_num
@@ -34,7 +35,7 @@ class Bot:
         post_place = "123"
         self.basket.choose_post_place(post_place)
         self.basket.choose_payment_method()
-        self.basket.get_qr_code('order_' + order_name + '.png')
+        report['qr_code'] = self.basket.get_qr_code('order_' + order_name + '.png')
 
     def get_data_cart(self, article, SAVE=False):
         self.driver.get("https://www.wildberries.ru/")

@@ -19,7 +19,7 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
 
-MAIN, ORDER, PVZ = range(3)
+MAIN, ORDER, PVZ, INSIDE = range(4)
 
 
 # Define a few command handlers. These usually take the two arguments update and
@@ -41,7 +41,9 @@ def main_handler(update: Update, context: CallbackContext):
         update.message.reply_text('Файлом или через чат?', reply_markup=reply_markup)
 
         return ORDER
-    
+    elif "inside" in msg:
+        update.message.reply_text('Я тебя понял, понял')
+        return INSIDE
     return MAIN
 
 
@@ -52,6 +54,7 @@ def track_users_handler(update: Update, context: CallbackContext) -> None:
         f = open("users_data/" + id + ".json", "a")
         f.write('{"id": ' + id + '}')
         f.close()
+
 
 def order_callback_handler(update: Update, context: CallbackContext):
     query = update.callback_query
@@ -64,42 +67,47 @@ def order_callback_handler(update: Update, context: CallbackContext):
 
     return MAIN
 
-def docs_handler(update: Update, context: CallbackContext):
-    run_by_doc(update, context)
 
-def run_by_doc(update: Update, context: CallbackContext):
+def inside_handler(update: Update, context: CallbackContext):
+    run_by_doc(update, context, True)
+
+
+def run_by_doc(update, context, inside=False):
     id = str(update.effective_user.id)
+
     file_path = "users_data/" + id + "_order.xlsx"
     with open(file_path, 'wb') as f:
         context.bot.get_file(update.message.document).download(out=f)
     df = pd.read_excel(file_path)
-    pvzs = []
-    orders = []
 
-    # refactor
-    for index, row in df.iterrows():
-        articul, search_key, quantity, pvz = row.tolist()
-        orders += [row.tolist()]
-        pvzs += [pvz]
+    orders = [row.tolist() for i, row in df.iterrows()]
 
-
-    max_bots = max(pvzs)
-    bot = [Bot() for _ in range(10)]
+    max_bots = max([order[3] for order in orders])
+    bot = [Bot() for _ in range(5)]
     _bots = bot[:max_bots]
     data_for_bots = [[] for _ in range(max_bots)]
-    for j, order in enumerate(orders):
-        articul, search_key, quantity, pvz = order
+
+    for _, order in enumerate(orders):
+        if inside:
+            article, search_key, quantity, pvz_cnt, _, __ = order
+        else:
+            article, search_key, quantity, pvz_cnt = order
+
         for i in range(max_bots):
-            if pvz>0:
-                data_for_bots[i] += [[articul, search_key, quantity]]
-            pvz-=1
+            if pvz_cnt > 0:
+                data_for_bots[i] += [[article, search_key, quantity]]
+            pvz_cnt -= 1
     print(data_for_bots)
+
+    report = []
     for i, bot in enumerate(_bots):
         bot.open_browser()
         bot.open('https://www.wildberries.ru')
         #         bot.login('9104499982')
-        bot.buy(data_for_bots[i])
+        report += bot.buy(data_for_bots[i])
+
     update.message.reply_text('принял, понял')
+
 
 def get_config():
     file = open("config/config.config").read()
@@ -133,6 +141,10 @@ def main() -> None:
             PVZ: [
                 MessageHandler(Filters.text & ~Filters.command, main_handler)
             ],
+            INSIDE: [
+                MessageHandler(Filters.document, inside_handler)
+            ],
+
         },
         fallbacks=[CommandHandler("start", start)]
     )
