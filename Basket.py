@@ -8,6 +8,18 @@ class Basket():
     def __init__(self, driver) -> None:
         self.driver = driver
 
+    def check_random_cards(self, articles):
+        card_names = self.driver.find_elements(By.XPATH,'//a[contains(@href, "catalog") and @class="good-info__title j-product-popup"]')
+        card_name = card_names[random.choice(list(range(len(card_names))))]
+        card_name_href = card_name.get_attribute('href')
+        sleep(random.uniform(4,9))
+        try:
+            self.driver.find_element(By.CLASS_NAME, 'popup__close').click()
+        except:
+            self.page_back()
+            sleep(2.5)
+
+
     # Рефакторинг под множество артикулов
     def delete_other_cards_in_basket(self, articles):
         hover = ActionChains(self.driver)
@@ -21,7 +33,12 @@ class Basket():
                 sleep(random.uniform(1,5))
                 counter.find_element(By.CLASS_NAME, 'btn__del').click()
             if len(card_names)<=len(articles):
+                if list(set(card_names) & set(articles))
                 return
+
+
+
+
 
     def choose_post_place(self, adress):
         self.driver.find_element(By.XPATH, '//h2[text()="Способ доставки"]/../../div[text()="Выбрать адрес доставки"]').click()

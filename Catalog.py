@@ -13,7 +13,7 @@ class Catalog():
 
     # simple deempl
     min_price_field = lambda self: self.driver.find_element(By.XPATH, '//span[text()="Цена, ₽" and contains(@class,"filter__name")]/../../div/div/div/div/div/input[@name="startN"]')
-    max_price_field = lambda self: self.driver.find_element(By.XPATH, '//span[text()="Цена, ₽" and contains(@class,"filter__name")]/../../div/div/div/div/div/input[@name="endN"]') 
+    max_price_field = lambda self: self.driver.find_element(By.XPATH, '//span[text()="Цена, ₽" and contains(@class,"filter__name")]/../../div/div/div/div/div/input[@name="endN"]')
     search_field = lambda self, filter_name: self.driver.find_element(By.XPATH, '//span[text()="'+filter_name+'" and contains(@class,"filter__name")]/../../div/div/input')
     card_button = lambda self, articul: self.driver.find_element(By.XPATH, '//div[@id="'+ articul +'"]/div/a/div/button')
     basket_btn = lambda self: self.driver.find_element(By.XPATH, '//span[contains(text(), "Добавить в корзину")]/..')
@@ -21,11 +21,12 @@ class Catalog():
     next_page = lambda self: self.driver.find_element(By.CLASS_NAME, 'pagination__next').click()
     get_cards = lambda self: self.driver.find_elements(By.XPATH, '//div[contains(@class, "product-card j-card-item")]')
     like = lambda self: self.driver.find_element(By.CLASS_NAME, 'btn-heart').click()
+    get_sort_by = lambda self, filter: self.driver.find_element(By.XPATH, '//div[@class="sort"]/a/span[text()="'+filter+'"]')
 
-    def card_search(self, articuls, scrolling=True, fake_choose=True):
+
+    def card_search(self, articles, scrolling=True, fake_choose=True):
         # data transform
-        map(str, list(articuls))
-
+        map(str, list(articles))
         # resolve
         while True:
             card_cnt = 0
@@ -38,7 +39,7 @@ class Catalog():
 
                 if scrolling:
                     self.scroll(card_cnt)
-                if articul[1:] in articuls:
+                if articul[1:] in articles:
                     self.add_card(articul, target=True)
                 elif fake_choose:
                     self.add_card(articul, target=False)
@@ -65,17 +66,17 @@ class Catalog():
                 label.click()
                 break
 
-    def find_filter_checkbox(self, filter_name,value):
+    def find_filter_brand(self, filter_name,value):
         search_field = search_field(filter_name)
         search_field.click()
         search_field.send_keys(value)
         sleep(1)
         self.choose_filter_checkbox(filter_name,value)
-        
+
     def price_filter(self, min_price, max_price):
         min_price_field = min_price_field()
-        min_price_field.click() 
-        min_price_field.send_keys(Keys.CONTROL + "a") 
+        min_price_field.click()
+        min_price_field.send_keys(Keys.CONTROL + "a")
         min_price_field.send_keys(Keys.DELETE)
         min_price_field.send_keys(min_price)
 
@@ -84,6 +85,12 @@ class Catalog():
         max_price_field.send_keys(Keys.CONTROL + "a")
         max_price_field.send_keys(Keys.DELETE)
         max_price_field.send_keys(max_price)
+
+    def sort_by(self, filter, double_click=False):
+        sort_el = self.get_sort_by(filter)
+        sort_el.click()
+        if double_click:
+            sort_el.click()
 
     def add_card(self, articul, target=False):
         img = self.driver.find_element(By.XPATH, '//div[@id="'+ articul +'"]/div/a/div/div/img')
@@ -108,7 +115,7 @@ class Catalog():
                 sleep(2.5)
         sleep(random.uniform(3,5))
         self.close_card_modal()
-        
+
         del hover
 
     def card_to_basket(self):
@@ -116,14 +123,14 @@ class Catalog():
             self.basket_btn().click()
         except:
             pass
-        
+
     def close_card_modal(self):
         try:
             self.driver.find_element(By.CLASS_NAME, 'popup__close').click()
         except:
             self.page_back()
             sleep(2.5)
-        
+
     def see_images(self):
         hover = ActionChains(self.driver)
 
@@ -132,4 +139,3 @@ class Catalog():
             sleep(random.uniform(1,5))
             if random.randint(1,4) == 3:
                 return
-        
