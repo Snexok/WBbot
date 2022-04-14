@@ -1,4 +1,5 @@
 from selenium.webdriver.common.by import By
+from selenium.webdriver import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import random
@@ -28,7 +29,7 @@ class Basket():
             card_name_href = card.get_attribute('href')
             card_name = card_name_href[len('https://www.wildberries.ru/catalog/'):len('https://www.wildberries.ru/catalog/')+8]
             if not any(a in card_name_href for a in articles):
-                counter = card_name.find_element(By.XPATH, '../../../div[contains(@class,"count")]')
+                counter = card.find_element(By.XPATH, '../../../div[contains(@class,"count")]')
                 hover.move_to_element(counter).perform()
                 sleep(random.uniform(1,5))
                 counter.find_element(By.CLASS_NAME, 'btn__del').click()
@@ -52,14 +53,18 @@ class Basket():
 
 
 
-    def choose_post_place(self, adress):
-        self.driver.find_element(By.XPATH, '//h2[text()="Способ доставки"]/../../div[text()="Выбрать адрес доставки"]').click()
-        sleep(1)
-        self.driver.find_element(By.XPATH, '//button[text()="Выбрать адрес доставки"]').click()
+    def choose_post_place(self, adress, req=False):
+        if not req:
+            self.driver.find_element(By.XPATH, '//h2[text()="Способ доставки"]/../../div[text()="Выбрать адрес доставки"]').click()
+            sleep(1)
+            self.driver.find_element(By.XPATH, '//button[text()="Выбрать адрес доставки"]').click()
         sleep(2)
+        self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(Keys.CONTROL + "a")
+        self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(Keys.DELETE)
         self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(adress)
+        self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(Keys.ENTER)
         sleep(2)
-        self.driver.find_element(By.XPATH, '//ymaps[text()="Найти"]').click()
+        # self.driver.find_element(By.XPATH, '//ymaps[text()="Найти"]').click()
         sleep(2)
         try:
             self.driver.find_element(By.XPATH, '//ymaps[contains(@class, "__first")]').click()
@@ -68,28 +73,53 @@ class Basket():
         sleep(2)
         self.driver.find_element(By.XPATH, '//span[contains(text(), "'+ adress +'")]').click()
         sleep(2)
-        self.driver.find_element(By.XPATH, '//div[@class="balloon-content-block"]/button').click()
+        try:
+            self.driver.find_element(By.XPATH, '//div[@class="balloon-content-block"]/button').click()
+        except:
+            sleep(2)
+            self.choose_post_place(adress, req=True)
+
         sleep(2)
         self.driver.find_element(By.XPATH, '//button[@class="popup__btn-main"]').click()
         sleep(2)
         
     def choose_payment_method(self, payment_method="Оплата по QR-коду"):
-        self.driver.find_element(By.XPATH, '//h2[text()="Способ оплаты"]/../../div[text()="Выбрать способ оплаты"]').click()
-        sleep(1)
-        self.driver.find_element(By.XPATH, '//span[text()="' + payment_method + '"]').click()
-        sleep(2)
-        self.driver.find_element(By.XPATH, '//button[contains(@class,"popup__btn-main")]').click()
-        sleep(2)
+        try:
+            self.driver.find_element(By.XPATH,
+                                     '//h2[text()="Способ оплаты"]/../../div[text()="Выбрать способ оплаты"]').click()
+            sleep(1)
+            self.driver.find_element(By.XPATH, '//span[text()="' + payment_method + '"]').click()
+            sleep(2)
+            self.driver.find_element(By.XPATH, '//button[contains(@class,"popup__btn-main")]').click()
+            sleep(2)
+        except:
+            self.driver.find_element(By.XPATH, '//h2[text()="Способ оплаты"]/../button/span[text()="Изменить"]').click()
+            sleep(1)
+            self.driver.find_element(By.XPATH, '//span[text()="' + payment_method + '"]').click()
+            sleep(2)
+            self.driver.find_element(By.XPATH, '//button[contains(@class,"popup__btn-main")]').click()
+            sleep(2)
         
-    def get_qr_code(self, file_name):
-        self.driver.find_element(By.XPATH, '//button[text()="                Оплатить заказ                "]').click()
-        sleep(2)
-        self.driver.find_element(By.XPATH, '//button[contains(@class,"popup__btn-main")]').click()
-        sleep(2)
-        svg = self.driver.find_element(By.XPATH, '//div[@class="qr-code__value"]')
-        self.save_qr_code(svg, file_name)
-        sleep(2)
-        self.driver.find_element(By.CLASS_NAME, 'popup__close').click()
+    def get_qr_code(self, order_id, bot_name):
+        file_name = 'order_' + order_id + '_' + bot_name + '.png'
+        try:
+            self.driver.find_element(By.XPATH,
+                                     '//button[text()="                Оплатить заказ                "]').click()
+            sleep(2)
+            self.driver.find_element(By.XPATH, '//button[contains(@class,"popup__btn-main")]').click()
+            sleep(2)
+            svg = self.driver.find_element(By.XPATH, '//div[@class="qr-code__value"]')
+            self.save_qr_code(svg, file_name)
+            sleep(2)
+            self.driver.find_element(By.CLASS_NAME, 'popup__close').click()
+        except:
+            file = open("config/config.config").read()
+            config = eval(file)
+            Utils.login(self.driver, config['bots'][bot_name]['number'])
+            input("Требуется ручное действие")
+            self.get_qr_code(order_id, bot_name)
+
+        return file_name
 
     def save_qr_code(self, svg, file_name):
         svg.screenshot(file_name)

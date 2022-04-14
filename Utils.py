@@ -15,14 +15,18 @@ class Utils:
 
     @staticmethod
     def login(driver, number):
-        # vars
+        # vars # 1
         to_login_btn = driver.find_element(By.CLASS_NAME, 'j-main-login')
+
+        # resolve # 1
+        to_login_btn.click()
+        sleep(random.uniform(3, 5))
+
+        # vars # 2
         login_input = driver.find_element(By.CLASS_NAME, 'input-item')
         login_btn = driver.find_element(By.CLASS_NAME, 'login__btn')
 
-        # resolve
-        to_login_btn.click()
-        sleep(random.uniform(3, 5))
+        # resolve # 2
         login_input.send_keys(number)
         sleep(random.uniform(2, 4))
         login_btn.click()

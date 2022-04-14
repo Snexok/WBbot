@@ -28,14 +28,18 @@ class Bot:
             sleep(2)
 
             self.catalog.card_search(article_num)
+            sleep(1)
         self.page = Utils.go_to_basket(self.driver)  # basket
-        sleep(1)
+        self.driver.refresh()
+        sleep(2)
         articles = [str(d[0]) for d in data]
         self.basket.delete_other_cards_in_basket(articles)
         sleep(3)
         self.basket.choose_post_place(post_place)
         self.basket.choose_payment_method()
-        report['qr_code'] = self.basket.get_qr_code('order_' + order_id + self.name + '.png')
+        report['qr_code'] = self.basket.get_qr_code(order_id, self.name)
+
+        return [report]
 
     def get_data_cart(self, article, SAVE=False):
         self.driver.get("https://www.wildberries.ru/")

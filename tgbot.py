@@ -20,6 +20,7 @@ logging.basicConfig(
 )
 
 MAIN, ORDER, PVZ, INSIDE = range(4)
+BOTS_NAME = ['Oleg', 'Einstein', 'Boulevard Depo']
 
 
 # Define a few command handlers. These usually take the two arguments update and
@@ -85,8 +86,7 @@ def run_by_doc(update, context, inside=False):
     orders = [row.tolist() for i, row in df.iterrows()]
 
     max_bots = max([order[3] for order in orders])
-    bots = [Bot(name=i) for i in range(5)]
-    _bots = bots[:max_bots]
+    bots = [Bot(name=BOTS_NAME[i]) for i in range(max_bots)]
     data_for_bots = [[] for _ in range(max_bots)]
 
     for _, order in enumerate(orders):
@@ -107,10 +107,12 @@ def run_by_doc(update, context, inside=False):
     print(order_id, post_places)
 
     report = []
-    for i, bot in enumerate(_bots):
+    for i, bot in enumerate(bots):
         report += bot.buy(data_for_bots[i], post_places[i], order_id)
+        print(report[i]['qr_code'])
+        update.message.reply_photo(open(report[i]['qr_code'], 'rb'))
 
-    update.message.reply_text('принял, понял')
+    update.message.reply_text('Ваш заказ выполнен, до связи')
 
 
 def get_config():
