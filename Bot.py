@@ -22,10 +22,16 @@ class Bot:
         self.browser.open_site('https://www.wildberries.ru')
         report = {}
         for d in data:
-            article_num, search_name, quantity = d
+            article_num, search_name, quantity, additional_data = d
 
             self.page = Utils.search(self.driver, search_name)  # catalog
-            sleep(2)
+            sleep(20)
+
+            sleep(5)
+            price = additional_data['price']
+            print('price', price)
+            self.catalog.price_filter(int(price*0.75), int(price*1.25))
+            sleep(5)
 
             self.catalog.card_search(article_num)
             sleep(1)
@@ -44,7 +50,7 @@ class Bot:
     def get_data_cart(self, article, SAVE=False):
         self.driver.get("https://www.wildberries.ru/")
         sleep(2)
-        self.driver.get("https://www.wildberries.ru/catalog/" + article + "/detail.aspx?targetUrl=MI")
+        self.driver.get("https://www.wildberries.ru/catalog/" + str(article) + "/detail.aspx?targetUrl=MI")
 
         data = {}
 
@@ -61,7 +67,7 @@ class Bot:
         price = self.driver.find_element(By.XPATH, '//p[contains(@class, "price-block__price-wrap")]/span').text
         price = price[:price.index('₽')].replace(" ", "")
 
-        data['price'] = price
+        data['price'] = int(price)
 
         try:
             self.driver.find_element(By.XPATH,

@@ -49,11 +49,3 @@ class Utils:
     def go_to_basket(driver):
         driver.find_element(By.CLASS_NAME, 'navbar-pc__icon--basket').click()
         return 'basket' #page
-
-    @staticmethod
-    def close_card_modal(driver):
-        try:
-            driver.find_element(By.CLASS_NAME, 'popup__close').click()
-        except:
-            Utils.page_back(driver)
-            sleep(2.5)

@@ -85,19 +85,26 @@ def run_by_doc(update, context, inside=False):
 
     orders = [row.tolist() for i, row in df.iterrows()]
 
+    articles = [order[0] for order in orders]
+    print(articles)
+    watch_bot = Bot(name="Watcher")
+    for i, article in enumerate(articles):
+        orders[i] += [watch_bot.get_data_cart(article)]
+    print(orders)
+
     max_bots = max([order[3] for order in orders])
     bots = [Bot(name=BOTS_NAME[i]) for i in range(max_bots)]
     data_for_bots = [[] for _ in range(max_bots)]
 
     for _, order in enumerate(orders):
         if inside:
-            article, search_key, quantity, pvz_cnt, _, __ = order
+            article, search_key, quantity, pvz_cnt, _, __, additional_data = order
         else:
-            article, search_key, quantity, pvz_cnt = order
+            article, search_key, quantity, pvz_cnt, additional_data = order
 
         for i in range(max_bots):
             if pvz_cnt > 0:
-                data_for_bots[i] += [[article, search_key, quantity]]
+                data_for_bots[i] += [[article, search_key, quantity, additional_data]]
             pvz_cnt -= 1
     print(data_for_bots)
 
@@ -108,8 +115,8 @@ def run_by_doc(update, context, inside=False):
 
     report = []
     for i, bot in enumerate(bots):
+        print('run bot buy')
         report += bot.buy(data_for_bots[i], post_places[i], order_id)
-        print(report[i]['qr_code'])
         update.message.reply_photo(open(report[i]['qr_code'], 'rb'))
 
     update.message.reply_text('Ваш заказ выполнен, до связи')

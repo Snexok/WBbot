@@ -4,12 +4,14 @@ from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import random
 
+from Card import Card
 from Utils import Utils
 
 
 class Basket():
     def __init__(self, browser) -> None:
         self.driver = browser.driver
+        self.card = Card(self.driver)
 
     def check_random_cards(self, articles):
         card_names = self.driver.find_elements(By.XPATH,'//a[contains(@href, "catalog") and @class="good-info__title j-product-popup"]')
@@ -17,7 +19,7 @@ class Basket():
         card_name_href = card_name.get_attribute('href')
 
         sleep(random.uniform(4,9))
-        Utils.close_card_modal(self.driver)
+        self.card.close_card_modal()
 
 
     # Рефакторинг под множество артикулов

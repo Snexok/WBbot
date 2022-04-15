@@ -3,6 +3,8 @@ from selenium.webdriver import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import random
+
+from Card import Card
 from Utils import Utils
 
 from selenium.webdriver.support.wait import WebDriverWait
@@ -14,6 +16,7 @@ class Catalog():
     def __init__(self, browser) -> None:
         self.driver = browser.driver
         self.Y = 150
+        self.card = Card(self.driver)
 
     # simple deempl
     min_price_field = lambda self: self.driver.find_element(By.XPATH,
@@ -22,9 +25,7 @@ class Catalog():
                                                             '//span[text()="Цена, ₽" and contains(@class,"filter__name")]/../../div/div/div/div/div/input[@name="endN"]')
     search_field = lambda self, filter_name: self.driver.find_element(By.XPATH,
                                                                       '//span[text()="' + filter_name + '" and contains(@class,"filter__name")]/../../div/div/input')
-    card_button = lambda self, articul: self.driver.find_element(By.XPATH,
-                                                                 '//div[@id="' + articul + '"]/div/a/div/button')
-    basket_btn = lambda self: self.driver.find_element(By.XPATH, '//span[contains(text(), "Добавить в корзину")]/..')
+
     next_page = lambda self: self.driver.find_element(By.CLASS_NAME, 'pagination__next').click()
     get_cards = lambda self: self.driver.find_elements(By.XPATH, '//div[contains(@class, "product-card j-card-item")]')
     like = lambda self: self.driver.find_element(By.CLASS_NAME, 'btn-heart').click()
@@ -45,22 +46,22 @@ class Catalog():
 
             sleep(2)
             cards = self.get_cards()
-            for card in cards:
+            for c in cards:
                 sleep(SPEED*random.uniform(0, 1))
 
-                article = card.get_attribute("id")
+                article = c.get_attribute("id")
                 print(article, articles)
                 if scrolling:
                     card_cnt_for_scroll = self.scroll(card_cnt_for_scroll)
                 if article[1:] in articles:
-                    self.add_card(article, target=True)
+                    self.card.add_card(article, target=True)
 
                     cnt += 1
                     if cnt >= len(articles):
                         return
                 elif fake_choose:
                     if random.randint(0,5) == 3:
-                        self.add_card(article, target=False)
+                        self.card.add_card(article, target=False)
 
             self.next_page()
             sleep(2)
@@ -93,17 +94,24 @@ class Catalog():
         self.choose_filter_checkbox(filter_name, value)
 
     def price_filter(self, min_price, max_price):
+        print("price_filter started")
+        print(min_price, max_price)
         min_price_field = self.min_price_field()
+        print("min_price_field = ", min_price_field)
         min_price_field.click()
         min_price_field.send_keys(Keys.CONTROL + "a")
         min_price_field.send_keys(Keys.DELETE)
-        min_price_field.send_keys(min_price)
+        min_price_field.send_keys(str(min_price))
+
+        sleep(10)
 
         max_price_field = self.max_price_field()
+        print("max_price_field = ", max_price_field)
         max_price_field.click()
         max_price_field.send_keys(Keys.CONTROL + "a")
         max_price_field.send_keys(Keys.DELETE)
-        max_price_field.send_keys(max_price)
+        max_price_field.send_keys(str(max_price))
+        print("price_filter ended")
 
     def sort_by(self, filter, double_click=False):
         sort_el = self.get_sort_by(filter)
@@ -111,45 +119,3 @@ class Catalog():
         if double_click:
             sort_el.click()
 
-    def card_to_basket(self):
-        try:
-            self.basket_btn().click()
-        except:
-            pass
-
-    def add_card(self, articul, target=False):
-        # vars
-        img = self.driver.find_element(By.XPATH, '//div[@id="' + articul + '"]/div/a/div/div/img')
-        hover = ActionChains(self.driver)
-
-        # resolve
-        hover.move_to_element(img).perform()
-
-        sleep(SPEED*random.uniform(2, 4)+1)
-        self.card_button(articul).click()
-        sleep(1)
-        if target:
-            sleep(SPEED*random.uniform(3, 7))
-            if random.randint(1, 2) == 2:
-                self.see_images()
-            self.card_to_basket()
-        else:
-            sleep(SPEED*random.uniform(1, 5))
-            if random.randint(1, 20) == 3:
-                if random.randint(1, 3) == 2:
-                    self.see_images()
-                self.card_to_basket()
-                sleep(SPEED*2.5)
-        sleep(SPEED*random.uniform(3, 5))
-        Utils.close_card_modal(self.driver)
-
-        del hover
-
-    def see_images(self):
-        hover = ActionChains(self.driver)
-
-        for slide in self.driver.find_elements(By.CLASS_NAME, 'slide'):
-            hover.move_to_element(slide).perform()
-            sleep(SPEED*random.uniform(1, 5))
-            if random.randint(1, 4) == 3:
-                return
