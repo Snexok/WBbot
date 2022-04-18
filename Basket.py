@@ -118,7 +118,6 @@ class Basket():
             file = open("config/config.config").read()
             config = eval(file)
             Utils.login(self.driver, config['bots'][bot_name]['number'])
-            input("Требуется ручное действие")
             self.get_qr_code(order_id, bot_name)
 
         return file_name

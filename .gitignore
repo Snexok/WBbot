@@ -4,5 +4,5 @@
 chrome/chromedriver
 *.png
 .idea
-.pyc
 *.pyc
+/venv/*

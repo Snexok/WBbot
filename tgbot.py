@@ -86,11 +86,9 @@ def run_by_doc(update, context, inside=False):
     orders = [row.tolist() for i, row in df.iterrows()]
 
     articles = [order[0] for order in orders]
-    print(articles)
     watch_bot = Bot(name="Watcher")
     for i, article in enumerate(articles):
         orders[i] += [watch_bot.get_data_cart(article)]
-    print(orders)
 
     max_bots = max([order[3] for order in orders])
     bots = [Bot(name=BOTS_NAME[i]) for i in range(max_bots)]
@@ -106,12 +104,9 @@ def run_by_doc(update, context, inside=False):
             if pvz_cnt > 0:
                 data_for_bots[i] += [[article, search_key, quantity, additional_data]]
             pvz_cnt -= 1
-    print(data_for_bots)
 
     post_places = [order[5] for order in orders][:max_bots]
     order_id = str(orders[0][4])
-
-    print(order_id, post_places)
 
     report = []
     for i, bot in enumerate(bots):
