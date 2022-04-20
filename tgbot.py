@@ -19,8 +19,11 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
 
-MAIN, ORDER, PVZ, INSIDE = range(4)
+MAIN, ORDER, PVZ, INSIDE, PUP = range(5)
 BOTS_NAME = ['Oleg', 'Einstein', 'Boulevard Depo']
+
+#PUP_STATES
+FULL_NAME, ADRESSES, END = range(3)
 
 
 # Define a few command handlers. These usually take the two arguments update and
@@ -34,8 +37,18 @@ def help_command(update: Update, context: CallbackContext) -> None:
 
 
 def main_handler(update: Update, context: CallbackContext):
+    # DEV
+    id = str(update.effective_user.id)
+    user = user_load(id)
+    user['pup_state'] = 0
+    user_save(user)
+    # DEV
+
     msg = update.message.text.lower()
-    if "заказ" in msg:
+    if "пвз" in msg:
+        update.message.reply_text("Ваше ФИО?")
+        return PUP
+    elif "заказ" in msg:
         keyboard = [[InlineKeyboardButton(name[:30], callback_data=name[:30])] for name in ['Файл', 'Чат']]
 
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -48,6 +61,39 @@ def main_handler(update: Update, context: CallbackContext):
     return MAIN
 
 
+def pickup_point_handler(update: Update, context: CallbackContext):
+    msg = update.message.text
+    _msg = msg.lower()
+    id = str(update.effective_user.id)
+    user = user_load(id)
+    pup_state = user.get('pup_state')
+
+    if not pup_state:
+        pup_state = FULL_NAME
+    elif _msg == 'всё':
+        pup_state = END
+
+    if pup_state == FULL_NAME:
+        user['name'] = msg
+        pup_state = ADRESSES
+        update.message.reply_text('Напишите адреса ваших ПВЗ')
+    elif pup_state == ADRESSES:
+        adresses = user.get('adresses')
+
+        if not adresses:
+            adresses = []
+
+        adresses += msg.splitlines()
+        user['adresses'] = adresses
+        adresses_to_print = "".join(map(lambda x: x + '\n', adresses))
+        update.message.reply_text('Это все адреса?\n\n'+adresses_to_print+'\nЕсли есть еще адреса напишите их?\n\nЕсли это все адреса, просто напишите "Всё"')
+    elif pup_state == END:
+        update.message.reply_text('Мы запомнили ваши данные')
+
+    user['pup_state'] = pup_state
+    print(user)
+    user_save(user)
+
 def track_users_handler(update: Update, context: CallbackContext) -> None:
     """Store the user id of the incoming update, if any."""
     id = str(update.effective_user.id)
@@ -55,6 +101,17 @@ def track_users_handler(update: Update, context: CallbackContext) -> None:
         f = open("users_data/" + id + ".json", "a")
         f.write('{"id": ' + id + '}')
         f.close()
+
+def user_load(id):
+    f = open("users_data/" + id + ".json", 'r')
+    user = json.load(f)
+    f.close()
+    return user
+
+def user_save(user):
+    f = open("users_data/" + str(user['id']) + ".json", "w")
+    json.dump(user, f)
+    f.close()
 
 
 def order_callback_handler(update: Update, context: CallbackContext):
@@ -106,16 +163,12 @@ def run_by_doc(update, context, inside=False):
             if pvz_cnt > 0:
                 data_for_bots[i] += [[article, search_key, quantity, additional_data]]
             pvz_cnt -= 1
-    print(data_for_bots)
 
     post_places = [order[5] for order in orders][:max_bots]
     order_id = str(orders[0][4])
 
-    print(order_id, post_places)
-
     report = []
     for i, bot in enumerate(bots):
-        print('run bot buy')
         report += bot.buy(data_for_bots[i], post_places[i], order_id)
         update.message.reply_photo(open(report[i]['qr_code'], 'rb'))
 
@@ -157,6 +210,9 @@ def main() -> None:
             INSIDE: [
                 MessageHandler(Filters.document, inside_handler)
             ],
+            PUP: [
+                MessageHandler(Filters.text & ~Filters.command, pickup_point_handler)
+            ]
 
         },
         fallbacks=[CommandHandler("start", start)]
