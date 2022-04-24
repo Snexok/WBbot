@@ -276,11 +276,9 @@ def run_by_doc(update, context, inside=False):
     orders = [row.tolist() for i, row in df.iterrows()]
 
     articles = [order[0] for order in orders]
-    print(articles)
     watch_bot = Bot(name="Watcher")
     for i, article in enumerate(articles):
         orders[i] += [watch_bot.get_data_cart(article)]
-    print(orders)
 
     max_bots = max([order[3] for order in orders])
     bots = [Bot(name=BOTS_NAME[i]) for i in range(max_bots)]

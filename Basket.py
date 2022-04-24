@@ -13,13 +13,8 @@ class Basket():
         self.driver = browser.driver
         self.card = Card(self.driver)
 
-    def check_random_cards(self, articles):
-        card_names = self.driver.find_elements(By.XPATH,'//a[contains(@href, "catalog") and @class="good-info__title j-product-popup"]')
-        card_name = card_names[random.choice(list(range(len(card_names))))]
-        card_name_href = card_name.get_attribute('href')
-
-        sleep(random.uniform(4,9))
-        self.card.close_card_modal()
+    def check_card(self, card):
+        card.click()
 
 
     # Рефакторинг под множество артикулов
@@ -28,6 +23,8 @@ class Basket():
         while True:
             card_names = self.driver.find_elements(By.XPATH, '//a[contains(@href, "catalog") and @class="good-info__title j-product-popup"]')
             card = card_names[random.choice(list(range(len(card_names))))]
+            if random.randint(5) == 3:
+                self.check_card(card)
             card_name_href = card.get_attribute('href')
             card_name = card_name_href[len('https://www.wildberries.ru/catalog/'):len('https://www.wildberries.ru/catalog/')+8]
             if not any(a in card_name_href for a in articles):
@@ -118,7 +115,6 @@ class Basket():
             file = open("config/config.config").read()
             config = eval(file)
             Utils.login(self.driver, config['bots'][bot_name]['number'])
-            input("Требуется ручное действие")
             self.get_qr_code(order_id, bot_name)
 
         return file_name

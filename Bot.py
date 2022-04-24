@@ -25,13 +25,10 @@ class Bot:
             article_num, search_name, quantity, additional_data = d
 
             self.page = Utils.search(self.driver, search_name)  # catalog
-            sleep(20)
-
-            sleep(5)
             price = additional_data['price']
             print('price', price)
             self.catalog.price_filter(int(price*0.75), int(price*1.25))
-            sleep(5)
+            sleep(2)
 
             self.catalog.card_search(article_num)
             sleep(1)

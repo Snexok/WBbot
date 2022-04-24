@@ -31,6 +31,8 @@ class Utils:
         sleep(random.uniform(2, 4))
         login_btn.click()
 
+        input("Требуется ручное действие")
+
     @staticmethod
     def search(driver, key):
         # vars

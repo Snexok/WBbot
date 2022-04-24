@@ -10,7 +10,8 @@ from Utils import Utils
 from selenium.webdriver.support.wait import WebDriverWait
 
 SCROLL_STEP = 500
-SPEED = 0 # 1 << 0
+SPEED = 0  # 1 << 0
+
 
 class Catalog():
     def __init__(self, browser) -> None:
@@ -19,15 +20,16 @@ class Catalog():
         self.card = Card(self.driver)
 
     # simple deempl
-    min_price_field = lambda self: self.driver.find_element(By.XPATH,
-                                                            '//span[text()="Цена, ₽" and contains(@class,"filter__name")]/../../div/div/div/div/div/input[@name="startN"]')
-    max_price_field = lambda self: self.driver.find_element(By.XPATH,
-                                                            '//span[text()="Цена, ₽" and contains(@class,"filter__name")]/../../div/div/div/div/div/input[@name="endN"]')
+    min_price_field = lambda self: WebDriverWait(self.driver, 60).until(lambda d: d.find_element(By.XPATH,
+                                                                                                 '//span[text()="Цена, ₽" and contains(@class,"filter__name")]/../../div/div/div/div/div/input[@name="startN"]'))
+    max_price_field = lambda self: WebDriverWait(self.driver, 60).until(lambda d: d.find_element(By.XPATH,
+                                                                                                 '//span[text()="Цена, ₽" and contains(@class,"filter__name")]/../../div/div/div/div/div/input[@name="endN"]'))
     search_field = lambda self, filter_name: self.driver.find_element(By.XPATH,
                                                                       '//span[text()="' + filter_name + '" and contains(@class,"filter__name")]/../../div/div/input')
 
     next_page = lambda self: self.driver.find_element(By.CLASS_NAME, 'pagination__next').click()
-    get_cards = lambda self: self.driver.find_elements(By.XPATH, '//div[contains(@class, "product-card j-card-item")]')
+    get_cards = lambda self: WebDriverWait(self.driver, 60).until(
+        lambda d: d.find_elements(By.XPATH, '//div[contains(@class, "product-card j-card-item")]'))
     like = lambda self: self.driver.find_element(By.CLASS_NAME, 'btn-heart').click()
     get_sort_by = lambda self, filter: self.driver.find_element(By.XPATH,
                                                                 '//div[@class="sort"]/a/span[text()="' + filter + '"]')
@@ -47,10 +49,9 @@ class Catalog():
             sleep(2)
             cards = self.get_cards()
             for c in cards:
-                sleep(SPEED*random.uniform(0, 1))
+                sleep(SPEED * random.uniform(0, 1))
 
                 article = c.get_attribute("id")
-                print(article, articles)
                 if scrolling:
                     card_cnt_for_scroll = self.scroll(card_cnt_for_scroll)
                 if article[1:] in articles:
@@ -60,7 +61,7 @@ class Catalog():
                     if cnt >= len(articles):
                         return
                 elif fake_choose:
-                    if random.randint(0,5) == 3:
+                    if random.randint(0, 5) == 3:
                         self.card.add_card(article, target=False)
 
             self.next_page()
@@ -95,27 +96,37 @@ class Catalog():
 
     def price_filter(self, min_price, max_price):
         print("price_filter started")
-        print(min_price, max_price)
+        min_price, max_price = self.transform_price(min_price), self.transform_price(max_price)
+        print("min_price", min_price, "max_price", max_price)
         min_price_field = self.min_price_field()
-        print("min_price_field = ", min_price_field)
         min_price_field.click()
         min_price_field.send_keys(Keys.CONTROL + "a")
         min_price_field.send_keys(Keys.DELETE)
-        min_price_field.send_keys(str(min_price))
-
-        sleep(10)
+        min_price_field.send_keys(min_price)
+        sleep(1)
 
         max_price_field = self.max_price_field()
-        print("max_price_field = ", max_price_field)
+        max_price_field.click()
+
+        sleep(1)
+        max_price_field = self.max_price_field()
         max_price_field.click()
         max_price_field.send_keys(Keys.CONTROL + "a")
         max_price_field.send_keys(Keys.DELETE)
-        max_price_field.send_keys(str(max_price))
+        max_price_field.send_keys(max_price)
+        max_price_field.send_keys(Keys.ENTER)
         print("price_filter ended")
+
+    def transform_price(self, price):
+        price = str(price)
+        if len(price) >= 4:
+            price = price[:-2] + "00"
+        elif len(price) > 1:
+            price = price[:-1] + "0"
+        return price
 
     def sort_by(self, filter, double_click=False):
         sort_el = self.get_sort_by(filter)
         sort_el.click()
         if double_click:
             sort_el.click()
-
