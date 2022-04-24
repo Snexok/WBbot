@@ -4,8 +4,8 @@ from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import random
 
-from Card import Card
-from Utils import Utils
+from WB.Card import Card
+from WB.Utils import Utils
 
 
 class Basket():
@@ -23,7 +23,7 @@ class Basket():
         while True:
             card_names = self.driver.find_elements(By.XPATH, '//a[contains(@href, "catalog") and @class="good-info__title j-product-popup"]')
             card = card_names[random.choice(list(range(len(card_names))))]
-            if random.randint(5) == 3:
+            if random.randint(0, 5) == 3:
                 self.check_card(card)
             card_name_href = card.get_attribute('href')
             card_name = card_name_href[len('https://www.wildberries.ru/catalog/'):len('https://www.wildberries.ru/catalog/')+8]
@@ -112,7 +112,7 @@ class Basket():
             sleep(2)
             self.driver.find_element(By.CLASS_NAME, 'popup__close').click()
         except:
-            file = open("config/config.config").read()
+            file = open("/configs/configs.yaml").read()
             config = eval(file)
             Utils.login(self.driver, config['bots'][bot_name]['number'])
             self.get_qr_code(order_id, bot_name)

@@ -1,9 +1,7 @@
 from selenium.webdriver.common.by import By
-from selenium.webdriver import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import random
-from Utils import Utils
 
 SPEED = 1
 

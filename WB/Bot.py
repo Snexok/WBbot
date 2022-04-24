@@ -2,10 +2,10 @@ from selenium.webdriver.common.by import By
 from time import sleep
 import json
 
-from Basket import Basket
-from Browser import Browser
-from Catalog import Catalog
-from Utils import Utils
+from WB.Pages.Basket import Basket
+from WB.Browser import Browser
+from WB.Pages.Catalog import Catalog
+from WB.Utils import Utils
 
 
 class Bot:

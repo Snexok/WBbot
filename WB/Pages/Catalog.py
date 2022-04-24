@@ -1,11 +1,9 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver import Keys
-from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import random
 
-from Card import Card
-from Utils import Utils
+from WB.Card import Card
 
 from selenium.webdriver.support.wait import WebDriverWait
 

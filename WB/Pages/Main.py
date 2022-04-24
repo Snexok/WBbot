@@ -8,4 +8,4 @@ class Main():
         self.driver = driver
         
     def main_page_surfing(self):
-        pass 
+        pass
