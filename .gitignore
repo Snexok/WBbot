@@ -6,3 +6,5 @@ chrome/chromedriver
 .idea
 .pyc
 *.pyc
+data/*
+users_data/*

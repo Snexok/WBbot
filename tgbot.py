@@ -19,10 +19,10 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
 )
 
-MAIN, ORDER, PVZ, INSIDE, PUP = range(5)
+ADMIN, ADMIN_ADDRESS_DISTRIBUTION, MAIN, ORDER, PVZ, INSIDE, PUP = range(7)
 BOTS_NAME = ['Oleg', 'Einstein', 'Boulevard Depo']
 
-#PUP_STATES
+# PUP_STATES
 FULL_NAME, ADRESSES, END = range(3)
 
 
@@ -34,6 +34,105 @@ def start(update: Update, context: CallbackContext) -> None:
 
 def help_command(update: Update, context: CallbackContext) -> None:
     update.message.reply_text('Help!')
+
+
+def admin_handler(update: Update, context: CallbackContext):
+    id = str(update.effective_user.id)
+    if id in ['794329884', '653703299']:
+        msg = update.message.text.lower()
+        print(msg)
+        if 'admin' in msg:
+            update.message.reply_text('Добро пожаловать, Лорд ' + update.effective_user.name)
+            return ADMIN
+        elif 'проверить ботов' in msg:
+            res_message, state = admin_check_not_added_pup_addresses()
+            update.message.reply_text(res_message)
+            return state
+    else:
+        update.message.reply_text('СоЖеЛеЮ, Ты Не $%...АдМиН...>>>')
+        return MAIN
+
+def admin_check_not_added_pup_addresses():
+    """
+    Проверяет наличие адресов ПВЗ, не распределённых по ботам
+
+    return states (ADMIN_ADDRESS_DISTRIBUTION | ADMIN)
+    """
+    local_addresses = load_addresses()
+    all_not_added_addresses = list(filter(lambda x: x['added_to_bot'] == False, local_addresses))
+    if len(all_not_added_addresses) > 0:
+        res_message = 'Список не распределённых адресов:\n\n' \
+                      + join_to_lines([address['address'] for address in all_not_added_addresses])\
+                      + '\nСписок БОТОВ:\n\n'\
+                      + join_to_lines(BOTS_NAME)\
+                      + '\nНапишите название бота и адреса для него в формате:\n\n'\
+                      + '<Имя Первого бота>\n'\
+                      + '<1 адрес>\n'\
+                      + '<2 адрес>\n\n'\
+                      + '<Имя Второго бота>\n'\
+                      + '<1 адрес>\n'\
+                      + '<2 адрес>\n\n'
+        state = ADMIN_ADDRESS_DISTRIBUTION
+    else:
+        res_message = "Все адреса распределены"
+        state = ADMIN
+
+    return res_message, state
+
+def admin_address_distribution_handler(update: Update, context: CallbackContext):
+    msg = update.message.text
+    bots_data_str = msg.split('\n\n')
+    local_addresses = load_addresses()
+    for bot_data in bots_data_str:
+        bot = {}
+        bot_data = bot_data.split('\n')
+        bot['name'] = bot_data[0]
+        bot['data'] = {}
+        bot['data']['addresses'] = bot_data[1:]
+        print(bot)
+        print(local_addresses)
+        for address in bot['data']['addresses']:
+            i = [local_address['address'] for local_address in local_addresses].index(address)
+            local_addresses[i]['added_to_bot'] = True
+
+        update_bot(bot)
+    update_addresses(local_addresses)
+    update.message.reply_text("Все адреса добавлены в ботов")
+
+    return ADMIN
+
+def update_bot(u_bot_data):
+    path = "data/bots.json"
+    if not os.path.isfile(path):
+        f = open(path, "a")
+        local_bots = [{'name': u_bot_data['name'], 'data': {}}]
+    else:
+        f = open(path, 'r')
+        local_bots = json.load(f)
+        f.close()
+        f = open(path, "w")
+    local_bot_names = [bot['name'] for bot in local_bots]
+    if u_bot_data['name'] in local_bot_names:
+        i = local_bot_names.index(u_bot_data['name'])
+        bot = local_bots[i]
+    else:
+        i = len(local_bots)
+        bot = {'name': u_bot_data['name'], 'data': {}}
+        local_bots += [bot]
+    for key in u_bot_data['data']:
+        if bot['data'].get(key) is None:
+            bot['data'][key] = []
+            local_bots[i]['data'][key] = []
+        for value in u_bot_data['data'][key]:
+            if not (value in bot['data'][key]):
+                local_bots[i]['data'][key] += [value]
+                print("in bot",bot['name'],"to",key,"added", value)
+    json.dump(local_bots, f)
+    f.close()
+
+
+def join_to_lines(joined_elems):
+    return "".join(map(lambda x: x + '\n', joined_elems))
 
 
 def main_handler(update: Update, context: CallbackContext):
@@ -78,21 +177,25 @@ def pickup_point_handler(update: Update, context: CallbackContext):
         pup_state = ADRESSES
         update.message.reply_text('Напишите адреса ваших ПВЗ')
     elif pup_state == ADRESSES:
-        adresses = user.get('adresses')
+        addresses = user.get('addresses')
 
-        if not adresses:
-            adresses = []
+        if not addresses:
+            addresses = []
 
-        adresses += msg.splitlines()
-        user['adresses'] = adresses
-        adresses_to_print = "".join(map(lambda x: x + '\n', adresses))
-        update.message.reply_text('Это все адреса?\n\n'+adresses_to_print+'\nЕсли есть еще адреса напишите их?\n\nЕсли это все адреса, просто напишите "Всё"')
+        addresses += [a for a in msg.splitlines()]
+        user['addresses'] = addresses
+        addresses_to_print = "".join(map(lambda x: x + '\n', [address for address in addresses]))
+        update.message.reply_text(
+            'Это все адреса?\n\n' + addresses_to_print + '\nЕсли есть еще адреса напишите их?\n\nЕсли это все адреса, просто напишите "Всё"')
     elif pup_state == END:
+        save_addresses(user['addresses'], id, added_to_bot=False)
         update.message.reply_text('Мы запомнили ваши данные')
+        return MAIN
 
     user['pup_state'] = pup_state
     print(user)
     user_save(user)
+
 
 def track_users_handler(update: Update, context: CallbackContext) -> None:
     """Store the user id of the incoming update, if any."""
@@ -102,11 +205,41 @@ def track_users_handler(update: Update, context: CallbackContext) -> None:
         f.write('{"id": ' + id + '}')
         f.close()
 
+def update_addresses(addresses):
+    path = "data/addresses.json"
+    f = open(path, "w")
+    json.dump(addresses, f)
+    f.close()
+
+def save_addresses(addresses, id, added_to_bot=False):
+    local_addresses = load_addresses()
+    for address in addresses:
+        if len(list(filter(lambda x: x['tg_id'] == id and x['address'] == address,
+                           local_addresses))) == 0:
+            local_addresses += [{"address": address, "added_to_bot": added_to_bot, "tg_id": id}]
+    path = "data/addresses.json"
+    f = open(path, "w")
+    json.dump(local_addresses, f)
+    f.close()
+
+def load_addresses():
+    path = "data/addresses.json"
+    if not os.path.isfile(path):
+        f = open(path, "a")
+        local_addresses = []
+    else:
+        f = open(path, 'r')
+        local_addresses = json.load(f)
+    f.close()
+    return local_addresses
+
+
 def user_load(id):
     f = open("users_data/" + id + ".json", 'r')
     user = json.load(f)
     f.close()
     return user
+
 
 def user_save(user):
     f = open("users_data/" + str(user['id']) + ".json", "w")
@@ -195,24 +328,33 @@ def main() -> None:
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(CommandHandler("help", help_command))
     conv_handler = ConversationHandler(
-        entry_points=[MessageHandler(Filters.text & ~Filters.command, main_handler)],
+        entry_points=[MessageHandler(Filters.regex('Admin'), admin_handler),
+                      MessageHandler(Filters.text & ~Filters.command, main_handler)],
         states={
+            ADMIN: [
+                MessageHandler(Filters.regex('Admin'), admin_handler),
+                MessageHandler(Filters.text, admin_handler)
+            ],
             MAIN: [
-                MessageHandler(Filters.text & ~Filters.command, main_handler)
+                MessageHandler(Filters.regex('Admin'), admin_handler),
+                MessageHandler(Filters.text, main_handler)
             ],
             ORDER: [
                 CallbackQueryHandler(order_callback_handler),
-                MessageHandler(Filters.text & ~Filters.command, order_handler)
+                MessageHandler(Filters.text, order_handler)
             ],
             PVZ: [
-                MessageHandler(Filters.text & ~Filters.command, main_handler)
+                MessageHandler(Filters.text, main_handler)
             ],
             INSIDE: [
                 MessageHandler(Filters.document, inside_handler)
             ],
             PUP: [
-                MessageHandler(Filters.text & ~Filters.command, pickup_point_handler)
-            ]
+                MessageHandler(Filters.text, pickup_point_handler)
+            ],
+            ADMIN_ADDRESS_DISTRIBUTION: [
+                MessageHandler(Filters.text, admin_address_distribution_handler)
+            ],
 
         },
         fallbacks=[CommandHandler("start", start)]
