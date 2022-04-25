@@ -115,10 +115,18 @@ class Admin:
         orders = [row.tolist() for i, row in df.iterrows()]
 
         articles = [order[0] for order in orders]
+
+        total_price = 0
         watch_bot = WBBot(name="Watcher")
         for i, article in enumerate(articles):
-            orders[i] += [watch_bot.get_data_cart(article)]
+            additional_data = watch_bot.get_data_cart(article)
+            price = additional_data['price']
+            print(price)
+            total_price = sum(price)
+            # sum(price, start=[total_price])
+            orders[i] += [additional_data]
 
+        print(total_price) # = 1522 + 2299 + 296
         max_bots = max([order[3] for order in orders])
         bots = [WBBot(name=BOTS_NAME[i]) for i in range(max_bots)]
         data_for_bots = [[] for _ in range(max_bots)]
