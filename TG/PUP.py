@@ -3,7 +3,6 @@ from telegram.ext import CallbackContext
 
 from TG.CONSTS import STATES, PUP_STATES
 from TG.Models.Addresses import Addresses
-from TG.Models.Bot import Bot as TGBot
 from TG.Models.User import User
 
 

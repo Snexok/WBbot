@@ -1,3 +1,5 @@
+import random
+
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import CallbackContext
 
@@ -13,8 +15,6 @@ import pandas as pd
 class Admin:
     def __init__(self):
         self.addresses = Addresses()
-        self.tg_bot = TGBot()
-
     def handler(self, update: Update, context: CallbackContext):
         id = str(update.effective_user.id)
         if id in ['794329884', '653703299']:
@@ -125,7 +125,7 @@ class Admin:
 
         for _, order in enumerate(orders):
             if inside:
-                article, search_key, quantity, pvz_cnt, _, __, additional_data = order
+                article, search_key, quantity, pvz_cnt, _, additional_data = order
             else:
                 article, search_key, quantity, pvz_cnt, additional_data = order
 
@@ -134,12 +134,13 @@ class Admin:
                     data_for_bots[i] += [[article, search_key, quantity, additional_data]]
                 pvz_cnt -= 1
 
-        post_places = [order[5] for order in orders][:max_bots]
+
         order_id = str(orders[0][4])
 
         report = []
         for i, bot in enumerate(bots):
-            report += bot.buy(data_for_bots[i], post_places[i], order_id)
+            post_places = random.choice(TGBot.load(bot.name)['data']['addresses'])
+            report += bot.buy(data_for_bots[i], post_places, order_id)
             update.message.reply_photo(open(report[i]['qr_code'], 'rb'))
 
         update.message.reply_text('Ваш заказ выполнен, до связи')
