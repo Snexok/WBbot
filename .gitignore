@@ -6,5 +6,6 @@ chrome/chromedriver
 .idea
 *.pyc
 data/*
+orders/*
 users_data/*
 /venv/*
