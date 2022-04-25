@@ -122,7 +122,7 @@ class Admin:
             additional_data = watch_bot.get_data_cart(article)
             price = additional_data['price']
             print(price)
-            total_price = sum(price)
+            # total_price = sum(price)
             # sum(price, start=[total_price])
             orders[i] += [additional_data]
 
