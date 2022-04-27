@@ -40,6 +40,7 @@ class Bot:
         sleep(3)
         self.basket.choose_post_place(post_place)
         self.basket.choose_payment_method()
+        report['price'] = self.basket.get_price()
         report['qr_code'] = self.basket.get_qr_code(order_id, self.name)
 
         return [report]

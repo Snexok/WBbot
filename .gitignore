@@ -9,3 +9,4 @@ data/*
 orders/*
 users_data/*
 /venv/*
+configs/*

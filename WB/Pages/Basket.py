@@ -121,3 +121,6 @@ class Basket():
 
     def save_qr_code(self, svg, file_name):
         svg.screenshot(file_name)
+
+    def get_price(self):
+        pass

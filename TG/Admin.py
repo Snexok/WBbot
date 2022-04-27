@@ -6,6 +6,7 @@ from telegram.ext import CallbackContext
 from TG.CONSTS import STATES, BOTS_NAME
 from TG.Models.Addresses import Addresses
 from TG.Models.Bot import Bot as TGBot
+from TG.Models.Orders import Orders
 
 from WB.Bot import Bot as WBBot
 
@@ -15,6 +16,7 @@ import pandas as pd
 class Admin:
     def __init__(self):
         self.addresses = Addresses()
+
     def handler(self, update: Update, context: CallbackContext):
         id = str(update.effective_user.id)
         if id in ['794329884', '653703299']:
@@ -115,12 +117,16 @@ class Admin:
         orders = [row.tolist() for i, row in df.iterrows()]
 
         articles = [order[0] for order in orders]
+
+        print('watch_bot started')
         watch_bot = WBBot(name="Watcher")
         for i, article in enumerate(articles):
+            print('watch_bot step '+str(i))
             orders[i] += [watch_bot.get_data_cart(article)]
+        print('watch_bot ended')
 
         max_bots = max([order[3] for order in orders])
-        bots = [WBBot(name=BOTS_NAME[i]) for i in range(max_bots)]
+        self.bots = [WBBot(name=BOTS_NAME[i]) for i in range(max_bots)]
         data_for_bots = [[] for _ in range(max_bots)]
 
         for _, order in enumerate(orders):
@@ -134,13 +140,18 @@ class Admin:
                     data_for_bots[i] += [[article, search_key, quantity, additional_data]]
                 pvz_cnt -= 1
 
-
         order_id = str(orders[0][4])
 
+        orders = []
         report = []
-        for i, bot in enumerate(bots):
+        for i, bot in enumerate(self.bots):
             post_places = random.choice(TGBot.load(bot.name)['data']['addresses'])
             report += bot.buy(data_for_bots[i], post_places, order_id)
             update.message.reply_photo(open(report[i]['qr_code'], 'rb'))
+            order = {'price': 0, 'uslugi_price': 0, 'pup': {'address': '', 'tg_id': ''},
+                     'bot': {'name': bot['name'], 'surname': bot['surname']}}
+            orders += [order]
+
+        Orders.save(orders)
 
         update.message.reply_text('Ваш заказ выполнен, до связи')

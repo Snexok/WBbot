@@ -5,7 +5,7 @@ import TG.CONSTS.STATES as STATES
 # pip install python-telegram-bot --upgrade
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, \
-        CallbackQueryHandler, TypeHandler, ConversationHandler
+    CallbackQueryHandler, TypeHandler, ConversationHandler
 
 from TG.Admin import Admin
 from TG.Models.User import User
@@ -13,7 +13,6 @@ from TG.PUP import PUP
 from configs import config
 
 
-# Commands
 def start(update: Update, context: CallbackContext) -> None:
     update.message.reply_text("Привет")
 
@@ -59,57 +58,61 @@ def order_callback_handler(update: Update, context: CallbackContext):
     return STATES['MAIN']
 
 
-def order_handler(update: Update, context: CallbackContext):
-    pass
+class TGBot:
 
+    def __init__(self):
+        self.pup = PUP()
+        self.admin = Admin()
 
-def main() -> None:
-    updater = Updater(config['tokens']['telegram'])
-    admin = Admin()
-    pup = PUP()
-    dispatcher = updater.dispatcher
+    def order_handler(self, update: Update, context: CallbackContext):
+        pass
 
-    dispatcher.add_handler(TypeHandler(Update, User.track_handler), group=-1)
-    dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("help", help_command))
-    conv_handler = ConversationHandler(
-        entry_points=[MessageHandler(Filters.regex('Admin'), admin.handler),
-                      MessageHandler(Filters.text & ~Filters.command, main_handler)],
-        states={
-            STATES['ADMIN']: [
-                MessageHandler(Filters.regex('Admin'), admin.handler),
-                MessageHandler(Filters.text, admin.handler)
-            ],
-            STATES['MAIN']: [
-                MessageHandler(Filters.regex('Admin'), admin.handler),
-                MessageHandler(Filters.text, main_handler)
-            ],
-            STATES['ORDER']: [
-                CallbackQueryHandler(order_callback_handler),
-                MessageHandler(Filters.text, order_handler)
-            ],
-            STATES['PVZ']: [
-                MessageHandler(Filters.text, main_handler)
-            ],
-            STATES['INSIDE']: [
-                MessageHandler(Filters.document, admin.inside_handler)
-            ],
-            STATES['PUP']: [
-                MessageHandler(Filters.text, pup.handler)
-            ],
-            STATES['ADMIN_ADDRESS_DISTRIBUTION']: [
-                MessageHandler(Filters.text, admin.address_distribution_handler)
-            ],
+    def main(self) -> None:
+        updater = Updater(config['tokens']['telegram'])
+        dispatcher = updater.dispatcher
 
-        },
-        fallbacks=[CommandHandler("start", start)]
-    )
-    dispatcher.add_handler(conv_handler)
+        dispatcher.add_handler(TypeHandler(Update, User.track_handler), group=-1)
+        dispatcher.add_handler(CommandHandler("start", start))
+        dispatcher.add_handler(CommandHandler("help", help_command))
+        conv_handler = ConversationHandler(
+            entry_points=[MessageHandler(Filters.regex('Admin'), self.admin.handler),
+                          MessageHandler(Filters.text & ~Filters.command, main_handler)],
+            states={
+                STATES['ADMIN']: [
+                    MessageHandler(Filters.regex('Admin'), self.admin.handler),
+                    MessageHandler(Filters.text, self.admin.handler)
+                ],
+                STATES['MAIN']: [
+                    MessageHandler(Filters.regex('Admin'), self.admin.handler),
+                    MessageHandler(Filters.text, main_handler)
+                ],
+                STATES['ORDER']: [
+                    CallbackQueryHandler(order_callback_handler),
+                    MessageHandler(Filters.text, self.order_handler)
+                ],
+                STATES['PVZ']: [
+                    MessageHandler(Filters.text, main_handler)
+                ],
+                STATES['INSIDE']: [
+                    MessageHandler(Filters.document, self.admin.inside_handler)
+                ],
+                STATES['PUP']: [
+                    MessageHandler(Filters.text, self.pup.handler)
+                ],
+                STATES['ADMIN_ADDRESS_DISTRIBUTION']: [
+                    MessageHandler(Filters.text, self.admin.address_distribution_handler)
+                ],
 
-    updater.start_polling()
+            },
+            fallbacks=[CommandHandler("start", start)]
+        )
+        dispatcher.add_handler(conv_handler)
 
-    updater.idle()
+        updater.start_polling()
+
+        updater.idle()
 
 
 if __name__ == '__main__':
-    main()
+    tgbot = TGBot()
+    tgbot.main()
