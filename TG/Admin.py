@@ -1,3 +1,4 @@
+from ast import Add
 import random
 
 from telegram import Update, ReplyKeyboardMarkup
@@ -12,6 +13,7 @@ from WB.Bot import Bot as WBBot
 
 import pandas as pd
 
+USLUGI_PRICE = 150
 
 class Admin:
     def __init__(self):
@@ -50,7 +52,7 @@ class Admin:
             return STATES['MAIN']
 
     def inside_handler(self, update: Update, context: CallbackContext):
-        self.run_by_doc(update, context, True)
+        self.run_by_doc(update, context)
 
         return STATES['MAIN']
 
@@ -106,35 +108,78 @@ class Admin:
     def join_to_lines(self, joined_elems):
         return "".join(map(lambda x: x + '\n', joined_elems))
 
-    def run_by_doc(self, update, context, inside=False):
-        id = str(update.effective_user.id)
-
+    def save_order_doc(self, id, document):
         file_path = "orders/" + id + ".xlsx"
         with open(file_path, 'wb') as f:
-            context.bot.get_file(update.message.document).download(out=f)
+            document.download(out=f)
         df = pd.read_excel(file_path)
+
+        return df
+
+    def run_by_doc(self, update, context):
+        """
+        Принцип размещения операций:
+        Делить операции на блоке, между которыми можно отправлять статусные сообщения
+        """
+        order_data, data_for_bots = self.pre_run_doc(update, context)
+
+        self.bots = [WBBot(name=BOTS_NAME[i]) for i in range(len(data_for_bots))]
+
+        orders = []
+        report = []
+        for i, bot in enumerate(self.bots):
+            post_place = random.choice(TGBot.load(bot.name)['data']['addresses'])
+            report += bot.buy(data_for_bots[i], post_place, order_data['order_id'])
+            address = Addresses().search_adress(post_place, Addresses().load())
+            update.message.reply_photo(open(report[i]['qr_code'], 'rb'))
+            additional_data = data_for_bots[i][3]
+            order = {'price': additional_data['total_price'],
+                     'uslugi_price': additional_data['total_quatities'] * USLUGI_PRICE,
+                     'pup': {'address': post_place, 'tg_id': address['tg_id']},
+                     'bot': {'name': bot['name'], 'surname': bot['surname']}}
+            orders += [order]
+
+        Orders.save(orders)
+
+        update.message.reply_text('Ваш заказ выполнен, до связи')
+
+    def get_additional_datas(self, articles, total_quatities):
+        additional_datas = []
+        watch_bot = WBBot(name="Watcher")
+        for i, article in enumerate(articles):
+            additional_data = watch_bot.get_data_cart(article)
+            price = additional_data['price']
+            additional_data['total_price'] = price * total_quatities[i]
+            additional_datas += [additional_data]
+
+        return additional_datas
+
+    def pre_run_doc(self, update, context):
+        order_data = {}
+
+        id = str(update.effective_user.id)
+        document = context.bot.get_file(update.message.document)
+        df = self.save_order_doc(id, document)
 
         orders = [row.tolist() for i, row in df.iterrows()]
 
         articles = [order[0] for order in orders]
 
-        total_price = 0
-        watch_bot = WBBot(name="Watcher")
-        for i, article in enumerate(articles):
-            additional_data = watch_bot.get_data_cart(article)
-            price = additional_data['price']
-            print(price)
-            # total_price = sum(price)
-            # sum(price, start=[total_price])
-            orders[i] += [additional_data]
+        total_quatities = [order[2] * order[3] for order in orders]
 
-        print(total_price) # = 1522 + 2299 + 296
+        additional_datas = self.get_additional_datas(articles, total_quatities)
+        for i, a_data in enumerate(additional_datas):
+            orders[i] += a_data
+
         max_bots = max([order[3] for order in orders])
-        self.bots = [WBBot(name=BOTS_NAME[i]) for i in range(max_bots)]
         data_for_bots = [[] for _ in range(max_bots)]
 
+
         for _, order in enumerate(orders):
-            if inside:
+            print(order)
+            print(order[5])
+
+            if len(order) == 6:
                 article, search_key, quantity, pvz_cnt, _, additional_data = order
             else:
                 article, search_key, quantity, pvz_cnt, additional_data = order
@@ -144,18 +189,7 @@ class Admin:
                     data_for_bots[i] += [[article, search_key, quantity, additional_data]]
                 pvz_cnt -= 1
 
-        order_id = str(orders[0][4])
+        order_data['order_id'] = str(orders[0][4])
+        order_data['total_quatities'] = total_quatities
 
-        orders = []
-        report = []
-        for i, bot in enumerate(self.bots):
-            post_places = random.choice(TGBot.load(bot.name)['data']['addresses'])
-            report += bot.buy(data_for_bots[i], post_places, order_id)
-            update.message.reply_photo(open(report[i]['qr_code'], 'rb'))
-            order = {'price': 0, 'uslugi_price': 0, 'pup': {'address': '', 'tg_id': ''},
-                     'bot': {'name': bot['name'], 'surname': bot['surname']}}
-            orders += [order]
-
-        Orders.save(orders)
-
-        update.message.reply_text('Ваш заказ выполнен, до связи')
+        return order_data, data_for_bots

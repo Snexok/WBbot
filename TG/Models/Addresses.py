@@ -34,3 +34,7 @@ class Addresses:
             local_addresses = ujson.load(f)
         f.close()
         return local_addresses
+
+    @staticmethod
+    def search_adress(address, local_addresses):
+        return next(filter(lambda a:a==address, local_addresses))
