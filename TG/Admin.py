@@ -4,7 +4,7 @@ from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import CallbackContext
 
 from TG.CONSTS import STATES, BOTS_NAME
-from TG.Models.Addresses import Addresses
+from TG.Models.Addresses_PG import Addresses, Address
 from TG.Models.Bot import Bot as TGBot
 from TG.Models.Orders import Orders
 
@@ -15,7 +15,7 @@ import pandas as pd
 
 class Admin:
     def __init__(self):
-        self.addresses = Addresses()
+        pass
 
     def handler(self, update: Update, context: CallbackContext):
         id = str(update.effective_user.id)
@@ -60,11 +60,12 @@ class Admin:
 
         return states (ADMIN_ADDRESS_DISTRIBUTION | ADMIN)
         """
-        local_addresses = self.addresses.load()
-        all_not_added_addresses = list(filter(lambda x: x['added_to_bot'] == False, local_addresses))
+        # local_addresses = Addresses().load()
+        # all_not_added_addresses = list(filter(lambda x: x['added_to_bot'] == False, local_addresses))
+        all_not_added_addresses = Addresses().get_all_not_added()
         if len(all_not_added_addresses) > 0:
             res_message = 'Список не распределённых адресов:\n\n' \
-                          + self.join_to_lines([address['address'] for address in all_not_added_addresses]) \
+                          + self.join_to_lines([address.address for address in all_not_added_addresses]) \
                           + '\nСписок БОТОВ:\n\n' \
                           + self.join_to_lines(BOTS_NAME) \
                           + '\nНапишите название бота и адреса для него в формате:\n\n' \
@@ -84,21 +85,16 @@ class Admin:
     def address_distribution_handler(self, update: Update, context: CallbackContext):
         msg = update.message.text
         bots_data_str = msg.split('\n\n')
-        local_addresses = self.addresses.load()
         for bot_data in bots_data_str:
             bot = {}
             bot_data = bot_data.split('\n')
             bot['name'] = bot_data[0]
             bot['data'] = {}
             bot['data']['addresses'] = bot_data[1:]
-            print(bot)
-            print(local_addresses)
-            for address in bot['data']['addresses']:
-                i = [local_address['address'] for local_address in local_addresses].index(address)
-                local_addresses[i]['added_to_bot'] = True
+            address = Address(address=bot['data']['addresses'], added_to_bot=True)
+            Addresses().update(address)
 
-            self.tg_bot.update(bot)
-        self.addresses.update(local_addresses)
+            TGBot.update(bot)
         update.message.reply_text("Все адреса добавлены в ботов")
 
         return STATES['ADMIN']

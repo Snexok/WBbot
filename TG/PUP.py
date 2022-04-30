@@ -2,7 +2,7 @@ from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import CallbackContext
 
 from TG.CONSTS import STATES, PUP_STATES
-from TG.Models.Addresses import Addresses
+from TG.Models.Addresses_PG import Addresses
 from TG.Models.User import User
 
 
@@ -45,8 +45,8 @@ class PUP:
             update.message.reply_text(
                 'Это все адреса?\n\n' + addresses_to_print + '\nЕсли есть еще адреса напишите их?\n\nЕсли это все адреса, просто напишите "Всё"', reply_markup=markup)
         elif pup_state == PUP_STATES['END']:
-            adderesses = Addresses()
-            adderesses.save(user['addresses'], id, added_to_bot=False)
+            addresses = Address
+            Addresses().save(user['addresses'], id, added_to_bot=False)
             update.message.reply_text('Мы запомнили ваши данные')
             return STATES['MAIN']
 
