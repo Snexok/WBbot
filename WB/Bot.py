@@ -49,7 +49,7 @@ class Bot:
         self.driver.get("https://www.wildberries.ru/")
         sleep(2)
         self.driver.get("https://www.wildberries.ru/catalog/" + str(article) + "/detail.aspx?targetUrl=MI")
-
+        sleep(0.5)
         data = {}
 
         names = self.driver.find_elements(By.XPATH, '//h1[@class="same-part-kt__header"]/span')
