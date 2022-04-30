@@ -5,13 +5,10 @@ import logging
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
-import TG.CONSTS.STATES as STATES
-
 # For telegram api
 from aiogram import Bot, Dispatcher, executor, types
 
 from TG.Admin import Admin
-from TG.Models.User import User
 from TG.PUP import PUP
 from configs import config
 

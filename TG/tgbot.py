@@ -3,18 +3,23 @@ import TG.CONSTS.STATES as STATES
 
 # For telegram api
 # pip install python-telegram-bot --upgrade
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup
+from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext, \
     CallbackQueryHandler, TypeHandler, ConversationHandler
 
 from TG.Admin import Admin
-from TG.Models.User import User
+from TG.Models.Users import Users, User
 from TG.PUP import PUP
 from configs import config
 
 
 def start(update: Update, context: CallbackContext) -> None:
     update.message.reply_text("Привет")
+    id = str(update.effective_user.id)
+    try:
+        Users.insert(User(id))
+    except:
+        pass
 
 
 def help_command(update: Update, context: CallbackContext) -> None:
@@ -71,7 +76,6 @@ class TGBot:
         updater = Updater(config['tokens']['telegram'])
         dispatcher = updater.dispatcher
 
-        dispatcher.add_handler(TypeHandler(Update, User.track_handler), group=-1)
         dispatcher.add_handler(CommandHandler("start", start))
         dispatcher.add_handler(CommandHandler("help", help_command))
         conv_handler = ConversationHandler(

@@ -56,9 +56,24 @@ class Addresses(Model):
         else:
             return False
 
+    @staticmethod
+    def compare_addresses(first_addresses: list, second_addresses: list) -> list:
+        comp_adrses = []
+        for f_adrs in first_addresses:
+            if f_adrs.address not in [s_adrs.address for s_adrs in second_addresses]:
+                comp_adrses += [f_adrs]
+
+        for s_adrs in second_addresses:
+            if s_adrs.address not in [f_adrs.address for f_adrs in first_addresses]:
+                comp_adrses += [s_adrs]
+
+        return comp_adrses
+
 class Address:
     def __init__(self, id=0, address='', tg_id='', added_to_bot=''):
         self.id = id
         self.address = address
         self.tg_id = tg_id
         self.added_to_bot = added_to_bot
+
+# Addresses.compare_addresses([Address(1,'s_1'), Address(2,'s_2'), Address(2,'s_4')], [Address(1,'s_1'), Address(2,'s_3')])
