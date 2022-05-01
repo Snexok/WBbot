@@ -4,19 +4,22 @@ from TG.Models.Model import Model
 class Users(Model):
 
     @staticmethod
-    def load(id=None):
+    def load(id=None, username=None):
         def callback(cursor):
             records = cursor.fetchall()
             return records
+        if id:
+            path = "SELECT * FROM users WHERE id='" + id + "'"
+        elif username:
 
-        path = "SELECT * FROM users WHERE id='" + id + "'"
         return Users.format_data(Users.execute(path, callback))
 
     @staticmethod
     def insert(user):
-        path = "INSERT INTO users (id, pup_state, name, addresses) VALUES "
+        path = "INSERT INTO users (id, pup_state, name, addresses, username, whitelisted) VALUES "
         path += "('" + str(user.id) + "', " + str(user.pup_state) + ", '" + user.name + "', ARRAY" + str(
-            user.addresses) + "::text[])"
+            user.addresses) + "::text[], '"+str(user.username)+"', FALSE)"
+        print(path)
         User.execute(path)
 
     @staticmethod
@@ -29,6 +32,8 @@ class Users(Model):
             user.pup_state = d[1]
             user.name = d[2]
             user.addresses = d[3]
+            user.username = d[4]
+            user.whitelisted = d[5]
             users += [user]
 
         if users:
@@ -40,12 +45,14 @@ class Users(Model):
 
 
 class User(Model):
-    def __init__(self, id='0', pup_state=0, name='', addresses=[]):
+    def __init__(self, id='0', pup_state=0, name='', addresses=[], username='',whitelisted=False):
         super().__init__()
         self.id = id
         self.pup_state = pup_state
         self.name = name
         self.addresses = addresses
+        self.username = username
+        self.whitelisted = whitelisted
 
     def update(self):
         if self.changed:

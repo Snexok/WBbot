@@ -12,6 +12,7 @@ class PUP:
         pass
 
     def handler(self, update: Update, context: CallbackContext):
+        print('pup')
         id = str(update.effective_user.id)
         msg = update.message.text
 
