@@ -10,3 +10,4 @@ orders/*
 users_data/*
 /venv/*
 configs/*
+*.session
