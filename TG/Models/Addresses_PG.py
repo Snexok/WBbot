@@ -2,6 +2,7 @@ from TG.Models.Model import Model
 
 COLUMNS = ["id", "address", "tg_id", "added_to_bot"]
 
+
 class Addresses(Model):
 
     @staticmethod
@@ -9,6 +10,7 @@ class Addresses(Model):
         def callback(cursor):
             records = cursor.fetchall()
             return records
+
         path = "SELECT * FROM addresses "
         is_where = False
         if tg_id:
@@ -17,29 +19,22 @@ class Addresses(Model):
         if address:
             path += "WHERE " if not is_where else ""
             path += "address='" + address + "'"
-        return Addresses().format_data(Addresses().execute(path, callback))
+        return Addresses.format_data(Addresses.execute(path, callback))
 
     @staticmethod
     def insert(data):
         path = "INSERT INTO addresses (id, address, tg_id, added_to_bot) VALUES "
-        path += "((SELECT MAX(id)+1 FROM addresses), '"+data.address+"', '"+data.tg_id+"', FALSE)"
-        Addresses().execute(path)
-
-    @staticmethod
-    def update(address):
-        path = "UPDATE addresses SET "
-        # path += "address='" + address.address +"', "
-        path += "added_to_bot=" + "TRUE" if address.added_to_bot else "FALSE" + " "
-        path += "WHERE address='" + address.address + "'"
-        Addresses().execute(path)
+        path += "((SELECT MAX(id)+1 FROM addresses), '" + data.address + "', '" + data.tg_id + "', FALSE)"
+        Address.execute(path)
 
     @staticmethod
     def get_all_not_added():
         def callback(cursor):
             records = cursor.fetchall()
             return records
+
         path = "SELECT * FROM addresses WHERE added_to_bot=FALSE"
-        return Addresses().format_data(Addresses().execute(path, callback))
+        return Addresses.format_data(Addresses.execute(path, callback))
 
     @staticmethod
     def format_data(data):
@@ -50,6 +45,7 @@ class Addresses(Model):
             address.address = d[1]
             address.tg_id = d[2]
             address.added_to_bot = d[3]
+            addresses += [address]
 
         if addresses:
             return addresses
@@ -69,11 +65,44 @@ class Addresses(Model):
 
         return comp_adrses
 
-class Address:
+
+class Address(Model):
     def __init__(self, id=0, address='', tg_id='', added_to_bot=''):
+        super().__init__()
         self.id = id
         self.address = address
         self.tg_id = tg_id
         self.added_to_bot = added_to_bot
+
+    def load(self, tg_id=None, address=None):
+        def callback(cursor):
+            records = cursor.fetchall()
+            return records
+
+        path = "SELECT * FROM addresses "
+        is_where = False
+        if tg_id:
+            path += "WHERE " if not is_where else ""
+            path += "tg_id='" + tg_id + "'"
+        if address:
+            path += "WHERE " if not is_where else ""
+            path += "address='" + address + "'"
+        return self.format_data(self.execute(path, callback))
+
+    def update(self):
+        if self.changed:
+            path = "UPDATE addresses SET "
+            path += "added_to_bot=" + ("TRUE" if self.added_to_bot else "FALSE") + " "
+            path += "WHERE address='" + self.address + "'"
+            Address.execute(path)
+
+    def format_data(self, data):
+        data = data[0]
+        self.id = data[0]
+        self.address = data[1]
+        self.tg_id = data[2]
+        self.added_to_bot = data[3]
+
+        return self
 
 # Addresses.compare_addresses([Address(1,'s_1'), Address(2,'s_2'), Address(2,'s_4')], [Address(1,'s_1'), Address(2,'s_3')])

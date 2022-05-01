@@ -12,13 +12,13 @@ class PUP:
         pass
 
     def handler(self, update: Update, context: CallbackContext):
-        msg = update.message.text
-        _msg = msg.lower()
         id = str(update.effective_user.id)
+        msg = update.message.text
+
         user = Users.load(id)
         pup_state = user.pup_state
 
-        if _msg == 'всё':
+        if msg.lower() == 'всё':
             pup_state = PUP_STATES['END']
 
         if pup_state == PUP_STATES['FULL_NAME']:
@@ -28,6 +28,7 @@ class PUP:
             pup_state = PUP_STATES['ADRESSES']
 
             update.message.reply_text('Напишите адреса ваших ПВЗ')
+
         elif pup_state == PUP_STATES['ADRESSES']:
             new_addresses = [a for a in msg.splitlines()]
 
@@ -44,9 +45,11 @@ class PUP:
 
             update.message.reply_text(
                 'Это все адреса?\n\n' + addresses_to_print + '\nЕсли есть еще адреса напишите их?\n\nЕсли это все адреса, просто напишите "Всё"', reply_markup=markup)
-        elif pup_state == PUP_STATES['END']:
-            update.message.reply_text('Мы запомнили ваши данные')
-            return STATES['MAIN']
 
         user.set(pup_state=pup_state)
         user.update()
+
+        if pup_state == PUP_STATES['END']:
+            update.message.reply_text('Мы запомнили ваши данные')
+
+            return STATES['MAIN']

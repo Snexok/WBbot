@@ -3,7 +3,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import random
 
-SPEED = 1
+SPEED = 0.1
 
 class Card():
     card_button = lambda self, articul: self.driver.find_element(By.XPATH,
@@ -23,7 +23,12 @@ class Card():
         hover.move_to_element(img).perform()
 
         sleep(SPEED*random.uniform(2, 4)+1)
-        self.card_button(articul).click()
+        try:
+            self.card_button(articul).click()
+        except:
+            if target:
+                hover.move_to_element(img).perform()
+                self.card_button(articul).click()
         sleep(1)
         if target:
             sleep(SPEED*random.uniform(3, 7))

@@ -16,10 +16,10 @@ async def main():
 
         resp: Message = await conv.get_response()
         assert "Добро пожаловать, Лорд @astrocatling" in resp.raw_text
-        await conv.send_message("inside")
+        await conv.send_message("проверить ботов")
 
         resp: Message = await conv.get_response()
-        await conv.send_file('./../test_data/Выкупы.xlsx')
+        await conv.send_message("Oleg\nадрес 1\nадрес 2")
 
 
 asyncio.run(main())

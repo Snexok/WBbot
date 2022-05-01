@@ -2,6 +2,7 @@ from selenium.webdriver.common.by import By
 from time import sleep
 import json
 
+from TG.Models.Bot import Bots
 from WB.Pages.Basket import Basket
 from WB.Browser import Browser
 from WB.Pages.Catalog import Catalog
@@ -41,7 +42,13 @@ class Bot:
         self.basket.choose_post_place(post_place)
         self.basket.choose_payment_method()
         report['price'] = self.basket.get_price()
-        report['qr_code'] = self.basket.get_qr_code(order_id, self.name)
+        try:
+            report['qr_code'] = self.basket.get_qr_code(order_id, self.name)
+        except:
+            bot = Bots.load(self.name)
+            Utils.login(self.driver, bot.number)
+            input()
+            report['qr_code'] = self.basket.get_qr_code(order_id, self.name)
 
         return [report]
 

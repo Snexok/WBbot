@@ -12,14 +12,18 @@ async def main():
     await client.start()
     print(type(client))
     async with client.conversation("@redempt_test_1_bot", timeout=5) as conv:
-        await conv.send_message("Admin")
+        await conv.send_message("пвз")
 
         resp: Message = await conv.get_response()
-        assert "Добро пожаловать, Лорд @astrocatling" in resp.raw_text
-        await conv.send_message("inside")
+        assert "Ваше ФИО?" in resp.raw_text
+        await conv.send_message("квакa")
 
         resp: Message = await conv.get_response()
-        await conv.send_file('./../test_data/Выкупы.xlsx')
+        assert "Напишите адреса ваших ПВЗ" in resp.raw_text
+        await conv.send_message("адрес 1\nадрес 2")
+
+        resp: Message = await conv.get_response()
+        await conv.send_message("Всё")
 
 
 asyncio.run(main())

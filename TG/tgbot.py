@@ -27,15 +27,13 @@ def help_command(update: Update, context: CallbackContext) -> None:
 
 
 def main_handler(update: Update, context: CallbackContext):
-    # DEV
-    id = str(update.effective_user.id)
-    user = User.load(id)
-    user['pup_state'] = 0
-    User.save(user)
-    # DEV
-
     msg = update.message.text.lower()
     if "пвз" in msg:
+        id = str(update.effective_user.id)
+        user = Users.load(id)
+        user.set(pup_state=0)
+        user.update()
+
         update.message.reply_text("Ваше ФИО?")
         return STATES['PUP']
     elif "заказ" in msg:

@@ -4,6 +4,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import random
 
+from TG.Models.Bot import Bots
 from WB.Card import Card
 from WB.Utils import Utils
 
@@ -79,8 +80,9 @@ class Basket():
             self.choose_post_place(adress, req=True)
 
         sleep(2)
-        self.driver.find_element(By.XPATH, '//button[@class="popup__btn-main"]').click()
-        sleep(2)
+        if not req:
+            self.driver.find_element(By.XPATH, '//button[@class="popup__btn-main"]').click()
+            sleep(2)
         
     def choose_payment_method(self, payment_method="Оплата по QR-коду"):
         try:
@@ -101,21 +103,15 @@ class Basket():
         
     def get_qr_code(self, order_id, bot_name):
         file_name = 'order_' + order_id + '_' + bot_name + '.png'
-        try:
-            self.driver.find_element(By.XPATH,
-                                     '//button[text()="                Оплатить заказ                "]').click()
-            sleep(2)
-            self.driver.find_element(By.XPATH, '//button[contains(@class,"popup__btn-main")]').click()
-            sleep(2)
-            svg = self.driver.find_element(By.XPATH, '//div[@class="qr-code__value"]')
-            self.save_qr_code(svg, file_name)
-            sleep(2)
-            self.driver.find_element(By.CLASS_NAME, 'popup__close').click()
-        except:
-            file = open("/configs/configs.yaml").read()
-            config = eval(file)
-            Utils.login(self.driver, config['bots'][bot_name]['number'])
-            self.get_qr_code(order_id, bot_name)
+        self.driver.find_element(By.XPATH,
+                                 '//button[text()="                Оплатить заказ                "]').click()
+        sleep(2)
+        self.driver.find_element(By.XPATH, '//button[contains(@class,"popup__btn-main")]').click()
+        sleep(2)
+        svg = self.driver.find_element(By.XPATH, '//div[@class="qr-code__value"]')
+        self.save_qr_code(svg, file_name)
+        sleep(2)
+        self.driver.find_element(By.CLASS_NAME, 'popup__close').click()
 
         return file_name
 

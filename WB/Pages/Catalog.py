@@ -8,7 +8,7 @@ from WB.Card import Card
 from selenium.webdriver.support.wait import WebDriverWait
 
 SCROLL_STEP = 500
-SPEED = 0  # 1 << 0
+SPEED = 0.1  # 1 << 0
 
 
 class Catalog():
