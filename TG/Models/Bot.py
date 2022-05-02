@@ -4,18 +4,25 @@ from TG.Models.Model import Model
 class Bots(Model):
 
     @staticmethod
-    def load(name=None):
+    def load(name=None, limit=None):
         def callback(cursor):
             records = cursor.fetchall()
             return records
 
-        path = "SELECT * FROM bots WHERE name='" + name + "'"
-        return Bots().format_data(Bots().execute(path, callback))
+        path = "SELECT * FROM bots "
+        if name:
+            path += "WHERE name='" + name + "' "
+        if limit:
+            path += "LIMIT " + str(limit)
+        print(limit)
+        print(path)
+        return Bots.format_data(Bots.execute(path, callback))
 
     @staticmethod
     def format_data(data):
         bots = []
         for d in data:
+            print(d)
             bot = Bot()
             bot.id = d[0]
             bot.name = d[1]
@@ -50,4 +57,4 @@ class Bot(Model):
             path = "UPDATE bots SET "
             path += "addresses= ARRAY" + str(self.addresses) + "::text[] "
             path += "WHERE name='" + str(self.name) + "'"
-            Bot().execute(path)
+            Bot.execute(path)

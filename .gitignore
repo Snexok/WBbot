@@ -11,3 +11,4 @@ users_data/*
 /venv/*
 configs/*
 *.session
+bots_sessions/*

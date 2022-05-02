@@ -21,6 +21,8 @@ class Bot:
     def buy(self, data, post_place, order_id):
         self.driver.maximize_window()
         self.browser.open_site('https://www.wildberries.ru')
+        self.browser.load('./bots_sessions/'+self.name)
+        self.browser.open_site('https://www.wildberries.ru')
         report = {}
         for d in data:
             article_num, search_name, quantity, additional_data = d
@@ -38,10 +40,20 @@ class Bot:
         sleep(2)
         articles = [str(d[0]) for d in data]
         self.basket.delete_other_cards_in_basket(articles)
+        # prices = self.driver.find_elements(By.XPATH,'//a[contains(@href, "44398622") and contains(@href, "catalog") '
+        #                                             'and @class="good-info__title j-product-popup"]/../../../div['
+        #                                             '@class="list-item__price"]/div')
+        # price = int(prices[0].text[:-2].replace(" ", ""))
+        # quantities = self.driver.find_elements(By.XPATH, '//a[contains(@href, "44398622") and contains(@href, '
+        #                                                  '"catalog") and @class="good-info__title '
+        #                                                  'j-product-popup"]/../../../div[contains(@class,'
+        #                                                  '"count")]/div[contains(@class,"count__wrap")]/div[contains('
+        #                                                  '@class,"count__input-number")]/input')
+        # quantities[0].get_attribute('value')
         sleep(3)
+        report['price'] = self.basket.get_price()
         self.basket.choose_post_place(post_place)
         self.basket.choose_payment_method()
-        report['price'] = self.basket.get_price()
         try:
             report['qr_code'] = self.basket.get_qr_code(order_id, self.name)
         except:
@@ -49,6 +61,7 @@ class Bot:
             Utils.login(self.driver, bot.number)
             input()
             report['qr_code'] = self.basket.get_qr_code(order_id, self.name)
+        report['qr_code'] = 'qr_code'
 
         return [report]
 

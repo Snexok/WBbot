@@ -2,7 +2,7 @@ from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import CallbackContext
 
 from TG.CONSTS import STATES, PUP_STATES
-from TG.Models.Addresses_PG import Addresses, Address
+from TG.Models.Addresses import Addresses, Address
 from TG.Models.Users import Users
 
 

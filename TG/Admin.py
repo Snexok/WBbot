@@ -1,14 +1,13 @@
-from ast import Add
 import random
 
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import CallbackContext
 
-from TG.CONSTS import STATES, BOTS_NAME
-from TG.Models.Addresses_PG import Addresses, Address
+from TG.CONSTS import STATES
+from TG.Models.Addresses import Addresses, Address
 from TG.Models.Bot import Bot as TGBot
 from TG.Models.Bot import Bots as TGBots
-from TG.Models.Orders import Orders
+from TG.Models.Orders import Orders, Order
 
 from WB.Bot import Bot as WBBot
 
@@ -79,11 +78,14 @@ class Admin:
         """
         all_not_added_addresses = Addresses.get_all_not_added()
 
+        tg_bots = TGBots.load()
+        bots_name = [tg_bots[i].name for i in range(len(tg_bots))]
+
         if len(all_not_added_addresses) > 0:
             res_message = 'Список не распределённых адресов:\n\n' \
                           + self.join_to_lines([address.address for address in all_not_added_addresses]) \
                           + '\nСписок БОТОВ:\n\n' \
-                          + self.join_to_lines(BOTS_NAME) \
+                          + self.join_to_lines(bots_name) \
                           + '\nНапишите название бота и адреса для него в формате:\n\n' \
                           + '<Имя Первого бота>\n' \
                           + '<1 адрес>\n' \
@@ -144,23 +146,36 @@ class Admin:
         """
         order_data, data_for_bots = self.pre_run_doc(update, context)
 
-        self.bots = [WBBot(name=BOTS_NAME[i]) for i in range(len(data_for_bots))]
+        tg_bots = TGBots.load(limit=len(data_for_bots))
+
+        if type(tg_bots) is list:
+            self.bots = [WBBot(name=tg_bot.name) for tg_bot in tg_bots]
+        else:
+            tg_bot = tg_bots
+            self.bots = [WBBot(name=tg_bot.name)]
 
         orders = []
         report = []
         for i, bot in enumerate(self.bots):
-            post_place = random.choice(TGBots.load(bot.name).addresses)
+            tg_bot = TGBots.load(bot.name)
+            post_place = random.choice(tg_bot.addresses)
             report += bot.buy(data_for_bots[i], post_place, order_data['order_id'])
-            address = Addresses().search_adress(post_place, Addresses().load())
-            update.message.reply_photo(open(report[i]['qr_code'], 'rb'))
-            additional_data = data_for_bots[i][3]
-            order = {'price': additional_data['total_price'],
-                     'uslugi_price': additional_data['total_quatities'] * USLUGI_PRICE,
-                     'pup': {'address': post_place, 'tg_id': address['tg_id']},
-                     'bot': {'name': bot['name'], 'surname': bot['surname']}}
-            orders += [order]
+            address = Addresses.load(address=post_place)
+            # update.message.reply_photo(open(report[i]['qr_code'], 'rb'))
+            print(data_for_bots)
 
-        Orders.save(orders)
+            for d in data_for_bots[i]:
+                article_num, search_name, quantity, additional_data = d
+                print(additional_data)
+        #     order = Order(number=1, total_price=sum(report['prices']), services_price=150, prices=report['prices'], quantities=report['quantities'],
+        #           articles=['1234123', '35234234', '12353252'], pup_address=address.address,
+        #           pup_tg_id=address.tg_id, bot_name=bot.name, bot_surname=bot.surname, start_date='2020-12-20',
+        #           pred_end_date='2020-12-20', end_date='2020-12-20', code_for_approve='123',
+        #           active=False)\
+        #     order.insert()
+        #     orders += [order]
+        #
+        # Orders.save(orders)
 
         update.message.reply_text('Ваш заказ выполнен, до связи')
 
