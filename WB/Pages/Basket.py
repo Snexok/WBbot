@@ -4,9 +4,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import random
 
-from TG.Models.Bot import Bots
 from WB.Card import Card
-from WB.Utils import Utils
 
 
 class Basket():
@@ -118,5 +116,19 @@ class Basket():
     def save_qr_code(self, svg, file_name):
         svg.screenshot(file_name)
 
-    def get_price(self):
-        pass
+    def get_price(self, article):
+        list_item_price = self.driver.find_elements(
+                            By.XPATH, '//a[contains(@href, "'+article+'") and contains(@href, "catalog") '
+                                      'and @class="good-info__title j-product-popup"]/../../../'
+                                      'div[@class="list-item__price"]/div')
+        price = int(list_item_price[0].text[:-2].replace(" ", ""))
+        return price
+
+    def get_quantity(self, article):
+        count_input_number = self.driver.find_element(By.XPATH, '//a[contains(@href, "'+article+'") and contains(@href, '
+                                                         '"catalog") and @class="good-info__title '
+                                                         'j-product-popup"]/../../../div[contains(@class,'
+                                                         '"count")]/div[contains(@class,"count__wrap")]/div[contains('
+                                                         '@class,"count__input-number")]/input')
+        quantity = count_input_number.get_attribute('value')
+        return quantity

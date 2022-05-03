@@ -2,7 +2,7 @@ from selenium.webdriver.common.by import By
 from time import sleep
 import json
 
-from TG.Models.Bot import Bots
+from TG.Models.Bot import Bots as Bots_model
 from WB.Pages.Basket import Basket
 from WB.Browser import Browser
 from WB.Pages.Catalog import Catalog
@@ -10,18 +10,21 @@ from WB.Utils import Utils
 
 
 class Bot:
-    def __init__(self, name="", driver=False):
+    def __init__(self, name="", data=None, driver=False):
         self.browser = Browser(driver)
         self.driver = self.browser.driver
         self.catalog = Catalog(self.browser)
         self.basket = Basket(self.browser)
         self.page = 'main'
-        self.name = name
+        if data:
+            self.data = data
+        elif name:
+            self.data = Bots_model.load(name)
 
     def buy(self, data, post_place, order_id):
         self.driver.maximize_window()
         self.browser.open_site('https://www.wildberries.ru')
-        self.browser.load('./bots_sessions/'+self.name)
+        self.browser.load('./bots_sessions/' + self.name)
         self.browser.open_site('https://www.wildberries.ru')
         report = {}
         for d in data:
@@ -30,7 +33,7 @@ class Bot:
             self.page = Utils.search(self.driver, search_name)  # catalog
             price = additional_data['price']
             print('price', price)
-            self.catalog.price_filter(int(price*0.75), int(price*1.25))
+            self.catalog.price_filter(int(price * 0.75), int(price * 1.25))
             sleep(2)
 
             self.catalog.card_search(article_num)
@@ -38,26 +41,31 @@ class Bot:
         self.page = Utils.go_to_basket(self.driver)  # basket
         self.driver.refresh()
         sleep(2)
+
         articles = [str(d[0]) for d in data]
+        report['articles'] = articles
+
         self.basket.delete_other_cards_in_basket(articles)
-        # prices = self.driver.find_elements(By.XPATH,'//a[contains(@href, "44398622") and contains(@href, "catalog") '
-        #                                             'and @class="good-info__title j-product-popup"]/../../../div['
-        #                                             '@class="list-item__price"]/div')
-        # price = int(prices[0].text[:-2].replace(" ", ""))
-        # quantities = self.driver.find_elements(By.XPATH, '//a[contains(@href, "44398622") and contains(@href, '
-        #                                                  '"catalog") and @class="good-info__title '
-        #                                                  'j-product-popup"]/../../../div[contains(@class,'
-        #                                                  '"count")]/div[contains(@class,"count__wrap")]/div[contains('
-        #                                                  '@class,"count__input-number")]/input')
-        # quantities[0].get_attribute('value')
+
+        report['prices'] = []
+        for article in articles:
+            price = self.basket.get_price(article)
+            report['prices'] += [price]
+
+        report['total_price'] = sum(report['prices'])
+
+        report['quantities'] = []
+        for article in articles:
+            price = self.basket.get_quantity(article)
+            report['quantities'] += [price]
+
         sleep(3)
-        report['price'] = self.basket.get_price()
         self.basket.choose_post_place(post_place)
         self.basket.choose_payment_method()
         try:
             report['qr_code'] = self.basket.get_qr_code(order_id, self.name)
         except:
-            bot = Bots.load(self.name)
+            bot = Bots_model.load(self.name)
             Utils.login(self.driver, bot.number)
             input()
             report['qr_code'] = self.basket.get_qr_code(order_id, self.name)

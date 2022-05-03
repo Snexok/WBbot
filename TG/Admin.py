@@ -5,15 +5,17 @@ from telegram.ext import CallbackContext
 
 from TG.CONSTS import STATES
 from TG.Models.Addresses import Addresses, Address
-from TG.Models.Bot import Bot as TGBot
-from TG.Models.Bot import Bots as TGBots
+from TG.Models.Bot import Bot as Bot_model
+from TG.Models.Bot import Bots as Bots_model
 from TG.Models.Orders import Orders, Order
 
-from WB.Bot import Bot as WBBot
+from WB.Bot import Bot
 
+import datetime
 import pandas as pd
 
 USLUGI_PRICE = 150
+
 
 class Admin:
     def __init__(self):
@@ -66,9 +68,106 @@ class Admin:
             return STATES['MAIN']
 
     def inside_handler(self, update: Update, context: CallbackContext):
-        self.run_by_doc(update, context)
+        number = Orders.get_number()
+
+        # preprocessing
+        data_for_bots = self.pre_run_doc(update, context)
+
+        tg_bots = Bots_model.load(limit=len(data_for_bots))
+
+        if type(tg_bots) is list:
+            self.bots = [Bot(data=tg_bot) for tg_bot in tg_bots]
+        else:
+            tg_bot = tg_bots
+            self.bots = [Bot(data=tg_bot)]
+
+        reports = []
+        for i, bot in enumerate(self.bots):
+            # main process
+            report = self.run_bot(bot, data_for_bots[i], number)
+
+            update.message.reply_photo(open(reports[i]['qr_code'], 'rb'))
+            print('Для подтверждения введите y, для отклонения оплаты введите n')
+            while True:
+                payed = input()
+                if payed.lower() == 'y':
+                    reports += [report]
+                elif payed.lower() == 'n':
+                    pass
+
+        start_date = str(datetime.date.today())
+        for report in reports:
+            pup_address = Addresses.load(address=report['post_place'])
+            order = Order(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
+                          quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
+                          pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
+                          start_date=start_date, pred_end_date='2020-12-20', active=False)
+            order.insert()
+
+        update.message.reply_text('Ваш заказ выполнен, до связи')
 
         return STATES['MAIN']
+
+    def save_order_doc(self, id, document):
+        file_path = "orders/" + id + ".xlsx"
+        with open(file_path, 'wb') as f:
+            document.download(out=f)
+        df = pd.read_excel(file_path)
+
+        return df
+
+    def run_bot(self, bot, data_for_bot, number):
+        """
+        Принцип размещения операций:
+        Делить операции на блоке, между которыми можно отправлять статусные сообщения
+        """
+
+        post_place = random.choice(bot.data.addresses)
+
+        report = bot.buy(data_for_bot, post_place, number)
+
+        report['post_place'] = post_place
+        report['bot_name'] = bot.data.name
+        report['bot_surname'] = bot.data.surname
+
+        return report
+
+    def pre_run_doc(self, update, context):
+        id = str(update.effective_user.id)
+        document = context.bot.get_file(update.message.document)
+
+        df = self.save_order_doc(id, document)
+
+        orders = [row.tolist() for i, row in df.iterrows()]
+
+        additional_data = self.get_additional_data(orders)
+        for i, a_data in enumerate(additional_data):
+            orders[i] += [a_data]
+
+        max_bots = max([order[3] for order in orders])
+        data_for_bots = [[] for _ in range(max_bots)]
+
+        for _, order in enumerate(orders):
+            article, search_key, quantity, pvz_cnt, additional_data = order
+
+            for i in range(max_bots):
+                if pvz_cnt > 0:
+                    data_for_bots[i] += [[article, search_key, quantity, additional_data]]
+                pvz_cnt -= 1
+
+        return data_for_bots
+
+    @staticmethod
+    def get_additional_data(orders):
+        watch_bot = Bot(name="Watcher")
+
+        articles = [order[0] for order in orders]
+        additional_data = []
+        for i, article in enumerate(articles):
+            data = watch_bot.get_data_cart(article)
+            additional_data += [data]
+
+        return additional_data
 
     def check_not_added_pup_addresses(self):
         """
@@ -78,7 +177,7 @@ class Admin:
         """
         all_not_added_addresses = Addresses.get_all_not_added()
 
-        tg_bots = TGBots.load()
+        tg_bots = Bots_model.load()
         bots_name = [tg_bots[i].name for i in range(len(tg_bots))]
 
         if len(all_not_added_addresses) > 0:
@@ -113,7 +212,7 @@ class Admin:
             name = bot_data[0]
             new_addresses = bot_data[1:]
 
-            bot = TGBots.load(name=name)
+            bot = Bots_model.load(name=name)
             bot.append(addresses=new_addresses)
             print(bot.addresses, bot.name)
             bot.update()
@@ -130,102 +229,3 @@ class Admin:
 
     def join_to_lines(self, joined_elems):
         return "".join(map(lambda x: x + '\n', joined_elems))
-
-    def save_order_doc(self, id, document):
-        file_path = "orders/" + id + ".xlsx"
-        with open(file_path, 'wb') as f:
-            document.download(out=f)
-        df = pd.read_excel(file_path)
-
-        return df
-
-    def run_by_doc(self, update, context):
-        """
-        Принцип размещения операций:
-        Делить операции на блоке, между которыми можно отправлять статусные сообщения
-        """
-        order_data, data_for_bots = self.pre_run_doc(update, context)
-
-        tg_bots = TGBots.load(limit=len(data_for_bots))
-
-        if type(tg_bots) is list:
-            self.bots = [WBBot(name=tg_bot.name) for tg_bot in tg_bots]
-        else:
-            tg_bot = tg_bots
-            self.bots = [WBBot(name=tg_bot.name)]
-
-        orders = []
-        report = []
-        for i, bot in enumerate(self.bots):
-            tg_bot = TGBots.load(bot.name)
-            post_place = random.choice(tg_bot.addresses)
-            report += bot.buy(data_for_bots[i], post_place, order_data['order_id'])
-            address = Addresses.load(address=post_place)
-            # update.message.reply_photo(open(report[i]['qr_code'], 'rb'))
-            print(data_for_bots)
-
-            for d in data_for_bots[i]:
-                article_num, search_name, quantity, additional_data = d
-                print(additional_data)
-        #     order = Order(number=1, total_price=sum(report['prices']), services_price=150, prices=report['prices'], quantities=report['quantities'],
-        #           articles=['1234123', '35234234', '12353252'], pup_address=address.address,
-        #           pup_tg_id=address.tg_id, bot_name=bot.name, bot_surname=bot.surname, start_date='2020-12-20',
-        #           pred_end_date='2020-12-20', end_date='2020-12-20', code_for_approve='123',
-        #           active=False)\
-        #     order.insert()
-        #     orders += [order]
-        #
-        # Orders.save(orders)
-
-        update.message.reply_text('Ваш заказ выполнен, до связи')
-
-    def get_additional_datas(self, articles, total_quatities):
-        additional_datas = []
-        watch_bot = WBBot(name="Watcher")
-        for i, article in enumerate(articles):
-            additional_data = watch_bot.get_data_cart(article)
-            price = additional_data['price']
-            additional_data['total_price'] = price * total_quatities[i]
-            additional_datas += [additional_data]
-
-        return additional_datas
-
-    def pre_run_doc(self, update, context):
-        order_data = {}
-
-        id = str(update.effective_user.id)
-        document = context.bot.get_file(update.message.document)
-        df = self.save_order_doc(id, document)
-
-        orders = [row.tolist() for i, row in df.iterrows()]
-
-        articles = [order[0] for order in orders]
-
-        total_quatities = [order[2] * order[3] for order in orders]
-
-        additional_datas = self.get_additional_datas(articles, total_quatities)
-        for i, a_data in enumerate(additional_datas):
-            orders[i] += [a_data]
-
-        max_bots = max([order[3] for order in orders])
-        data_for_bots = [[] for _ in range(max_bots)]
-
-
-        for _, order in enumerate(orders):
-            print(order)
-            print(order[5])
-
-            if len(order) == 6:
-                article, search_key, quantity, pvz_cnt, _, additional_data = order
-            else:
-                article, search_key, quantity, pvz_cnt, additional_data = order
-
-            for i in range(max_bots):
-                if pvz_cnt > 0:
-                    data_for_bots[i] += [[article, search_key, quantity, additional_data]]
-                pvz_cnt -= 1
-
-        order_data['order_id'] = str(orders[0][4])
-        order_data['total_quatities'] = total_quatities
-
-        return order_data, data_for_bots

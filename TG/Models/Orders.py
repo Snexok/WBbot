@@ -31,6 +31,11 @@ class Orders(Model):
         else:
             return False
 
+    @staticmethod
+    def get_number():
+        path = "SELECT MAX(number)+1 FROM orders"
+        print("get_number = ", Orders.execute(path))
+
 
 class Order(Model):
     def __init__(self, id=0, number=0, total_price=0, services_price=0, prices=[], quantities=[], articles=[],
