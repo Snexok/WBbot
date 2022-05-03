@@ -26,8 +26,9 @@ class Bots(Model):
             bot = Bot()
             bot.id = d[0]
             bot.name = d[1]
-            bot.addresses = d[2]
+            bot.addresses = [address.replace(';', ',') for address in d[2]]
             bot.number = d[3]
+            bot.surname = d[4]
             bots += [bot]
 
         if bots:
@@ -39,12 +40,13 @@ class Bots(Model):
 
 
 class Bot(Model):
-    def __init__(self, id='0', name='', addresses=[], number=''):
+    def __init__(self, id='0', name='', addresses=[], number='', surname=''):
         super().__init__()
         self.id = id
         self.name = name
         self.addresses = addresses
         self.number = number
+        self.surname = surname
 
     def insert(self, data):
         path = "INSERT INTO bots (id, name, addresses) VALUES "
@@ -55,6 +57,11 @@ class Bot(Model):
         print(self.changed)
         if self.changed:
             path = "UPDATE bots SET "
-            path += "addresses= ARRAY" + str(self.addresses) + "::text[] "
+            path += "addresses= ARRAY[" + ",".join("'"+a.replace(",", ";")+"'" for a in self.addresses) + "]::text[] "
             path += "WHERE name='" + str(self.name) + "'"
             Bot.execute(path)
+
+# bot = Bots.load(name='Oleg')
+# print(bot.addresses)
+# bot.append(addresses=['г. Раменское (Московская область), улица Чугунова, д. 15А'])
+# bot.update()

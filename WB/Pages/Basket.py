@@ -52,17 +52,25 @@ class Basket():
 
     def choose_post_place(self, adress, req=False):
         if not req:
-            self.driver.find_element(By.XPATH,
-                                     '//h2[text()="Способ доставки"]/../../div[text()="Выбрать адрес доставки"]').click()
+            try:
+                self.driver.find_element(By.XPATH,
+                                         '//h2[text()="Способ доставки"]/../../div[text()="Выбрать адрес доставки"]').click()
+            except:
+                self.driver.find_element(By.XPATH,
+                                         '//h2[text()="Способ доставки"]/../button/span[text()="Изменить"]').click()
             sleep(1)
-            self.driver.find_element(By.XPATH, '//button[text()="Выбрать адрес доставки"]').click()
+            try:
+                self.driver.find_element(By.XPATH, '//button[text()="Выбрать адрес доставки"]').click()
+            except:
+                self.driver.find_element(By.XPATH, '//button[text()="Выбрать другой адрес"]').click()
         sleep(2)
         self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(Keys.CONTROL + "a")
         self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(Keys.DELETE)
+        print(adress)
         self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(adress)
         self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(Keys.ENTER)
         sleep(2)
-        # self.driver.find_element(By.XPATH, '//ymaps[text()="Найти"]').click()
+        self.driver.find_element(By.XPATH, '//ymaps[text()="Найти"]').click()
         sleep(2)
         try:
             self.driver.find_element(By.XPATH, '//ymaps[contains(@class, "__first")]').click()
@@ -100,7 +108,7 @@ class Basket():
             sleep(2)
 
     def get_qr_code(self, order_id, bot_name):
-        file_name = 'order_' + order_id + '_' + bot_name + '.png'
+        file_name = 'order_' + str(order_id) + '_' + bot_name + '.png'
         self.driver.find_element(By.XPATH,
                                  '//button[text()="                Оплатить заказ                "]').click()
         sleep(2)

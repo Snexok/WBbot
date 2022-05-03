@@ -86,23 +86,21 @@ class Admin:
             # main process
             report = self.run_bot(bot, data_for_bots[i], number)
 
-            update.message.reply_photo(open(reports[i]['qr_code'], 'rb'))
-            print('Для подтверждения введите y, для отклонения оплаты введите n')
-            while True:
-                payed = input()
-                if payed.lower() == 'y':
-                    reports += [report]
-                elif payed.lower() == 'n':
-                    pass
+            update.message.reply_photo(open(report['qr_code'], 'rb'))
+            reports += [report]
+
 
         start_date = str(datetime.date.today())
         for report in reports:
-            pup_address = Addresses.load(address=report['post_place'])
+            pup_address = Addresses.load(address=report['post_place'])[0]
+            print(pup_address)
             order = Order(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
                           quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
                           pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
                           start_date=start_date, pred_end_date='2020-12-20', active=False)
+            print(order)
             order.insert()
+
 
         update.message.reply_text('Ваш заказ выполнен, до связи')
 
@@ -122,10 +120,14 @@ class Admin:
         Делить операции на блоке, между которыми можно отправлять статусные сообщения
         """
 
-        post_place = random.choice(bot.data.addresses)
+        addresses = bot.data.addresses
+        post_place = random.choice(addresses if type(addresses) is list else [addresses])
+        print(bot.data.addresses)
+        print('post_place', post_place)
 
         report = bot.buy(data_for_bot, post_place, number)
 
+        print(report)
         report['post_place'] = post_place
         report['bot_name'] = bot.data.name
         report['bot_surname'] = bot.data.surname

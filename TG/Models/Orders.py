@@ -20,7 +20,7 @@ class Orders(Model):
         orders = []
         for d in data:
             order = Order()
-            for i, col in COLUMNS:
+            for i, col in enumerate(COLUMNS):
                 setattr(order, col, d[i])
             orders += [order]
 
@@ -33,12 +33,18 @@ class Orders(Model):
 
     @staticmethod
     def get_number():
+        def callback(cursor):
+            records = cursor.fetchall()
+            return records
+
         path = "SELECT MAX(number)+1 FROM orders"
-        print("get_number = ", Orders.execute(path))
+        res = Orders.execute(path, callback)[0][0]
+        print("get_number = ", res)
+        return res
 
 
 class Order(Model):
-    def __init__(self, id=0, number=0, total_price=0, services_price=0, prices=[], quantities=[], articles=[],
+    def __init__(self, id=1, number=0, total_price=0, services_price=0, prices=[], quantities=[], articles=[],
                  pup_address='', pup_tg_id='', bot_name='', bot_surname='', start_date='', pred_end_date='',
                  end_date='', code_for_approve='', active=True):
         super().__init__()
@@ -59,24 +65,35 @@ class Order(Model):
         self.code_for_approve = code_for_approve
         self.active = active
 
+    def __str__(self):
+        res = ""
+        for i, col in enumerate(COLUMNS):
+            print(col)
+            res += col + " = " + str(getattr(self, col)) + "; "
+        return res
+
     def insert(self):
-        path = "INSERT INTO orders (" + ", ".join(COLUMNS) + ") VALUES "
-        path += "((SELECT MAX(id)+1 FROM addresses), "
+        c = [col for col in COLUMNS if getattr(self, col)]
+        print(c)
+        path = "INSERT INTO orders (" + ", ".join(c) + ") VALUES "
+        path += "((SELECT MAX(id)+1 FROM orders), "
         for k in COLUMNS[1:]:
             v = getattr(self, k)
-            if type(v) is int:
-                path += str(v) + ", "
-            elif type(v) is str:
-                path += "'" + str(v) + "', "
-            elif type(v) is bool:
-                path += ("TRUE" if v else "FALSE") + ", "
-            elif type(v) is list:
-                if type(v[0]) is str:
-                    path += "ARRAY" + str(v) + "::text[], "
-                elif type(v[0]) is int:
-                    path += "ARRAY" + str(v) + "::integer[], "
+            if v:
+                if type(v) is int:
+                    path += str(v) + ", "
+                elif type(v) is str:
+                    path += "'" + str(v) + "', "
+                elif type(v) is bool:
+                    path += ("TRUE" if v else "FALSE") + ", "
+                elif type(v) is list:
+                    if type(v[0]) is str:
+                        path += "ARRAY" + str(v) + "::text[], "
+                    elif type(v[0]) is int:
+                        path += "ARRAY" + str(v) + "::integer[], "
         path = path[:-2]
         path += ")"
+        print(path)
         Order.execute(path)
 
     def update(self):

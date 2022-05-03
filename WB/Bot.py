@@ -24,7 +24,7 @@ class Bot:
     def buy(self, data, post_place, order_id):
         self.driver.maximize_window()
         self.browser.open_site('https://www.wildberries.ru')
-        self.browser.load('./bots_sessions/' + self.name)
+        self.browser.load('./bots_sessions/' + self.data.name)
         self.browser.open_site('https://www.wildberries.ru')
         report = {}
         for d in data:
@@ -56,22 +56,15 @@ class Bot:
 
         report['quantities'] = []
         for article in articles:
-            price = self.basket.get_quantity(article)
-            report['quantities'] += [price]
+            quantity = self.basket.get_quantity(article)
+            report['quantities'] += [int(quantity)]
 
         sleep(3)
         self.basket.choose_post_place(post_place)
         self.basket.choose_payment_method()
-        try:
-            report['qr_code'] = self.basket.get_qr_code(order_id, self.name)
-        except:
-            bot = Bots_model.load(self.name)
-            Utils.login(self.driver, bot.number)
-            input()
-            report['qr_code'] = self.basket.get_qr_code(order_id, self.name)
-        report['qr_code'] = 'qr_code'
+        report['qr_code'] = self.basket.get_qr_code(order_id, self.data.name)
 
-        return [report]
+        return report
 
     def get_data_cart(self, article, SAVE=False):
         self.driver.get("https://www.wildberries.ru/")
