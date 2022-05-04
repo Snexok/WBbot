@@ -160,6 +160,29 @@ class Admin:
         return data_for_bots
 
     @staticmethod
+    def a_pre_run_doc(id, document):
+        df = Admin.save_order_doc(id, document)
+
+        orders = [row.tolist() for i, row in df.iterrows()]
+
+        additional_data = Admin.get_additional_data(orders)
+        for i, a_data in enumerate(additional_data):
+            orders[i] += [a_data]
+
+        max_bots = max([order[3] for order in orders])
+        data_for_bots = [[] for _ in range(max_bots)]
+
+        for _, order in enumerate(orders):
+            article, search_key, quantity, pvz_cnt, additional_data = order
+
+            for i in range(max_bots):
+                if pvz_cnt > 0:
+                    data_for_bots[i] += [[article, search_key, quantity, additional_data]]
+                pvz_cnt -= 1
+
+        return data_for_bots
+
+    @staticmethod
     def get_additional_data(orders):
         watch_bot = Bot(name="Watcher")
 
@@ -171,7 +194,8 @@ class Admin:
 
         return additional_data
 
-    def check_not_added_pup_addresses(self):
+    @staticmethod
+    def check_not_added_pup_addresses():
         """
         Проверяет наличие адресов ПВЗ, не распределённых по ботам
 
@@ -184,9 +208,9 @@ class Admin:
 
         if len(all_not_added_addresses) > 0:
             res_message = 'Список не распределённых адресов:\n\n' \
-                          + self.join_to_lines([address.address for address in all_not_added_addresses]) \
+                          + Admin.join_to_lines([address.address for address in all_not_added_addresses]) \
                           + '\nСписок БОТОВ:\n\n' \
-                          + self.join_to_lines(bots_name) \
+                          + Admin.join_to_lines(bots_name) \
                           + '\nНапишите название бота и адреса для него в формате:\n\n' \
                           + '<Имя Первого бота>\n' \
                           + '<1 адрес>\n' \
@@ -229,5 +253,6 @@ class Admin:
 
         return STATES['ADMIN']
 
-    def join_to_lines(self, joined_elems):
+    @staticmethod
+    def join_to_lines(joined_elems):
         return "".join(map(lambda x: x + '\n', joined_elems))
