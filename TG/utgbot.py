@@ -15,6 +15,7 @@ from TG.Models.Addresses import Addresses, Address
 from TG.Models.Orders import Orders, Order
 from TG.Models.Users import Users
 from TG.Models.Bot import Bots as Bots_model
+from TG.Models.Bot import Bot as Bot_model
 from configs import config
 from TG.CONSTS import PUP_STATES
 
@@ -28,6 +29,7 @@ dp = Dispatcher(bot, storage=storage)
 # States
 class States(StatesGroup):
     ADMIN = State()
+    MAIN = State()
     WHITELIST = State()
     INSIDE = State()
     ADMIN_ADDRESS_DISTRIBUTION = State()
@@ -37,12 +39,13 @@ class States(StatesGroup):
 
 @dp.message_handler(commands=['start', 'help'])
 async def send_welcome(message: types.Message):
-    whitelist = []
+    whitelist = ['794329884']
     if str(message.chat.id) in whitelist:
         await States.MAIN.set()
         await message.reply("Привет")
     else:
         await States.WHITELIST.set()
+
 
 
 @dp.message_handler(state=States.WHITELIST)
@@ -101,21 +104,24 @@ async def admin_handler(message: types.Message):
 
 @dp.message_handler(state=States.INSIDE, content_types=['document'])
 async def inside_handler(message: types.Message):
-    number = Orders.get_number()
-
+    number = await Orders.get_number()
+    print('inside')
     id = str(message.chat.id)
     document = io.BytesIO()
     await message.document.download(destination_file=document)
+    print(document)
     # preprocessing
-    data_for_bots = Admin.a_pre_run_doc(id, document)
+    data_for_bots = await Admin.a_pre_run_doc(id, document)
 
-    tg_bots = Bots_model.load(limit=len(data_for_bots))
+    tg_bots_data = await Bots_model.load(limit=len(data_for_bots))
 
-    if type(tg_bots) is list:
-        bots = [Bot(data=tg_bot) for tg_bot in tg_bots]
+    print(tg_bots_data)
+
+    if type(tg_bots_data) is list:
+        bots = [Bot_model(data=tg_bot_data) for tg_bot_data in tg_bots_data]
     else:
-        tg_bot = tg_bots
-        bots = [Bot(data=tg_bot)]
+        tg_bot_data = tg_bots_data
+        bots = [Bot_model(data=tg_bot_data)]
 
     # main process
     reports = []

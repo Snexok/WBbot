@@ -32,13 +32,14 @@ class Orders(Model):
             return False
 
     @staticmethod
-    def get_number():
+    async def get_number():
         def callback(cursor):
             records = cursor.fetchall()
             return records
 
         path = "SELECT MAX(number)+1 FROM orders"
-        res = Orders.execute(path, callback)[0][0]
+        res = await Orders.execute(path, callback)
+        res = res[0][0]
         print("get_number = ", res)
         return res
 

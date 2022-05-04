@@ -67,8 +67,8 @@ class Admin:
 
             return STATES['MAIN']
 
-    def inside_handler(self, update: Update, context: CallbackContext):
-        number = Orders.get_number()
+    async def inside_handler(self, update: Update, context: CallbackContext):
+        number = await Orders.get_number()
 
         # preprocessing
         data_for_bots = self.pre_run_doc(update, context)
@@ -160,12 +160,12 @@ class Admin:
         return data_for_bots
 
     @staticmethod
-    def a_pre_run_doc(id, document):
-        df = Admin.save_order_doc(id, document)
-
+    async def a_pre_run_doc(id, document):
+        # df = Admin.save_order_doc(id, document)
+        df = pd.read_excel(document)
         orders = [row.tolist() for i, row in df.iterrows()]
 
-        additional_data = Admin.get_additional_data(orders)
+        additional_data = await Admin.get_additional_data(orders)
         for i, a_data in enumerate(additional_data):
             orders[i] += [a_data]
 
@@ -183,7 +183,7 @@ class Admin:
         return data_for_bots
 
     @staticmethod
-    def get_additional_data(orders):
+    async def get_additional_data(orders):
         watch_bot = Bot(name="Watcher")
 
         articles = [order[0] for order in orders]

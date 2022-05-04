@@ -4,7 +4,7 @@ from TG.Models.Model import Model
 class Bots(Model):
 
     @staticmethod
-    def load(name=None, limit=None):
+    async def load(name=None, limit=None):
         def callback(cursor):
             records = cursor.fetchall()
             return records
@@ -16,10 +16,11 @@ class Bots(Model):
             path += "LIMIT " + str(limit)
         print(limit)
         print(path)
-        return Bots.format_data(Bots.execute(path, callback))
+        data = await Bots.execute(path, callback)
+        return await Bots.format_data(data)
 
     @staticmethod
-    def format_data(data):
+    async def format_data(data):
         bots = []
         for d in data:
             print(d)

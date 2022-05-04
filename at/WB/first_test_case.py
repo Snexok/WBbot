@@ -15,7 +15,7 @@ async def main():
         await conv.send_message("Admin")
 
         resp: Message = await conv.get_response()
-        assert "Добро пожаловать, Лорд @astrocatling" in resp.raw_text
+        assert "Добро пожаловать, Лорд" in resp.raw_text
         await conv.send_message("inside")
 
         resp: Message = await conv.get_response()
