@@ -1,3 +1,6 @@
+import asyncio
+import threading
+
 from TG.Models.Model import Model
 
 
@@ -14,16 +17,13 @@ class Bots(Model):
             path += "WHERE name='" + name + "' "
         if limit:
             path += "LIMIT " + str(limit)
-        print(limit)
-        print(path)
-        data = await Bots.execute(path, callback)
-        return await Bots.format_data(data)
+        data = Bots.execute(path, callback)
+        return Bots.format_data(data)
 
     @staticmethod
-    async def format_data(data):
+    def format_data(data):
         bots = []
         for d in data:
-            print(d)
             bot = Bot()
             bot.id = d[0]
             bot.name = d[1]
@@ -58,11 +58,7 @@ class Bot(Model):
         print(self.changed)
         if self.changed:
             path = "UPDATE bots SET "
-            path += "addresses= ARRAY[" + ",".join("'"+a.replace(",", ";")+"'" for a in self.addresses) + "]::text[] "
+            path += "addresses= ARRAY[" + ",".join(
+                "'" + a.replace(",", ";") + "'" for a in self.addresses) + "]::text[] "
             path += "WHERE name='" + str(self.name) + "'"
             Bot.execute(path)
-
-# bot = Bots.load(name='Oleg')
-# print(bot.addresses)
-# bot.append(addresses=['г. Раменское (Московская область), улица Чугунова, д. 15А'])
-# bot.update()

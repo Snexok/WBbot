@@ -7,7 +7,7 @@ class Model:
         self.changed = False
 
     @staticmethod
-    async def execute(path, callback=None):
+    def execute(path, callback=None):
         with psycopg2.connect(dbname='WBBot', user='postgres',
                               password='root', host='localhost') as conn:
             with conn.cursor(cursor_factory=DictCursor) as cursor:

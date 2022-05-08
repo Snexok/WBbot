@@ -2,6 +2,7 @@ import random
 
 from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import CallbackContext
+from multiprocessing import Pool
 
 from TG.CONSTS import STATES
 from TG.Models.Addresses import Addresses, Address
@@ -114,7 +115,8 @@ class Admin:
 
         return df
 
-    def run_bot(self, bot, data_for_bot, number):
+    @staticmethod
+    def run_bot(bot, data_for_bot, number):
         """
         Принцип размещения операций:
         Делить операции на блоке, между которыми можно отправлять статусные сообщения
@@ -122,12 +124,9 @@ class Admin:
 
         addresses = bot.data.addresses
         post_place = random.choice(addresses if type(addresses) is list else [addresses])
-        print(bot.data.addresses)
-        print('post_place', post_place)
 
         report = bot.buy(data_for_bot, post_place, number)
 
-        print(report)
         report['post_place'] = post_place
         report['bot_name'] = bot.data.name
         report['bot_surname'] = bot.data.surname

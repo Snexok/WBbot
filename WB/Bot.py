@@ -1,3 +1,4 @@
+
 from selenium.webdriver.common.by import By
 from time import sleep
 import json
@@ -32,7 +33,6 @@ class Bot:
 
             self.page = Utils.search(self.driver, search_name)  # catalog
             price = additional_data['price']
-            print('price', price)
             self.catalog.price_filter(int(price * 0.75), int(price * 1.25))
             sleep(2)
 

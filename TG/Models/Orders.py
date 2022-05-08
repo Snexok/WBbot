@@ -38,7 +38,7 @@ class Orders(Model):
             return records
 
         path = "SELECT MAX(number)+1 FROM orders"
-        res = await Orders.execute(path, callback)
+        res = Orders.execute(path, callback)
         res = res[0][0]
         print("get_number = ", res)
         return res
