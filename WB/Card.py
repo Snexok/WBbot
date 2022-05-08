@@ -22,7 +22,7 @@ class Card():
         # resolve
         hover.move_to_element(img).perform()
 
-        sleep(SPEED*random.uniform(2, 4)+1)
+        sleep(SPEED*random.uniform(2, 4)+2)
         try:
             self.card_button(articul).click()
         except:
@@ -66,6 +66,8 @@ class Card():
     def close_card_modal(self):
         try:
             self.driver.find_element(By.CLASS_NAME, 'popup__close').click()
+            print('.driver.find_element(By.CLASS_NAME, "popup__close").click()')
         except:
             self.page_back(self.driver)
             sleep(2.5)
+            print('.page_back(self.driver)')
