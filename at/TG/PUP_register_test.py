@@ -8,10 +8,10 @@ api_hash = 'd1f7738973704d2ba80a39593db47c5f'
 
 
 async def main():
-    client = TelegramClient('astrocatling', api_id, api_hash)
+    client = TelegramClient('test', api_id, api_hash)
     await client.start()
     print(type(client))
-    async with client.conversation("@redempt_test_1_bot", timeout=5) as conv:
+    async with client.conversation("@redempt_test_2_bot", timeout=5) as conv:
         await conv.send_message("пвз")
 
         resp: Message = await conv.get_response()

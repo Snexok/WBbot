@@ -16,23 +16,34 @@ from configs import config
 def start(update: Update, context: CallbackContext) -> None:
     update.message.reply_text("Привет")
     id = str(update.effective_user.id)
-    try:
-        Users.insert(User(id))
-    except:
-        pass
+    username = str(update.effective_user.username)
+    Users.insert(User(id, username=username))
+    # try:
+    #      Users.insert(User(id, username=username))
+    #  except:
+    #      pass
 
 
 def help_command(update: Update, context: CallbackContext) -> None:
     update.message.reply_text('Help!')
 
+def whitelist_handler(update: Update, context: CallbackContext):
+    msg = update.message.text.lower()
+    id = str(update.effective_user.id)
+    print('whitelist')
+
+    return main_handler(update,context)
 
 def main_handler(update: Update, context: CallbackContext):
+    print('main')
     msg = update.message.text.lower()
     if "пвз" in msg:
         id = str(update.effective_user.id)
         user = Users.load(id)
         user.set(pup_state=0)
         user.update()
+
+        print(msg)
 
         update.message.reply_text("Ваше ФИО?")
         return STATES['PUP']
@@ -77,16 +88,15 @@ class TGBot:
         dispatcher.add_handler(CommandHandler("start", start))
         dispatcher.add_handler(CommandHandler("help", help_command))
         conv_handler = ConversationHandler(
-            entry_points=[MessageHandler(Filters.regex('Admin'), self.admin.handler),
-                          MessageHandler(Filters.text & ~Filters.command, main_handler)],
+            entry_points=[MessageHandler(Filters.text & ~Filters.command, whitelist_handler)],
             states={
-                STATES['ADMIN']: [
-                    MessageHandler(Filters.regex('Admin'), self.admin.handler),
-                    MessageHandler(Filters.text, self.admin.handler)
-                ],
                 STATES['MAIN']: [
                     MessageHandler(Filters.regex('Admin'), self.admin.handler),
                     MessageHandler(Filters.text, main_handler)
+                ],
+                STATES['ADMIN']: [
+                    MessageHandler(Filters.regex('Admin'), self.admin.handler),
+                    MessageHandler(Filters.text, self.admin.handler)
                 ],
                 STATES['ORDER']: [
                     CallbackQueryHandler(order_callback_handler),
