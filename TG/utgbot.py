@@ -1,4 +1,5 @@
 # Python Modules
+import asyncio
 import datetime
 import io
 import logging
@@ -39,8 +40,10 @@ class States(StatesGroup):
 
 @dp.message_handler(commands=['start', 'help'])
 async def send_welcome(message: types.Message):
-    whitelist = ['794329884']
-    if str(message.chat.id) in whitelist:
+    whitelist = ['794329884', '653703299', '535533975']
+    id = str(message.chat.id)
+    print(id)
+    if id in whitelist:
         await States.MAIN.set()
         await message.reply("Привет")
     else:
@@ -77,7 +80,7 @@ async def main_handler(message: types.Message):
 async def set_admin(message: types.Message):
     id = str(message.chat.id)
     print('admin')
-    if id in ['794329884', '653703299']:
+    if id in ['794329884', '653703299', '535533975']:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add("Проверить ботов")
         markup.add("inside")
@@ -110,6 +113,7 @@ async def inside_handler(message: types.Message):
     await message.document.download(destination_file=document)
     # preprocessing
     data_for_bots = await Admin.a_pre_run_doc(id, document)
+    print(len(data_for_bots))
 
     tg_bots_data = await Bots_model.load(limit=len(data_for_bots))
 
@@ -122,12 +126,13 @@ async def inside_handler(message: types.Message):
         bots = [WB_Bot(data=tg_bot_data)]
 
     # main process
-    reports = []
-    for i, bot in enumerate(bots):
-        report = Admin.run_bot(bot, data_for_bots[i], number)
+    bots = [Admin.run_bot(bot, data_for_bots[i], number) for i, bot in enumerate(bots)]
+    print(bots)
+    reports = await asyncio.gather(*bots)
 
+    for report in reports:
+        print(report['qr_code'])
         await message.answer(open(report['qr_code'], 'rb').read())
-        reports += [report]
 
     start_date = str(datetime.date.today())
     for report in reports:

@@ -11,6 +11,7 @@ class Users(Model):
         if id:
             path = "SELECT * FROM users WHERE id='" + id + "'"
         elif username:
+            pass
 
         return Users.format_data(Users.execute(path, callback))
 
@@ -37,7 +38,7 @@ class Users(Model):
             users += [user]
 
         if users:
-            if len(users):
+            if len(users) == 1:
                 return users[0]
             return users
         else:

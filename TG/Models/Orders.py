@@ -4,6 +4,7 @@ COLUMNS = ['id', 'number', 'total_price', 'services_price', 'prices', 'quantitie
            'pup_tg_id', 'bot_name', 'bot_surname', 'start_date', 'pred_end_date', 'end_date', 'code_for_approve',
            'active']
 
+
 class Orders(Model):
 
     @staticmethod
@@ -25,7 +26,7 @@ class Orders(Model):
             orders += [order]
 
         if orders:
-            if len(orders):
+            if len(orders) == 1:
                 return orders[0]
             return orders
         else:

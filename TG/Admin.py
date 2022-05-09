@@ -90,7 +90,6 @@ class Admin:
             update.message.reply_photo(open(report['qr_code'], 'rb'))
             reports += [report]
 
-
         start_date = str(datetime.date.today())
         for report in reports:
             pup_address = Addresses.load(address=report['post_place'])[0]
@@ -101,7 +100,6 @@ class Admin:
                           start_date=start_date, pred_end_date='2020-12-20', active=False)
             print(order)
             order.insert()
-
 
         update.message.reply_text('Ваш заказ выполнен, до связи')
 
@@ -116,7 +114,7 @@ class Admin:
         return df
 
     @staticmethod
-    def run_bot(bot, data_for_bot, number):
+    async def run_bot(bot, data_for_bot, number):
         """
         Принцип размещения операций:
         Делить операции на блоке, между которыми можно отправлять статусные сообщения
@@ -125,7 +123,7 @@ class Admin:
         addresses = bot.data.addresses
         post_place = random.choice(addresses if type(addresses) is list else [addresses])
 
-        report = bot.buy(data_for_bot, post_place, number)
+        report = await bot.buy(data_for_bot, post_place, number)
 
         report['post_place'] = post_place
         report['bot_name'] = bot.data.name
@@ -188,7 +186,7 @@ class Admin:
         articles = [order[0] for order in orders]
         additional_data = []
         for i, article in enumerate(articles):
-            data = watch_bot.get_data_cart(article)
+            data = await watch_bot.get_data_cart(article)
             additional_data += [data]
 
         return additional_data
@@ -255,3 +253,83 @@ class Admin:
     @staticmethod
     def join_to_lines(joined_elems):
         return "".join(map(lambda x: x + '\n', joined_elems))
+
+
+# import time
+# import asyncio
+
+
+# async def a(n):
+#     cnt = 1
+#     w = 0.01
+#     while cnt % 100 != 0:
+#         cnt += 1
+#         await asyncio.sleep(w)
+#     print("a_step_1", n)
+#     cnt = 1
+#     w = 0.01
+#     while cnt % 100 != 0:
+#         cnt += 1
+#         await asyncio.sleep(w)
+#     print("a_step_2", n)
+#
+#
+# async def b(n):
+#     cnt = 1
+#     w = 0.01
+#     while cnt % 100 != 0:
+#         cnt += 1
+#         await asyncio.sleep(w)
+#     print("b_step_1", n)
+#     cnt = 1
+#     w = 0.01
+#     while cnt % 100 != 0:
+#         cnt += 1
+#         await asyncio.sleep(w)
+#     print("b_step_2", n)
+#
+#
+# def c(n):
+#     cnt = 1
+#     w = 0.0001
+#     while cnt % 10000 != 0:
+#         cnt += 1
+#         time.sleep(w)
+#     print("c_step_1", n)
+#     cnt = 1
+#     w = 0.0001
+#     while cnt % 10000 != 0:
+#         cnt += 1
+#         time.sleep(w)
+#     print("c_step_2", n)
+#
+#
+# async def a_main():
+#     L = await asyncio.gather(
+#         a("first_bot"),
+#         b("first_bot"),
+#         asyncio.to_thread(c, "first_bot")
+#     )
+#     # print(L)
+#
+#
+# async def b_main():
+#     L = await asyncio.gather(
+#         a("second_bot"),
+#         b("second_bot"),
+#         asyncio.get_running_loop().run_in_executor(None, c, "second_bot")
+#     )
+#     # print(L)
+#
+#
+# async def main():
+#     L = await asyncio.gather(
+#         a_main(),
+#         b_main(),
+#     )
+#     # print(L)
+#
+#
+# print(f"started at {time.strftime('%X')}")
+# asyncio.run(main())
+# print(f"finished at {time.strftime('%X')}")

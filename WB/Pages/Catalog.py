@@ -2,7 +2,7 @@ import asyncio
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver import Keys
-from time import sleep
+from asyncio import sleep
 import random
 
 from WB.Card import Card
@@ -46,10 +46,10 @@ class Catalog():
             card_cnt_for_scroll = 0
             self.Y = 150
 
-            await asyncio.sleep(2)
+            await sleep(2)
             cards = self.get_cards()
             for c in cards:
-                await asyncio.sleep(SPEED * random.uniform(0, 1))
+                await sleep(SPEED * random.uniform(0, 1))
 
                 article = c.get_attribute("id")
                 if scrolling:
@@ -65,13 +65,13 @@ class Catalog():
                         self.card.add_card(article, target=False)
 
             self.next_page()
-            await asyncio.sleep(2)
+            await sleep(2)
 
     async def scroll(self, card_cnt):
         if card_cnt == 0:
             self.driver.execute_script(
                 "window.scrollTo({top: " + str(self.Y + random.randint(-20, 20)) + ",behavior: 'smooth'})")
-            await asyncio.sleep(1)
+            await sleep(1)
             self.Y = self.Y + SCROLL_STEP
             card_cnt = 4
         return card_cnt - 1
@@ -91,7 +91,7 @@ class Catalog():
         search_field = self.search_field(filter_name)
         search_field.click()
         search_field.send_keys(value)
-        await asyncio.sleep(1)
+        await sleep(1)
         self.choose_filter_checkbox(filter_name, value)
 
     async def price_filter(self, min_price, max_price):
@@ -101,12 +101,12 @@ class Catalog():
         min_price_field.send_keys(Keys.CONTROL + "a")
         min_price_field.send_keys(Keys.DELETE)
         min_price_field.send_keys(min_price)
-        await asyncio.sleep(1)
+        await sleep(1)
 
         max_price_field = self.max_price_field()
         max_price_field.click()
 
-        await asyncio.sleep(1)
+        await sleep(1)
         max_price_field = self.max_price_field()
         max_price_field.click()
         max_price_field.send_keys(Keys.CONTROL + "a")

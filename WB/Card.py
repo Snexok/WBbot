@@ -68,6 +68,6 @@ class Card():
             self.driver.find_element(By.CLASS_NAME, 'popup__close').click()
             print('.driver.find_element(By.CLASS_NAME, "popup__close").click()')
         except:
-            self.page_back(self.driver)
+            self.page_back()
             sleep(2.5)
             print('.page_back(self.driver)')
