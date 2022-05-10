@@ -138,3 +138,7 @@ class Basket():
                                                          '@class,"count__input-number")]/input')
         quantity = count_input_number.get_attribute('value')
         return quantity
+
+    def get_shipment_date(self):
+        return self.driver.find_element(By.XPATH, '//span[text()="Дата"]/../span[@class="b-link"]').text
+

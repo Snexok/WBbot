@@ -217,6 +217,12 @@ class Admin:
     def join_to_lines(joined_elems):
         return "".join(map(lambda x: x + '\n', joined_elems))
 
+    @staticmethod
+    def generate_secret_key():
+        import secrets
+        secret_key = secrets.token_urlsafe(64)
+
+        return secret_key
 
 # import time
 # import asyncio
