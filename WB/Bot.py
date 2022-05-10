@@ -60,8 +60,8 @@ class Bot:
             report['quantities'] += [int(quantity)]
 
         await sleep(3)
-        await self.basket.choose_post_place(post_place)
-        await self.basket.choose_payment_method()
+        # await self.basket.choose_post_place(post_place)
+        # await self.basket.choose_payment_method()
         report['qr_code'] = await self.basket.get_qr_code(order_id, self.data.name)
 
         return report

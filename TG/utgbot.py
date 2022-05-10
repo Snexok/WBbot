@@ -4,7 +4,6 @@ import datetime
 import io
 import logging
 
-# Consts
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
@@ -39,7 +38,7 @@ class States(StatesGroup):
 
 
 @dp.message_handler(commands=['start', 'help'])
-async def send_welcome(message: types.Message):
+async def start(message: types.Message):
     whitelist = ['794329884', '653703299', '535533975']
     id = str(message.chat.id)
     print(id)
@@ -53,6 +52,21 @@ async def send_welcome(message: types.Message):
 @dp.message_handler(state=States.WHITELIST)
 async def echo(message: types.Message):
     pass
+
+
+@dp.message_handler(lambda message: message.text == 'Admin')
+async def set_admin(message: types.Message):
+    id = str(message.chat.id)
+    print('admin')
+    if id in ['794329884', '653703299', '535533975']:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
+        markup.add("Проверить ботов")
+        markup.add("inside")
+        markup.add("Назад")
+
+        # Set state
+        await States.ADMIN.set()
+        await message.answer('Добро пожаловать, Лорд ' + message.chat.full_name, reply_markup=markup)
 
 
 @dp.message_handler(state=States.MAIN)
@@ -74,21 +88,8 @@ async def main_handler(message: types.Message):
         await message.answer('Файлом или через чат?', reply_markup=markup)
 
         await States.ORDER.set()
-
-
-@dp.message_handler(lambda message: message.text == 'Admin')
-async def set_admin(message: types.Message):
-    id = str(message.chat.id)
-    print('admin')
-    if id in ['794329884', '653703299', '535533975']:
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
-        markup.add("Проверить ботов")
-        markup.add("inside")
-        markup.add("Назад")
-
-        # Set state
-        await States.ADMIN.set()
-        await message.answer('Добро пожаловать, Лорд ' + message.chat.full_name, reply_markup=markup)
+    if "admin" in msg:
+        await set_admin(message)
 
 
 @dp.message_handler(state=States.ADMIN)
@@ -107,7 +108,6 @@ async def admin_handler(message: types.Message):
 @dp.message_handler(state=States.INSIDE, content_types=['document'])
 async def inside_handler(message: types.Message):
     number = await Orders.get_number()
-    print('inside')
     id = str(message.chat.id)
     document = io.BytesIO()
     await message.document.download(destination_file=document)
@@ -127,12 +127,12 @@ async def inside_handler(message: types.Message):
 
     # main process
     bots = [Admin.run_bot(bot, data_for_bots[i], number) for i, bot in enumerate(bots)]
-    print(bots)
     reports = await asyncio.gather(*bots)
+    print(reports)
 
     for report in reports:
         print(report['qr_code'])
-        await message.answer(open(report['qr_code'], 'rb').read())
+        await message.answer_photo(open(report['qr_code'], 'rb'))
 
     start_date = str(datetime.date.today())
     for report in reports:
@@ -147,6 +147,13 @@ async def inside_handler(message: types.Message):
 
     await States.MAIN.set()
 
+@dp.message_handler(state=States.INSIDE, content_types=['text'])
+async def inside_handler(message: types.Message):
+    msg = message.text.lower()
+    print(msg)
+    if "назад" in msg:
+        await message.answer('Я тебя понял, понял, кидай заказ')
+        await States.MAIN.set()
 
 @dp.message_handler(state=States.ADMIN_ADDRESS_DISTRIBUTION)
 async def address_distribution_handler(message: types.Message):
@@ -219,4 +226,4 @@ async def pup_handler(message: types.Message):
 
 
 if __name__ == '__main__':
-    executor.start_polling(dp, skip_updates=True)
+    executor.start_polling(dp)
