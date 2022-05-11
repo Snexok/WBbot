@@ -1,3 +1,4 @@
+import datetime
 
 from selenium.webdriver.common.by import By
 from asyncio import sleep
@@ -60,8 +61,11 @@ class Bot:
             report['quantities'] += [int(quantity)]
 
         await sleep(3)
-        await self.basket.choose_post_place(post_place)
-        await self.basket.choose_payment_method()
+        # await self.basket.choose_post_place(post_place)
+        # await self.basket.choose_payment_method()
+        shipment_date = self.basket.get_shipment_date()
+        print(shipment_date)
+        report['pred_end_date'] = self.get_end_date(shipment_date)
         report['qr_code'] = await self.basket.get_qr_code(order_id, self.data.name)
 
         return report
@@ -132,3 +136,25 @@ class Bot:
                 json.dump(data, f, ensure_ascii=False)
         else:
             return data
+
+    @staticmethod
+    def get_end_date(wb_day_month):
+        """
+        wb_day_month - День и месяц с в формате Wildberries
+        """
+        month_list = ['января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
+                      'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря']
+
+        month = 0
+        for i, m in enumerate(month_list):
+            if m in wb_day_month:
+                index = wb_day_month.index(m)
+                wb_day_month = wb_day_month[:index - 1]
+                month = i + 1
+                break
+
+        day = int(wb_day_month.split('-')[0])
+
+        year = datetime.datetime.today().year
+
+        return str(datetime.date(year, month, day))

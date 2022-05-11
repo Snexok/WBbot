@@ -7,7 +7,7 @@ from TG.Models.Model import Model
 class Bots(Model):
 
     @staticmethod
-    async def load(name=None, limit=None):
+    def load(name=None, limit=None):
         def callback(cursor):
             records = cursor.fetchall()
             return records

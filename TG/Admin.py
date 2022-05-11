@@ -68,43 +68,6 @@ class Admin:
 
             return STATES['MAIN']
 
-    async def inside_handler(self, update: Update, context: CallbackContext):
-        number = await Orders.get_number()
-
-        # preprocessing
-        data_for_bots = self.pre_run_doc(update, context)
-
-        tg_bots = Bots_model.load(limit=len(data_for_bots))
-
-        if type(tg_bots) is list:
-            self.bots = [Bot(data=tg_bot) for tg_bot in tg_bots]
-        else:
-            tg_bot = tg_bots
-            self.bots = [Bot(data=tg_bot)]
-
-        reports = []
-        for i, bot in enumerate(self.bots):
-            # main process
-            report = self.run_bot(bot, data_for_bots[i], number)
-
-            update.message.reply_photo(open(report['qr_code'], 'rb'))
-            reports += [report]
-
-        start_date = str(datetime.date.today())
-        for report in reports:
-            pup_address = Addresses.load(address=report['post_place'])[0]
-            print(pup_address)
-            order = Order(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
-                          quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
-                          pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
-                          start_date=start_date, pred_end_date='2020-12-20', active=False)
-            print(order)
-            order.insert()
-
-        update.message.reply_text('Ваш заказ выполнен, до связи')
-
-        return STATES['MAIN']
-
     def save_order_doc(self, id, document):
         file_path = "orders/" + id + ".xlsx"
         with open(file_path, 'wb') as f:
@@ -254,6 +217,12 @@ class Admin:
     def join_to_lines(joined_elems):
         return "".join(map(lambda x: x + '\n', joined_elems))
 
+    @staticmethod
+    def generate_secret_key():
+        import secrets
+        secret_key = secrets.token_urlsafe(64)
+
+        return secret_key
 
 # import time
 # import asyncio
