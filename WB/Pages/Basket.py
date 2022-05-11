@@ -48,8 +48,8 @@ class Basket():
                 else:
                     return
 
-    async def choose_post_place(self, adress, req=False):
-        if not req:
+    async def choose_post_place(self, address, rerun=False):
+        if not rerun:
             try:
                 self.driver.find_element(By.XPATH,
                                          '//h2[text()="Способ доставки"]/../../div[text()="Выбрать адрес доставки"]').click()
@@ -64,8 +64,8 @@ class Basket():
         await sleep(2)
         self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(Keys.CONTROL + "a")
         self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(Keys.DELETE)
-        print(adress)
-        self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(adress)
+        print(address)
+        self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(address)
         self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(Keys.ENTER)
         await sleep(2)
         self.driver.find_element(By.XPATH, '//ymaps[text()="Найти"]').click()
@@ -75,16 +75,16 @@ class Basket():
         except:
             pass
         await sleep(2)
-        self.driver.find_element(By.XPATH, '//span[contains(text(), "' + adress + '")]').click()
+        self.driver.find_element(By.XPATH, '//span[contains(text(), "' + address + '")]').click()
         await sleep(2)
         try:
             self.driver.find_element(By.XPATH, '//div[@class="balloon-content-block"]/button').click()
         except:
             await sleep(2)
-            await self.choose_post_place(adress, req=True)
+            await self.choose_post_place(address, rerun=True)
 
         await sleep(2)
-        if not req:
+        if not rerun:
             self.driver.find_element(By.XPATH, '//button[@class="popup__btn-main"]').click()
             await sleep(2)
 
