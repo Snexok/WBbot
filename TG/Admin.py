@@ -20,7 +20,7 @@ USLUGI_PRICE = 150
 class Admin:
 
     @staticmethod
-    async def run_bot(bot, data_for_bot, number):
+    def run_bot(bot, data_for_bot, number):
         """
         Принцип размещения операций:
         Делить операции на блоке, между которыми можно отправлять статусные сообщения
@@ -29,7 +29,7 @@ class Admin:
         addresses = bot.data.addresses
         post_place = random.choice(addresses if type(addresses) is list else [addresses])
 
-        report = await bot.buy(data_for_bot, post_place, number)
+        report = bot.buy(data_for_bot, post_place, number)
 
         report['post_place'] = post_place
         report['bot_name'] = bot.data.name
@@ -63,12 +63,12 @@ class Admin:
         return data_for_bots
 
     @staticmethod
-    async def a_pre_run_doc(id, document):
+    def a_pre_run_doc(id, document):
         # df = Admin.save_order_doc(id, document)
         df = pd.read_excel(document)
         orders = [row.tolist() for i, row in df.iterrows()]
 
-        additional_data = await Admin.get_additional_data(orders)
+        additional_data = Admin.get_additional_data(orders)
         for i, a_data in enumerate(additional_data):
             orders[i] += [a_data]
 
@@ -86,13 +86,13 @@ class Admin:
         return data_for_bots
 
     @staticmethod
-    async def get_additional_data(orders):
+    def get_additional_data(orders):
         watch_bot = Bot(name="Watcher")
 
         articles = [order[0] for order in orders]
         additional_data = []
         for i, article in enumerate(articles):
-            data = await watch_bot.get_data_cart(article)
+            data = watch_bot.get_data_cart(article)
             additional_data += [data]
 
         return additional_data
@@ -162,82 +162,3 @@ class Admin:
         dt = datetime.datetime.fromisoformat(pred_end_date)
         loop.create_task(run_at(dt, bot.check_readiness(pred_end_date, articles, message)))
         loop.run_forever()
-
-# import time
-# import asyncio
-
-
-# async def a(n):
-#     cnt = 1
-#     w = 0.01
-#     while cnt % 100 != 0:
-#         cnt += 1
-#         await asyncio.sleep(w)
-#     print("a_step_1", n)
-#     cnt = 1
-#     w = 0.01
-#     while cnt % 100 != 0:
-#         cnt += 1
-#         await asyncio.sleep(w)
-#     print("a_step_2", n)
-#
-#
-# async def b(n):
-#     cnt = 1
-#     w = 0.01
-#     while cnt % 100 != 0:
-#         cnt += 1
-#         await asyncio.sleep(w)
-#     print("b_step_1", n)
-#     cnt = 1
-#     w = 0.01
-#     while cnt % 100 != 0:
-#         cnt += 1
-#         await asyncio.sleep(w)
-#     print("b_step_2", n)
-#
-#
-# def c(n):
-#     cnt = 1
-#     w = 0.0001
-#     while cnt % 10000 != 0:
-#         cnt += 1
-#         time.sleep(w)
-#     print("c_step_1", n)
-#     cnt = 1
-#     w = 0.0001
-#     while cnt % 10000 != 0:
-#         cnt += 1
-#         time.sleep(w)
-#     print("c_step_2", n)
-#
-#
-# async def a_main():
-#     L = await asyncio.gather(
-#         a("first_bot"),
-#         b("first_bot"),
-#         asyncio.to_thread(c, "first_bot")
-#     )
-#     # print(L)
-#
-#
-# async def b_main():
-#     L = await asyncio.gather(
-#         a("second_bot"),
-#         b("second_bot"),
-#         asyncio.get_running_loop().run_in_executor(None, c, "second_bot")
-#     )
-#     # print(L)
-#
-#
-# async def main():
-#     L = await asyncio.gather(
-#         a_main(),
-#         b_main(),
-#     )
-#     # print(L)
-#
-#
-# print(f"started at {time.strftime('%X')}")
-# asyncio.run(main())
-# print(f"finished at {time.strftime('%X')}")

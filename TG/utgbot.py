@@ -153,7 +153,7 @@ async def inside_handler(message: types.Message):
     document = io.BytesIO()
     await message.document.download(destination_file=document)
     # preprocessing
-    data_for_bots = await Admin.a_pre_run_doc(id, document)
+    data_for_bots = Admin.a_pre_run_doc(id, document)
 
     tg_bots_data = Bots_model.load(limit=len(data_for_bots))
 
@@ -164,7 +164,7 @@ async def inside_handler(message: types.Message):
         bots = [WB_Bot(data=tg_bot_data)]
 
     # main process
-    run_bots = [Admin.run_bot(bot, data_for_bots[i], number) for i, bot in enumerate(bots)]
+    run_bots = [asyncio.to_thread(Admin.run_bot, bot, data_for_bots[i], number) for i, bot in enumerate(bots)]
     reports = await asyncio.gather(*run_bots)
 
     for report in reports:

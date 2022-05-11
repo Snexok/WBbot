@@ -1,7 +1,7 @@
 import datetime
 
 from selenium.webdriver.common.by import By
-from asyncio import sleep
+from time import sleep
 import json
 
 from TG.Models.Bot import Bots as Bots_model
@@ -23,7 +23,7 @@ class Bot:
         elif name:
             self.data = Bots_model.load(name)
 
-    async def buy(self, data, post_place, order_id):
+    def buy(self, data, post_place, order_id):
         self.driver.maximize_window()
         self.browser.open_site('https://www.wildberries.ru')
         self.browser.load('./bots_sessions/' + self.data.name)
@@ -34,19 +34,19 @@ class Bot:
 
             self.page = Utils.search(self.driver, search_name)  # catalog
             price = additional_data['price']
-            await self.catalog.price_filter(int(price * 0.75), int(price * 1.25))
-            await sleep(2)
+            self.catalog.price_filter(int(price * 0.75), int(price * 1.25))
+            sleep(2)
 
-            await self.catalog.card_search(article_num)
-            await sleep(1)
+            self.catalog.card_search(article_num)
+            sleep(1)
         self.page = Utils.go_to_basket(self.driver)  # basket
         self.driver.refresh()
-        await sleep(2)
+        sleep(2)
 
         articles = [str(d[0]) for d in data]
         report['articles'] = articles
 
-        await self.basket.delete_other_cards_in_basket(articles)
+        self.basket.delete_other_cards_in_basket(articles)
 
         report['prices'] = []
         for article in articles:
@@ -60,21 +60,21 @@ class Bot:
             quantity = self.basket.get_quantity(article)
             report['quantities'] += [int(quantity)]
 
-        await sleep(3)
-        # await self.basket.choose_post_place(post_place)
-        # await self.basket.choose_payment_method()
+        sleep(3)
+        # self.basket.choose_post_place(post_place)
+        # self.basket.choose_payment_method()
         shipment_date = self.basket.get_shipment_date()
         print(shipment_date)
         report['pred_end_date'] = self.get_end_date(shipment_date)
-        report['qr_code'] = await self.basket.get_qr_code(order_id, self.data.name)
+        report['qr_code'] = self.basket.get_qr_code(order_id, self.data.name)
 
         return report
 
-    async def get_data_cart(self, article, SAVE=False):
+    def get_data_cart(self, article, SAVE=False):
         self.driver.get("https://www.wildberries.ru/")
-        await sleep(2)
+        sleep(2)
         self.driver.get("https://www.wildberries.ru/catalog/" + str(article) + "/detail.aspx?targetUrl=MI")
-        await sleep(0.5)
+        sleep(0.5)
         data = {}
 
         names = self.driver.find_elements(By.XPATH, '//h1[@class="same-part-kt__header"]/span')
