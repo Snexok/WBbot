@@ -1,7 +1,6 @@
+import asyncio
 import random
 
-from telegram import Update, ReplyKeyboardMarkup
-from telegram.ext import CallbackContext
 from multiprocessing import Pool
 
 from TG.CONSTS import STATES
@@ -19,62 +18,6 @@ USLUGI_PRICE = 150
 
 
 class Admin:
-    def __init__(self):
-        pass
-
-    def handler(self, update: Update, context: CallbackContext):
-        id = str(update.effective_user.id)
-
-        if id in ['794329884', '653703299']:
-            msg = update.message.text.lower()
-
-            if 'admin' in msg:
-                reply_keyboard = [
-                    ['проверить ботов'],
-                    ['inside'],
-                    ['Назад']
-                ]
-                markup = ReplyKeyboardMarkup(reply_keyboard)
-
-                update.message.reply_text('Добро пожаловать, Лорд ' + update.effective_user.name, reply_markup=markup)
-
-                return STATES['ADMIN']
-
-            elif 'проверить ботов' in msg:
-                res_message, state = self.check_not_added_pup_addresses()
-
-                update.message.reply_text(res_message)
-
-                return state
-
-            elif "inside" in msg:
-                update.message.reply_text('Я тебя понял, понял, кидай заказ')
-
-                return STATES['INSIDE']
-
-            elif "назад" in msg:
-
-                reply_keyboard = [
-                    ['Admin'],
-                    ['ПВЗ']
-                ]
-                markup = ReplyKeyboardMarkup(reply_keyboard)
-
-                update.message.reply_text('Я тебя понял, понял, кидай заказ', reply_markup=markup)
-
-                return STATES['MAIN']
-        else:
-            update.message.reply_text('СоЖеЛеЮ, Ты Не $%...АдМиН...>>>')
-
-            return STATES['MAIN']
-
-    def save_order_doc(self, id, document):
-        file_path = "orders/" + id + ".xlsx"
-        with open(file_path, 'wb') as f:
-            document.download(out=f)
-        df = pd.read_excel(file_path)
-
-        return df
 
     @staticmethod
     async def run_bot(bot, data_for_bot, number):
@@ -187,32 +130,6 @@ class Admin:
 
         return res_message, state
 
-    def address_distribution_handler(self, update: Update, context: CallbackContext):
-        msg = update.message.text
-
-        bots_data_str = msg.split('\n\n')
-
-        for bot_data in bots_data_str:
-            bot_data = bot_data.split('\n')
-
-            name = bot_data[0]
-            new_addresses = bot_data[1:]
-
-            bot = Bots_model.load(name=name)
-            bot.append(addresses=new_addresses)
-            print(bot.addresses, bot.name)
-            bot.update()
-
-            for address in new_addresses:
-                address = Address().load(address=address)
-                print(address)
-                address.set(added_to_bot=True)
-                address.update()
-
-        update.message.reply_text("Все адреса добавлены в ботов")
-
-        return STATES['ADMIN']
-
     @staticmethod
     def join_to_lines(joined_elems):
         return "".join(map(lambda x: x + '\n', joined_elems))
@@ -223,6 +140,28 @@ class Admin:
         secret_key = secrets.token_urlsafe(64)
 
         return secret_key
+
+    @staticmethod
+    def wait_order_ended(bot: Bot, pred_end_date, articles, message):
+        async def wait_until(dt):
+            # sleep until the specified datetime
+            now = datetime.datetime.now()
+
+            time_to_end_day = (dt - now).total_seconds()
+            time_to_open = datetime.timedelta(hours=random.randint(7,14), minutes=random.randint(0,60)).total_seconds()
+            wait_time = time_to_end_day + time_to_open
+
+            await asyncio.sleep(15)
+            # await asyncio.sleep(wait_time)
+
+        async def run_at(dt, coro):
+            await wait_until(dt)
+            return await coro
+
+        loop = asyncio.get_event_loop()
+        dt = datetime.datetime.fromisoformat(pred_end_date)
+        loop.create_task(run_at(dt, bot.check_readiness(pred_end_date, articles, message)))
+        loop.run_forever()
 
 # import time
 # import asyncio

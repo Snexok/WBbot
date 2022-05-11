@@ -184,6 +184,9 @@ async def inside_handler(message: types.Message):
 
     await States.MAIN.set()
 
+    for i, bot in enumerate(bots):
+        Admin.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], message)
+
 
 @dp.message_handler(state=States.INSIDE, content_types=['text'])
 async def inside_handler(message: types.Message):

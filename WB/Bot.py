@@ -158,3 +158,7 @@ class Bot:
         year = datetime.datetime.today().year
 
         return str(datetime.date(year, month, day))
+
+    async def check_readiness(self, pred_end_date, articles, message):
+        await message.answer(pred_end_date + ' Ваш заказ готов')
+        print('check_readiness')
