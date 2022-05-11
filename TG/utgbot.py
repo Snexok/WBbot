@@ -163,29 +163,30 @@ async def inside_handler(message: types.Message):
         tg_bot_data = tg_bots_data
         bots = [WB_Bot(data=tg_bot_data)]
 
-    # main process
-    run_bots = [asyncio.to_thread(Admin.run_bot, bot, data_for_bots[i], number) for i, bot in enumerate(bots)]
-    reports = await asyncio.gather(*run_bots)
-
-    for report in reports:
-        await message.answer_photo(open(report['qr_code'], 'rb'))
-
-    start_date = str(datetime.date.today())
-    for report in reports:
-        print(report['pred_end_date'])
-        pup_address = Addresses.load(address=report['post_place'])[0]
-        order = Order(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
-                      quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
-                      pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
-                      start_date=start_date, pred_end_date=report['pred_end_date'], active=True)
-        order.insert()
+    # # main process
+    # run_bots = [asyncio.to_thread(Admin.run_bot, bot, data_for_bots[i], number) for i, bot in enumerate(bots)]
+    # reports = await asyncio.gather(*run_bots)
+    #
+    # for report in reports:
+    #     await message.answer_photo(open(report['qr_code'], 'rb'))
+    #
+    # start_date = str(datetime.date.today())
+    # for report in reports:
+    #     print(report['pred_end_date'])
+    #     pup_address = Addresses.load(address=report['post_place'])[0]
+    #     order = Order(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
+    #                   quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
+    #                   pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
+    #                   start_date=start_date, pred_end_date=report['pred_end_date'], active=True)
+    #     order.insert()
 
     await message.answer('Ваш заказ выполнен, до связи')
 
     await States.MAIN.set()
 
     for i, bot in enumerate(bots):
-        Admin.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], message)
+        # Admin.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], message)
+        Admin.wait_order_ended(bot, "2022-05-13", "reports[i]['articles']", message)
 
 
 @dp.message_handler(state=States.INSIDE, content_types=['text'])

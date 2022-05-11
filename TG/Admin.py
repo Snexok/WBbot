@@ -161,4 +161,3 @@ class Admin:
         loop = asyncio.get_event_loop()
         dt = datetime.datetime.fromisoformat(pred_end_date)
         loop.create_task(run_at(dt, bot.check_readiness(pred_end_date, articles, message)))
-        loop.run_forever()
