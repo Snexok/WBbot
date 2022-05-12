@@ -28,6 +28,7 @@ class Bot:
         self.browser.open_site('https://www.wildberries.ru')
         self.browser.load('./bots_sessions/' + self.data.name)
         self.browser.open_site('https://www.wildberries.ru')
+
         report = {}
         for d in data:
             article_num, search_name, quantity, additional_data = d
@@ -62,7 +63,7 @@ class Bot:
 
         sleep(3)
         # self.basket.choose_post_place(post_place)
-        # self.basket.choose_payment_method()
+        self.basket.choose_payment_method()
         shipment_date = self.basket.get_shipment_date()
         print(shipment_date)
         report['pred_end_date'] = self.get_end_date(shipment_date)

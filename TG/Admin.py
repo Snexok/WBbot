@@ -20,7 +20,7 @@ USLUGI_PRICE = 150
 class Admin:
 
     @staticmethod
-    def run_bot(bot, data_for_bot, number):
+    def run_bot(bot: Bot, data_for_bot, number):
         """
         Принцип размещения операций:
         Делить операции на блоке, между которыми можно отправлять статусные сообщения

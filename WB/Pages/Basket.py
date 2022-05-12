@@ -98,6 +98,8 @@ class Basket():
             self.driver.find_element(By.XPATH, '//button[contains(@class,"popup__btn-main")]').click()
             sleep(2)
         except:
+            if self.driver.find_element(By.XPATH, '//span[@class="pay__text"]').text == 'Оплата по QR-коду':
+                return
             self.driver.find_element(By.XPATH, '//h2[text()="Способ оплаты"]/../button/span[text()="Изменить"]').click()
             sleep(1)
             self.driver.find_element(By.XPATH, '//span[text()="' + payment_method + '"]').click()
