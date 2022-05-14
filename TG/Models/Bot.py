@@ -17,9 +17,7 @@ class Bots(Model):
             path += "WHERE name='" + name + "' "
         if limit:
             path += "LIMIT " + str(limit)
-        print(path)
         data = Bots.execute(path, callback)
-        print(data)
         return Bots.format_data(data)
 
     @staticmethod

@@ -17,8 +17,16 @@ import pandas as pd
 
 USLUGI_PRICE = 150
 
+ADMIN_IDS = ['794329884', '653703299', '535533975']
+
 
 class Admin:
+    @staticmethod
+    def is_admin(id):
+        if id in ADMIN_IDS:
+            return True
+        else:
+            return False
 
     @staticmethod
     async def inside(message, number):
@@ -78,7 +86,7 @@ class Admin:
         return report
 
     @staticmethod
-    def a_pre_run_doc(document):
+    def pre_run_doc(id, document):
         df = pd.read_excel(document)
         orders = [row.tolist() for i, row in df.iterrows()]
 

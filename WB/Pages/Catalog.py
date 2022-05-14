@@ -1,4 +1,5 @@
 import asyncio
+import sys
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver import Keys
@@ -98,7 +99,10 @@ class Catalog():
         min_price, max_price = self.transform_price(min_price), self.transform_price(max_price)
         min_price_field = self.min_price_field()
         min_price_field.click()
-        min_price_field.send_keys(Keys.CONTROL + "a")
+        if sys.platform == "darwin":
+            min_price_field.send_keys(Keys.COMMAND + "a")
+        else:
+            min_price_field.send_keys(Keys.CONTROL + "a")
         min_price_field.send_keys(Keys.DELETE)
         min_price_field.send_keys(min_price)
         sleep(1)
@@ -109,7 +113,10 @@ class Catalog():
         sleep(1)
         max_price_field = self.max_price_field()
         max_price_field.click()
-        max_price_field.send_keys(Keys.CONTROL + "a")
+        if sys.platform == "darwin":
+            min_price_field.send_keys(Keys.COMMAND + "a")
+        else:
+            max_price_field.send_keys(Keys.CONTROL + "a")
         max_price_field.send_keys(Keys.DELETE)
         max_price_field.send_keys(max_price)
         max_price_field.send_keys(Keys.ENTER)

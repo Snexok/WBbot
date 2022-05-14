@@ -4,6 +4,8 @@ from selenium.webdriver.common.by import By
 from time import sleep
 import json
 
+from selenium.webdriver.support.wait import WebDriverWait
+
 from TG.Models.Bot import Bots as Bots_model
 from WB.Pages.Basket import Basket
 from WB.Browser import Browser
@@ -65,7 +67,7 @@ class Bot:
         # self.basket.choose_post_place(post_place)
         self.basket.choose_payment_method()
         shipment_date = self.basket.get_shipment_date()
-        print(shipment_date)
+
         report['pred_end_date'] = self.get_end_date(shipment_date)
         report['qr_code'] = self.basket.get_qr_code(order_id, self.data.name)
 
@@ -75,10 +77,9 @@ class Bot:
         self.driver.get("https://www.wildberries.ru/")
         sleep(2)
         self.driver.get("https://www.wildberries.ru/catalog/" + str(article) + "/detail.aspx?targetUrl=MI")
-        sleep(0.5)
         data = {}
 
-        names = self.driver.find_elements(By.XPATH, '//h1[@class="same-part-kt__header"]/span')
+        names = WebDriverWait(self.driver, 60).until(lambda d: d.find_elements(By.XPATH, '//h1[@class="same-part-kt__header"]/span'))
         brand = names[0].text
         name = names[1].text
 
