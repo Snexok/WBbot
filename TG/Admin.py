@@ -1,5 +1,6 @@
 import asyncio
 import random
+import io
 
 from multiprocessing import Pool
 
@@ -20,6 +21,45 @@ USLUGI_PRICE = 150
 class Admin:
 
     @staticmethod
+    async def inside(message, number):
+        document = io.BytesIO()
+        await message.document.download(destination_file=document)
+        # preprocessing
+        data_for_bots = Admin.a_pre_run_doc(document)
+
+        tg_bots_data = Bots_model.load(limit=len(data_for_bots))
+
+        if type(tg_bots_data) is list:
+            bots = [Bot(data=tg_bot_data) for tg_bot_data in tg_bots_data]
+        else:
+            tg_bot_data = tg_bots_data
+            bots = [Bot(data=tg_bot_data)]
+
+        # main process
+        run_bots = [asyncio.to_thread(Admin.run_bot, bot, data_for_bots[i], number) for i, bot in enumerate(bots)]
+        reports = await asyncio.gather(*run_bots)
+
+        for report in reports:
+            await message.answer_photo(open(report['qr_code'], 'rb'))
+
+        start_date = str(datetime.date.today())
+        for report in reports:
+            print(report['pred_end_date'])
+            pup_address = Addresses.load(address=report['post_place'])[0]
+            order = Order(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
+                          quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
+                          pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
+                          start_date=start_date, pred_end_date=report['pred_end_date'], active=True)
+            order.insert()
+
+        await message.answer('Ваш заказ выполнен, до связи')
+
+
+        for i, bot in enumerate(bots):
+            # Admin.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], message)
+            Admin.wait_order_ended(bot, "2022-05-13", "reports[i]['articles']", message)
+
+    @staticmethod
     def run_bot(bot: Bot, data_for_bot, number):
         """
         Принцип размещения операций:
@@ -37,34 +77,8 @@ class Admin:
 
         return report
 
-    def pre_run_doc(self, update, context):
-        id = str(update.effective_user.id)
-        document = context.bot.get_file(update.message.document)
-
-        df = self.save_order_doc(id, document)
-
-        orders = [row.tolist() for i, row in df.iterrows()]
-
-        additional_data = self.get_additional_data(orders)
-        for i, a_data in enumerate(additional_data):
-            orders[i] += [a_data]
-
-        max_bots = max([order[3] for order in orders])
-        data_for_bots = [[] for _ in range(max_bots)]
-
-        for _, order in enumerate(orders):
-            article, search_key, quantity, pvz_cnt, additional_data = order
-
-            for i in range(max_bots):
-                if pvz_cnt > 0:
-                    data_for_bots[i] += [[article, search_key, quantity, additional_data]]
-                pvz_cnt -= 1
-
-        return data_for_bots
-
     @staticmethod
-    def a_pre_run_doc(id, document):
-        # df = Admin.save_order_doc(id, document)
+    def a_pre_run_doc(document):
         df = pd.read_excel(document)
         orders = [row.tolist() for i, row in df.iterrows()]
 
@@ -161,3 +175,5 @@ class Admin:
         loop = asyncio.get_event_loop()
         dt = datetime.datetime.fromisoformat(pred_end_date)
         loop.create_task(run_at(dt, bot.check_readiness(pred_end_date, articles, message)))
+
+

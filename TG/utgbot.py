@@ -1,7 +1,6 @@
 # Python Modules
 import asyncio
 import datetime
-import io
 import logging
 
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
@@ -16,9 +15,13 @@ from TG.Models.Orders import Orders, Order
 from TG.Models.Users import Users
 from TG.Models.Bot import Bots as Bots_model
 from TG.Models.Whitelist import Whitelist
+from TG.Models.Admin import Admin as Admin_model
+
 from WB.Bot import Bot as WB_Bot
 from configs import config
 from TG.CONSTS import PUP_STATES
+
+DEBUG = False
 
 API_TOKEN = config['tokens']['telegram']
 # Initialize bot and dispatcher
@@ -149,45 +152,16 @@ async def to_whitelist_handler(message: types.Message):
 @dp.message_handler(state=States.INSIDE, content_types=['document'])
 async def inside_handler(message: types.Message):
     number = await Orders.get_number()
-    id = str(message.chat.id)
-    document = io.BytesIO()
-    await message.document.download(destination_file=document)
-    # preprocessing
-    data_for_bots = Admin.a_pre_run_doc(id, document)
 
-    tg_bots_data = Bots_model.load(limit=len(data_for_bots))
-
-    if type(tg_bots_data) is list:
-        bots = [WB_Bot(data=tg_bot_data) for tg_bot_data in tg_bots_data]
+    await States.ADMIN.set()
+    if DEBUG:
+        await Admin.inside(message, number)
     else:
-        tg_bot_data = tg_bots_data
-        bots = [WB_Bot(data=tg_bot_data)]
-
-    # main process
-    run_bots = [asyncio.to_thread(Admin.run_bot, bot, data_for_bots[i], number) for i, bot in enumerate(bots)]
-    reports = await asyncio.gather(*run_bots)
-
-    for report in reports:
-        await message.answer_photo(open(report['qr_code'], 'rb'))
-
-    start_date = str(datetime.date.today())
-    for report in reports:
-        print(report['pred_end_date'])
-        pup_address = Addresses.load(address=report['post_place'])[0]
-        order = Order(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
-                      quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
-                      pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
-                      start_date=start_date, pred_end_date=report['pred_end_date'], active=True)
-        order.insert()
-
-    await message.answer('Ваш заказ выполнен, до связи')
-
-    await States.MAIN.set()
-
-    for i, bot in enumerate(bots):
-        # Admin.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], message)
-        Admin.wait_order_ended(bot, "2022-05-13", "reports[i]['articles']", message)
-
+        try:
+            await Admin.inside(message, number)
+        except:
+            admin = Admin_model().get_sentry_admin()
+            await bot.send_message(admin.id, "Упал заказ номер " + str(number))
 
 @dp.message_handler(state=States.INSIDE, content_types=['text'])
 async def inside_handler(message: types.Message):
