@@ -9,7 +9,7 @@ from TG.Models.Orders import Order
 
 from WB.Bot import Bot
 
-import datetime
+from  datetime import date, datetime, timedelta
 import pandas as pd
 
 USLUGI_PRICE = 150
@@ -53,7 +53,7 @@ class Admin:
         for report in reports:
             await message.answer_photo(open(report['qr_code'], 'rb'))
 
-        start_date = str(datetime.date.today())
+        start_date = str(date.today())
         for report in reports:
             print(report['pred_end_date'])
             pup_address = Addresses.load(address=report['post_place'])[0]
@@ -68,7 +68,7 @@ class Admin:
 
         for i, bot in enumerate(bots):
             # Admin.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], message)
-            Admin.wait_order_ended(bot, "2022-05-13", "reports[i]['articles']", message)
+            Admin.wait_order_ended(bot, "2022-05-13", reports[i]['articles'], message)
 
     @staticmethod
     def run_bot(bot: Bot, data_for_bot, number):
@@ -171,23 +171,20 @@ class Admin:
 
     @staticmethod
     def wait_order_ended(bot: Bot, pred_end_date, articles, message):
-        async def wait_until(dt):
-            # sleep until the specified datetime
-            now = datetime.datetime.now()
+        async def wait_until(start_datetime, end_datetime):
+            # await asyncio.sleep(15)
+            time_to_end = (start_datetime, end_datetime).total_seconds()
+            await asyncio.sleep(time_to_end)
 
-            time_to_end_day = (dt - now).total_seconds()
-            time_to_open = datetime.timedelta(hours=random.randint(7,14), minutes=random.randint(0,60)).total_seconds()
-            wait_time = time_to_end_day + time_to_open
-
-            await asyncio.sleep(15)
-            # await asyncio.sleep(wait_time)
-
-        async def run_at(dt, coro):
-            await wait_until(dt)
+        async def run_at(end_datetime, start_datetime, coro):
+            await wait_until(end_datetime, start_datetime)
             return await coro
 
+        start_datetime = datetime.now()
+        rnd_time = timedelta(hours=random.randint(7, 14), minutes=random.randint(0, 60), seconds=random.randint(0, 60))
+        end_datetime = datetime.fromisoformat(pred_end_date) + rnd_time
+
         loop = asyncio.get_event_loop()
-        dt = datetime.datetime.fromisoformat(pred_end_date)
-        loop.create_task(run_at(dt, bot.check_readiness(pred_end_date, articles, message)))
+        loop.create_task(run_at(start_datetime, end_datetime, bot.check_readiness(pred_end_date, articles, message)))
 
 

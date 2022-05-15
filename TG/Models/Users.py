@@ -3,8 +3,8 @@ from TG.Models.Model import Model
 
 class Users(Model):
 
-    @staticmethod
-    def load(id=None, username=None):
+    @classmethod
+    def load(cls, id=None, username=None):
         def callback(cursor):
             records = cursor.fetchall()
             return records
@@ -13,18 +13,17 @@ class Users(Model):
         elif username:
             pass
 
-        return Users.format_data(Users.execute(path, callback))
+        return cls.format_data(cls.execute(path, callback))
 
-    @staticmethod
-    def insert(user):
+    @classmethod
+    def insert(cls, user):
         path = "INSERT INTO users (id, pup_state, name, addresses, username) VALUES "
         path += "('" + str(user.id) + "', " + str(user.pup_state) + ", '" + user.name + "', ARRAY" + str(
             user.addresses) + "::text[], '"+str(user.username)+"')"
-        print(path)
         User.execute(path)
 
-    @staticmethod
-    def format_data(data):
+    @classmethod
+    def format_data(cls, data):
         print(data)
         users = []
         for d in data:

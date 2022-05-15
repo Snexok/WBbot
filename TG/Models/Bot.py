@@ -6,8 +6,8 @@ from TG.Models.Model import Model
 
 class Bots(Model):
 
-    @staticmethod
-    def load(name=None, limit=None):
+    @classmethod
+    def load(cls, name=None, limit=None):
         def callback(cursor):
             records = cursor.fetchall()
             return records
@@ -17,11 +17,11 @@ class Bots(Model):
             path += "WHERE name='" + name + "' "
         if limit:
             path += "LIMIT " + str(limit)
-        data = Bots.execute(path, callback)
-        return Bots.format_data(data)
+        data = cls.execute(path, callback)
+        return cls.format_data(data)
 
-    @staticmethod
-    def format_data(data):
+    @classmethod
+    def format_data(cls, data):
         bots = []
         for d in data:
             bot = Bot()

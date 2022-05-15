@@ -19,8 +19,8 @@ class Whitelist(Model):
 
         return self
 
-    @staticmethod
-    def check(tg_id):
+    @classmethod
+    def check(cls, tg_id):
         def callback(cursor):
             records = cursor.fetchone()
             return records
@@ -28,29 +28,29 @@ class Whitelist(Model):
         path = "SELECT * FROM whitelist "
         path += "WHERE tg_id='" + tg_id + "' LIMIT 1"
 
-        whitelist = Whitelist.execute(path, callback)
+        whitelist = cls.execute(path, callback)
 
         if whitelist:
             return True
         else:
             return False
 
-    @staticmethod
-    def insert(username='', secret_key=''):
+    @classmethod
+    def insert(cls, username='', secret_key=''):
         path = "INSERT INTO whitelist (id, tg_id, username, secret_key) VALUES "
         path += "((SELECT MAX(id)+1 FROM whitelist), '', '" + username + "', '" + secret_key + "')"
-        Whitelist.execute(path)
+        cls.execute(path)
 
-    @staticmethod
-    def set_secret_key(secret_key):
-        Whitelist.insert(secret_key=secret_key)
+    @classmethod
+    def set_secret_key(cls, secret_key):
+        cls.insert(secret_key=secret_key)
 
-    @staticmethod
-    def set_username(username):
-        Whitelist.insert(username=username)
+    @classmethod
+    def set_username(cls, username):
+        cls.insert(username=username)
 
-    @staticmethod
-    def set_tg_id(tg_id, username='', secret_key=''):
+    @classmethod
+    def set_tg_id(cls, tg_id, username='', secret_key=''):
         def callback(cursor):
             return cursor.rowcount
 
@@ -62,6 +62,6 @@ class Whitelist(Model):
         elif secret_key:
             path += ", secret_key='' "
             path += "WHERE secret_key='" + secret_key + "'"
-        res = Whitelist.execute(path, callback)
+        res = cls.execute(path, callback)
 
         return res

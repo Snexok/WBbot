@@ -41,7 +41,6 @@ class Orders(Model):
         path = "SELECT MAX(number)+1 FROM orders"
         res = Orders.execute(path, callback)
         res = res[0][0]
-        print("get_number = ", res)
         return res
 
 
@@ -70,13 +69,11 @@ class Order(Model):
     def __str__(self):
         res = ""
         for i, col in enumerate(COLUMNS):
-            print(col)
             res += col + " = " + str(getattr(self, col)) + "; "
         return res
 
     def insert(self):
         c = [col for col in COLUMNS if getattr(self, col)]
-        print(c)
         path = "INSERT INTO orders (" + ", ".join(c) + ") VALUES "
         path += "((SELECT MAX(id)+1 FROM orders), "
         for k in COLUMNS[1:]:
@@ -99,7 +96,6 @@ class Order(Model):
         Order.execute(path)
 
     def update(self):
-        print(self.changed)
         if self.changed:
             path = "UPDATE orders SET "
             path += "addresses= ARRAY" + str(self.addresses) + "::text[] "

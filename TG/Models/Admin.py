@@ -30,8 +30,8 @@ class Admin(Model):
         return self
 
 class Admins(Model):
-    @staticmethod
-    def load(id=None, sentry=None, all=False):
+    @classmethod
+    def load(cls, id=None, sentry=None, all=False):
         def callback(cursor):
             records = cursor.fetchall()
             return records
@@ -43,10 +43,10 @@ class Admins(Model):
         elif sentry:
             path = "SELECT * FROM admins WHERE sentry='" + ("TRUE" if sentry else "FALSE") + "'"
 
-        return Admins.format_data(Admins.execute(path, callback))
+        return cls.format_data(cls.execute(path, callback))
 
-    @staticmethod
-    def format_data(data):
+    @classmethod
+    def format_data(cls, data):
         admins = []
         for d in data:
             admin = Admin()
