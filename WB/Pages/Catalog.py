@@ -98,6 +98,7 @@ class Catalog():
     def price_filter(self, min_price, max_price):
         min_price, max_price = self.transform_price(min_price), self.transform_price(max_price)
         min_price_field = self.min_price_field()
+        print(min_price_field)
         min_price_field.click()
         if sys.platform == "darwin":
             min_price_field.send_keys(Keys.COMMAND + "a")

@@ -1,7 +1,7 @@
 from aiogram import types
 
 
-def get_markups(markup_name, is_admin=False):
+def get_markups(markup_name, is_admin=False, *args):
     if 'pup_addresses' == markup_name:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add("Всё")
@@ -11,6 +11,9 @@ def get_markups(markup_name, is_admin=False):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add("Проверить ботов")
         markup.add("inside")
+        if args[0]:
+            if args[0] == '794329884':
+                markup.add("Открыть бота")
         markup.add("Добавить пользователя")
         markup.add("Назад")
 
@@ -32,13 +35,18 @@ def get_markups(markup_name, is_admin=False):
         if is_admin:
             markup.add("Admin")
         markup.add("Регистрация")
-        markup.add("Настройки")
+        # markup.add("Настройки")
 
         return markup
     elif 'main_register' == markup_name:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add("Как ПВЗ")
-        markup.add("Для выкупов")
+        # markup.add("Для выкупов")
+    elif 'admin_bots' == markup_name:
+        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
+        bots_name = args[0]
+        for bot_name in bots_name:
+            markup.add(bot_name)
 
         return markup
     elif '' == markup_name:

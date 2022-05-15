@@ -17,9 +17,9 @@ class Users(Model):
 
     @staticmethod
     def insert(user):
-        path = "INSERT INTO users (id, pup_state, name, addresses, username, whitelisted) VALUES "
+        path = "INSERT INTO users (id, pup_state, name, addresses, username) VALUES "
         path += "('" + str(user.id) + "', " + str(user.pup_state) + ", '" + user.name + "', ARRAY" + str(
-            user.addresses) + "::text[], '"+str(user.username)+"', FALSE)"
+            user.addresses) + "::text[], '"+str(user.username)+"')"
         print(path)
         User.execute(path)
 
@@ -34,7 +34,6 @@ class Users(Model):
             user.name = d[2]
             user.addresses = d[3]
             user.username = d[4]
-            user.whitelisted = d[5]
             users += [user]
 
         if users:
@@ -46,14 +45,13 @@ class Users(Model):
 
 
 class User(Model):
-    def __init__(self, id='0', pup_state=0, name='', addresses=[], username='',whitelisted=False):
+    def __init__(self, id='0', pup_state=0, name='', addresses=[], username=''):
         super().__init__()
         self.id = id
         self.pup_state = pup_state
         self.name = name
         self.addresses = addresses
         self.username = username
-        self.whitelisted = whitelisted
 
     def update(self):
         if self.changed:

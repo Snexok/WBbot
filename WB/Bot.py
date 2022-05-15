@@ -25,6 +25,15 @@ class Bot:
         elif name:
             self.data = Bots_model.load(name)
 
+    def open_bot(self):
+        self.driver.maximize_window()
+        self.browser.open_site('https://www.wildberries.ru')
+        self.browser.load('./bots_sessions/' + self.data.name)
+        self.browser.open_site('https://www.wildberries.ru')
+        while self.browser.driver.current_url:
+            sleep(60)
+
+
     def buy(self, data, post_place, order_id):
         self.driver.maximize_window()
         self.browser.open_site('https://www.wildberries.ru')
@@ -36,6 +45,7 @@ class Bot:
             article_num, search_name, quantity, additional_data = d
 
             self.page = Utils.search(self.driver, search_name)  # catalog
+            sleep(2)
             price = additional_data['price']
             self.catalog.price_filter(int(price * 0.75), int(price * 1.25))
             sleep(2)
@@ -64,8 +74,8 @@ class Bot:
             report['quantities'] += [int(quantity)]
 
         sleep(3)
-        # self.basket.choose_post_place(post_place)
-        self.basket.choose_payment_method()
+        self.basket.choose_post_place(post_place)
+        # self.basket.choose_payment_method()
         shipment_date = self.basket.get_shipment_date()
 
         report['pred_end_date'] = self.get_end_date(shipment_date)

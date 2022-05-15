@@ -12,3 +12,4 @@ users_data/*
 configs/*
 *.session
 bots_sessions/*
+configs/config.yaml

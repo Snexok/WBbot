@@ -59,6 +59,10 @@ class Card():
 
     def card_to_basket(self):
         try:
+            self.driver.find_element(By.XPATH, "//label[@class='j-size']").click()
+        except:
+            pass
+        try:
             self.basket_btn().click()
         except:
             pass

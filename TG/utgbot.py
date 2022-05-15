@@ -14,7 +14,7 @@ from TG.Admin import Admin
 from TG.Markups import get_markups
 from TG.Models.Addresses import Addresses, Address
 from TG.Models.Orders import Orders, Order
-from TG.Models.Users import Users
+from TG.Models.Users import Users, User
 from TG.Models.Bot import Bots as Bots_model
 from TG.Models.Whitelist import Whitelist
 from TG.Models.Admin import Admin as Admin_model
@@ -23,7 +23,7 @@ from WB.Bot import Bot as WB_Bot
 from configs import config
 from TG.CONSTS import PUP_STATES
 
-DEBUG = False
+DEBUG = True
 
 API_TOKEN = config['tokens']['telegram']
 # Initialize bot and dispatcher
@@ -42,12 +42,14 @@ class States(StatesGroup):
     ORDER = State()
     TO_WL = State()
     REGISTER = State()
+    RUN_BOT = State()
 
 
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     username = message.chat.username
     id = str(message.chat.id)
+    print(username, id, 'is started')
     whitelisted = Whitelist.check(id)
     if whitelisted:
         await States.MAIN.set()
@@ -79,7 +81,7 @@ async def set_admin(message: types.Message):
     id = str(message.chat.id)
     if Admin.is_admin(id):
         await States.ADMIN.set()
-        markup = get_markups('admin_main')
+        markup = get_markups('admin_main', Admin.is_admin(id), id)
         await message.answer('Добро пожаловать, Лорд ' + message.chat.full_name, reply_markup=markup)
 
 
@@ -103,6 +105,9 @@ async def register_handler(message: types.Message):
     if "как пвз" in msg:
         id = str(message.chat.id)
         user = Users.load(id)
+        if not user:
+            user = User(id)
+            Users.insert(user)
         user.set(pup_state=0)
         user.update()
 
@@ -111,11 +116,11 @@ async def register_handler(message: types.Message):
 
 @dp.message_handler(state=States.ADMIN)
 async def admin_handler(message: types.Message):
+    print(message)
     id = str(message.chat.id)
     msg = message.text.lower()
     if 'проверить ботов' in msg:
         res_message, state = Admin.check_not_added_pup_addresses()
-        await message.answer('проверка ботов пока не доступна')
         await message.answer(res_message)
         await getattr(States, state).set()
     elif "inside" in msg:
@@ -129,11 +134,27 @@ async def admin_handler(message: types.Message):
         await States.MAIN.set()
         markup = get_markups('main_main', Admin.is_admin(id))
         await message.answer('Главное меню', reply_markup=markup)
+    elif id == '794329884':
+        if "открыть бота" in msg:
+            await States.RUN_BOT.set()
+            tg_bots = Bots_model.load()
+            bots_name = [tg_bots[i].name for i in range(len(tg_bots))]
+            markup = get_markups('admin_bots', Admin.is_admin(id), bots_name)
+            await message.answer('Выберите бота', reply_markup=markup)
+
+@dp.message_handler(state=States.RUN_BOT)
+async def run_bot_handler(message: types.Message):
+    msg = message.text
+    await States.ADMIN.set()
+    markup = get_markups('admin_main', Admin.is_admin(id), id)
+    await message.answer(msg+" открыт", reply_markup=markup)
+    await Admin.open_bot(bot_name=msg)
 
 
 @dp.message_handler(state=States.TO_WL)
 async def to_whitelist_handler(message: types.Message):
     msg = message.text.lower()
+    id = str(message.chat.id)
     if msg in 'по username':
         await message.answer("Введите username пользователя")
     elif msg in 'сгененрировать ключ':
@@ -142,7 +163,7 @@ async def to_whitelist_handler(message: types.Message):
         Whitelist.set_secret_key(secret_key)
 
         await States.ADMIN.set()
-        markup = get_markups('admin_main')
+        markup = get_markups('admin_main', Admin.is_admin(id), id)
         await message.answer("Ключ для идентификации:")
         await message.answer(secret_key, reply_markup=markup)
     elif "@" in msg:
@@ -150,18 +171,13 @@ async def to_whitelist_handler(message: types.Message):
         Whitelist.set_username(username)
 
         await States.ADMIN.set()
-        markup = get_markups('admin_main')
+        markup = get_markups('admin_main', Admin.is_admin(id), id)
         await message.answer("Пользователь с username " + msg + " добавлен", reply_markup=markup)
 
 
 @dp.message_handler(state=States.INSIDE, content_types=['document'])
 async def inside_handler(message: types.Message):
     number = await Orders.get_number()
-    id = str(message.chat.id)
-    document = io.BytesIO()
-    await message.document.download(destination_file=document)
-    # preprocessing
-    data_for_bots = Admin.pre_run_doc(id, document)
 
     await States.ADMIN.set()
     if DEBUG:
@@ -176,15 +192,22 @@ async def inside_handler(message: types.Message):
 @dp.message_handler(state=States.INSIDE, content_types=['text'])
 async def inside_handler(message: types.Message):
     msg = message.text.lower()
+    id = str(message.chat.id)
     if "назад" in msg:
         await States.ADMIN.set()
-        markup = get_markups('admin_main')
+        markup = get_markups('admin_main', Admin.is_admin(id), id)
         await message.answer('Главное меню админки', reply_markup=markup)
 
 
 @dp.message_handler(state=States.ADMIN_ADDRESS_DISTRIBUTION)
 async def address_distribution_handler(message: types.Message):
     msg = message.text
+    id = str(message.chat.id)
+
+    if ('проверить ботов' in msg) or ("inside" in msg) or ("добавить пользователя" in msg) or ("назад" in msg):
+        await States.ADMIN.set()
+        await admin_handler(message)
+        return
 
     bots_data_str = msg.split('\n\n')
 
@@ -204,7 +227,7 @@ async def address_distribution_handler(message: types.Message):
             address.update()
 
     await States.ADMIN.set()
-    markup = get_markups('admin_main')
+    markup = get_markups('admin_main', Admin.is_admin(id), id)
     await message.answer('Все адреса добавлены в ботов', reply_markup=markup)
 
 
