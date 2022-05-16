@@ -68,7 +68,8 @@ class Admin:
 
         for i, bot in enumerate(bots):
             # Admin.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], message)
-            Admin.wait_order_ended(bot, "2022-05-13", reports[i]['articles'], message)
+            loop = asyncio.get_event_loop()
+            loop.create_task(Admin.wait_order_ended(bot, "2022-05-13", reports[i]['articles'], message))
 
     @staticmethod
     def run_bot(bot: Bot, data_for_bot, number):
@@ -170,7 +171,7 @@ class Admin:
         return secret_key
 
     @staticmethod
-    def wait_order_ended(bot: Bot, pred_end_date, articles, message):
+    async def wait_order_ended(bot: Bot, pred_end_date, articles, message):
         async def wait_until(start_datetime, end_datetime):
             # await asyncio.sleep(15)
             time_to_end = (start_datetime, end_datetime).total_seconds()
@@ -184,7 +185,6 @@ class Admin:
         rnd_time = timedelta(hours=random.randint(7, 14), minutes=random.randint(0, 60), seconds=random.randint(0, 60))
         end_datetime = datetime.fromisoformat(pred_end_date) + rnd_time
 
-        loop = asyncio.get_event_loop()
-        loop.create_task(run_at(start_datetime, end_datetime, bot.check_readiness(pred_end_date, articles, message)))
+        await run_at(start_datetime, end_datetime, bot.check_readiness(articles, message))
 
 

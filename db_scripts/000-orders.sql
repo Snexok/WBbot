@@ -9,6 +9,7 @@ create table IF NOT EXISTS orders
 	prices integer[],
 	quantities integer[],
 	articles text[],
+	statuses text[],
 	pup_address text,
 	pup_tg_id text,
 	bot_name text,

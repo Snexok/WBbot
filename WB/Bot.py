@@ -1,4 +1,5 @@
-import datetime
+import random
+from datetime import datetime, date, timedelta
 
 from selenium.webdriver.common.by import By
 from time import sleep
@@ -6,12 +7,17 @@ import json
 
 from selenium.webdriver.support.wait import WebDriverWait
 
+from TG.Admin import Admin
 from TG.Models.Bot import Bots as Bots_model
+from TG.Models.Orders import Order, Orders
 from WB.Pages.Basket import Basket
 from WB.Browser import Browser
 from WB.Pages.Catalog import Catalog
 from WB.Utils import Utils
 
+ARTICLE_LEN = 8
+
+NOT_FOUND, READY, NOT_READY = range(3)
 
 class Bot:
     def __init__(self, name="", data=None, driver=False):
@@ -149,6 +155,21 @@ class Bot:
         else:
             return data
 
+    async def check_readiness(self, articles, message):
+        self.open_delivery()
+        orders = self.get_all_orders()
+        try:
+            i = [all([order_article in articles for order_article in order.articles]) for order in orders].index(True)
+        except:
+            order = Orders.load()
+            await message.answer(order.id + 'Артикулы не найдены')
+        order = orders[i]
+        if all([status == "" for status in order.statuses]):
+            await message.answer(pred_end_date + ' Ваш заказ готов')
+        else:
+            pred_end_date = str(date.today() + timedelta(days=1))
+            await Admin.wait_order_ended(self, pred_end_date, articles, message)
+
     @staticmethod
     def get_end_date(wb_day_month):
         """
@@ -167,10 +188,19 @@ class Bot:
 
         day = int(wb_day_month.split('-')[0])
 
-        year = datetime.datetime.today().year
+        year = datetime.today().year
 
-        return str(datetime.date(year, month, day))
+        return str(date(year, month, day))
 
-    async def check_readiness(self, pred_end_date, articles, message):
-        await message.answer(pred_end_date + ' Ваш заказ готов')
-        print('check_readiness')
+    def get_all_orders(self) -> list:
+        orders = []
+        for order_row in self.driver.find_elements(By.XPATH, ''):
+            order = Order()
+            order.pup_address = order_row.find_element(By.XPATH, '')
+            item_imgs = order_row.find_elements(By.XPATH, '')
+            img_ext_len = len('-1.avif')
+            order.articles = [img_href[-img_ext_len-ARTICLE_LEN:-img_ext_len] for img_href in item_imgs]
+            order.statuses = order_row.find_elements(By.XPATH, '')
+
+            orders += [order]
+        return orders

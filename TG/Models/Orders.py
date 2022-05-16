@@ -1,8 +1,8 @@
 from TG.Models.Model import Model
 
-COLUMNS = ['id', 'number', 'total_price', 'services_price', 'prices', 'quantities', 'articles', 'pup_address',
-           'pup_tg_id', 'bot_name', 'bot_surname', 'start_date', 'pred_end_date', 'end_date', 'code_for_approve',
-           'active']
+COLUMNS = ['id', 'number', 'total_price', 'services_price', 'prices', 'quantities', 'articles', 'statuses',
+           'pup_address', 'pup_tg_id', 'bot_name', 'bot_surname', 'start_date', 'pred_end_date', 'end_date',
+           'code_for_approve', 'active']
 
 
 class Orders(Model):
@@ -20,9 +20,7 @@ class Orders(Model):
     def format_data(data):
         orders = []
         for d in data:
-            order = Order()
-            for i, col in enumerate(COLUMNS):
-                setattr(order, col, d[i])
+            order = Order(*d)
             orders += [order]
 
         if orders:
@@ -46,8 +44,8 @@ class Orders(Model):
 
 class Order(Model):
     def __init__(self, id=1, number=0, total_price=0, services_price=0, prices=[], quantities=[], articles=[],
-                 pup_address='', pup_tg_id='', bot_name='', bot_surname='', start_date='', pred_end_date='',
-                 end_date='', code_for_approve='', active=True):
+                 statuses=[], pup_address='', pup_tg_id='', bot_name='', bot_surname='', start_date='',
+                 pred_end_date='', end_date='', code_for_approve='', active=True):
         super().__init__()
         self.id = id
         self.number = number
@@ -55,6 +53,7 @@ class Order(Model):
         self.services_price = services_price
         self.prices = prices
         self.quantities = quantities
+        self.statuses = statuses
         self.articles = articles
         self.pup_address = pup_address
         self.pup_tg_id = pup_tg_id
