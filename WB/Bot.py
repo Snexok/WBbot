@@ -155,9 +155,11 @@ class Bot:
         else:
             return data
 
-    async def check_readiness(self, articles, message):
+    async def check_readiness(self, articles, address, order_number, message):
         self.open_delivery()
+        order = Orders.load(number=order_number, bot_name=self.data.name, articles=articles, address=address, active=True)
         orders = self.get_all_orders()
+        orders = [order for order in orders if order.pup_address == address]
         try:
             i = [all([order_article in articles for order_article in order.articles]) for order in orders].index(True)
         except:
@@ -168,7 +170,7 @@ class Bot:
             await message.answer(pred_end_date + ' Ваш заказ готов')
         else:
             pred_end_date = str(date.today() + timedelta(days=1))
-            await Admin.wait_order_ended(self, pred_end_date, articles, message)
+            await Admin.wait_order_ended(self, pred_end_date, articles, address, message)
 
     @staticmethod
     def get_end_date(wb_day_month):
@@ -194,13 +196,15 @@ class Bot:
 
     def get_all_orders(self) -> list:
         orders = []
-        for order_row in self.driver.find_elements(By.XPATH, ''):
+        for order_row in self.driver.find_elements(By.XPATH, '//div[@class="delivery-block__content"]'):
             order = Order()
-            order.pup_address = order_row.find_element(By.XPATH, '')
-            item_imgs = order_row.find_elements(By.XPATH, '')
+            order.pup_address = order_row.find_element(By.XPATH, './div/div/div[contains(@class, "delivery-address__info")]')
+            item_imgs = order_row.find_elements(By.XPATH, './div/ul/li/div/div/img')
             img_ext_len = len('-1.avif')
-            order.articles = [img_href[-img_ext_len-ARTICLE_LEN:-img_ext_len] for img_href in item_imgs]
-            order.statuses = order_row.find_elements(By.XPATH, '')
+            order.articles = [img.get_attribute('src')[-img_ext_len-ARTICLE_LEN:-img_ext_len] for img in item_imgs]
+            statuses = order_row.find_elements(By.XPATH, './div/ul/li/div/div/div[@class="goods-list-delivery__price-status"]')
+            order.statuses = [status.text for status in statuses] # Отсортирован в сортировочном центре, Ожидается 19-21 мая, Готов к выдаче, В пути на пункт выдачи
+            order.code_for_approve = order_row.find_element(By.XPATH, "./div/div/div[contains(@class,'delivery-code__value')]").text
 
             orders += [order]
         return orders
