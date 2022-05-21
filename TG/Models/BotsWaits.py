@@ -17,14 +17,14 @@ class BotsWait(Model):
             records = cursor.fetchall()
             return records
         if bot_name:
-            path = "SELECT * FROM bots_wait WHERE bot_name='" + bot_name + "'"
+            path = f"SELECT * FROM bots_wait WHERE bot_name='{bot_name}'"
 
         return cls.format_data(cls.execute(path, callback))
 
     @classmethod
     def insert(cls, bot_name, event, start_datetime, end_datetime):
         path = "INSERT INTO bots_wait (id, bot_name, event, start_datetime, end_datetime) VALUES "
-        path += "((SELECT MAX(id)+1 FROM bots_wait), " + bot_name + ", '" + event + "', '" + start_datetime + "', '" + end_datetime + "')"
+        path += f"((SELECT MAX(id)+1 FROM bots_wait), {bot_name}, '{event}', '{start_datetime}', '{end_datetime}')"
         print(path)
         cls.execute(path)
 

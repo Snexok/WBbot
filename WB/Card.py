@@ -6,8 +6,7 @@ import random
 SPEED = 0.1
 
 class Card():
-    card_button = lambda self, articul: self.driver.find_element(By.XPATH,
-                                                                 '//div[@id="' + articul + '"]/div/a/div/button')
+    card_button = lambda self, articul: self.driver.find_element(By.XPATH, f'//div[@id="{articul}"]/div/a/div/button')
     basket_btn = lambda self: self.driver.find_element(By.XPATH, '//span[contains(text(), "Добавить в корзину")]/..')
     page_back = lambda self: self.driver.back()
 
@@ -16,7 +15,7 @@ class Card():
 
     def add_card(self, articul, target=False):
         # vars
-        img = self.driver.find_element(By.XPATH, '//div[@id="' + articul + '"]/div/a/div/div/img')
+        img = self.driver.find_element(By.XPATH, f'//div[@id="{articul}"]/div/a/div/div/img')
         hover = ActionChains(self.driver)
 
         # resolve

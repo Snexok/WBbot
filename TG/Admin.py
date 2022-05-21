@@ -4,6 +4,7 @@ import io
 
 
 from TG.Models.Addresses import Addresses
+from TG.Models.Admin import Admins as Admins_model
 from TG.Models.Bot import Bots as Bots_model
 from TG.Models.Orders import Order
 
@@ -14,13 +15,11 @@ import pandas as pd
 
 USLUGI_PRICE = 150
 
-ADMIN_IDS = ['794329884', '653703299', '535533975', '791436094']
-
 
 class Admin:
     @staticmethod
     def is_admin(id):
-        if id in ADMIN_IDS:
+        if id in Admins_model.get_ids():
             return True
         else:
             return False
@@ -40,11 +39,7 @@ class Admin:
 
         tg_bots_data = Bots_model.load(limit=len(data_for_bots))
 
-        if type(tg_bots_data) is list:
-            bots = [Bot(data=tg_bot_data) for tg_bot_data in tg_bots_data]
-        else:
-            tg_bot_data = tg_bots_data
-            bots = [Bot(data=tg_bot_data)]
+        bots = [Bot(data=tg_bot_data) for tg_bot_data in tg_bots_data]
 
         # main process
         run_bots = [asyncio.to_thread(Admin.run_bot, bot, data_for_bots[i], number) for i, bot in enumerate(bots)]
@@ -139,17 +134,17 @@ class Admin:
         bots_name = [tg_bots[i].name for i in range(len(tg_bots))]
         if all_not_added_addresses:
             if len(all_not_added_addresses) > 0:
-                res_message = 'Список не распределённых адресов:\n\n' \
-                              + Admin.join_to_lines([address.address for address in all_not_added_addresses]) \
-                              + '\nСписок БОТОВ:\n\n' \
-                              + Admin.join_to_lines(bots_name) \
-                              + '\nНапишите название бота и адреса для него в формате:\n\n' \
-                              + '<Имя Первого бота>\n' \
-                              + '<1 адрес>\n' \
-                              + '<2 адрес>\n\n' \
-                              + '<Имя Второго бота>\n' \
-                              + '<1 адрес>\n' \
-                              + '<2 адрес>\n\n'
+                res_message = 'Список не распределённых адресов:\n\n' +\
+                               Admin.join_to_lines([address.address for address in all_not_added_addresses]) +\
+                               '\nСписок БОТОВ:\n\n' +\
+                               Admin.join_to_lines(bots_name) +\
+                               '\nНапишите название бота и адреса для него в формате:\n\n' +\
+                               '<Имя Первого бота>\n' +\
+                               '<1 адрес>\n' +\
+                               '<2 адрес>\n\n' +\
+                               '<Имя Второго бота>\n' +\
+                               '<1 адрес>\n' +\
+                               '<2 адрес>'
                 state = 'ADMIN_ADDRESS_DISTRIBUTION'
             else:
                 res_message = "Все адреса распределены"
@@ -184,6 +179,6 @@ class Admin:
         rnd_time = timedelta(hours=random.randint(7, 14), minutes=random.randint(0, 60), seconds=random.randint(0, 60))
         end_datetime = datetime.fromisoformat(pred_end_date) + rnd_time
 
-        await run_wait(start_datetime, end_datetime, bot.check_readiness(articles, address, order_number, message))
+        await run_wait(start_datetime, end_datetime, bot. check_readiness(articles, address, order_number, message, Admin.wait_order_ended))
 
 

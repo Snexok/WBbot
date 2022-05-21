@@ -13,13 +13,12 @@ from aiogram import Bot, Dispatcher, executor, types
 from TG.Admin import Admin
 from TG.Markups import get_markups
 from TG.Models.Addresses import Addresses, Address
-from TG.Models.Orders import Orders, Order
+from TG.Models.Orders import Orders
 from TG.Models.Users import Users, User
 from TG.Models.Bot import Bots as Bots_model
 from TG.Models.Whitelist import Whitelist
 from TG.Models.Admin import Admin as Admin_model
 
-from WB.Bot import Bot as WB_Bot
 from configs import config
 from TG.CONSTS import PUP_STATES
 
@@ -82,7 +81,7 @@ async def set_admin(message: types.Message):
     if Admin.is_admin(id):
         await States.ADMIN.set()
         markup = get_markups('admin_main', Admin.is_admin(id), id)
-        await message.answer('Добро пожаловать, Лорд ' + message.chat.full_name, reply_markup=markup)
+        await message.answer(f'Добро пожаловать, Лорд {message.chat.full_name}', reply_markup=markup)
 
 
 @dp.message_handler(state=States.MAIN)
@@ -172,7 +171,7 @@ async def to_whitelist_handler(message: types.Message):
 
         await States.ADMIN.set()
         markup = get_markups('admin_main', Admin.is_admin(id), id)
-        await message.answer("Пользователь с username " + msg + " добавлен", reply_markup=markup)
+        await message.answer(f"Пользователь с username {msg} добавлен", reply_markup=markup)
 
 
 @dp.message_handler(state=States.INSIDE, content_types=['document'])
@@ -187,7 +186,7 @@ async def inside_handler(message: types.Message):
             await Admin.inside(message, number)
         except:
             admin = Admin_model().get_sentry_admin()
-            await bot.send_message(admin.id, "Упал заказ номер " + str(number))
+            await bot.send_message(admin.id, f"Упал заказ номер {str(number)}")
 
 @dp.message_handler(state=States.INSIDE, content_types=['text'])
 async def inside_handler(message: types.Message):
@@ -263,7 +262,7 @@ async def pup_handler(message: types.Message):
 
         markup = get_markups('pup_addresses')
         await message.answer(
-            'Это все адреса?\n\n' + addresses_to_print + '\nЕсли есть еще адреса напишите их?\n\nЕсли это все адреса, просто напишите "Всё"',
+            f'Это все адреса?\n\n{addresses_to_print}\nЕсли есть еще адреса напишите их?\n\nЕсли это все адреса, просто напишите "Всё"',
             reply_markup=markup)
 
     user.set(pup_state=pup_state)

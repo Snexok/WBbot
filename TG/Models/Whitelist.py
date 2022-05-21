@@ -26,7 +26,7 @@ class Whitelist(Model):
             return records
 
         path = "SELECT * FROM whitelist "
-        path += "WHERE tg_id='" + tg_id + "' LIMIT 1"
+        path += f"WHERE tg_id='{tg_id}' LIMIT 1"
 
         whitelist = cls.execute(path, callback)
 
@@ -38,7 +38,7 @@ class Whitelist(Model):
     @classmethod
     def insert(cls, username='', secret_key=''):
         path = "INSERT INTO whitelist (id, tg_id, username, secret_key) VALUES "
-        path += "((SELECT MAX(id)+1 FROM whitelist), '', '" + username + "', '" + secret_key + "')"
+        path += f"((SELECT MAX(id)+1 FROM whitelist), '', '{username}', '{secret_key}')"
         cls.execute(path)
 
     @classmethod
@@ -55,13 +55,13 @@ class Whitelist(Model):
             return cursor.rowcount
 
         path = "UPDATE whitelist SET "
-        path += "tg_id='" + tg_id + "' "
+        path += f"tg_id='{tg_id}' "
         if username:
             path += ", username='' "
-            path += "WHERE username='" + username + "'"
+            path += f"WHERE username='{username}'"
         elif secret_key:
             path += ", secret_key='' "
-            path += "WHERE secret_key='" + secret_key + "'"
+            path += f"WHERE secret_key='{secret_key}'"
         res = cls.execute(path, callback)
 
         return res

@@ -9,7 +9,7 @@ class Users(Model):
             records = cursor.fetchall()
             return records
         if id:
-            path = "SELECT * FROM users WHERE id='" + id + "'"
+            path = f"SELECT * FROM users WHERE id='{id}'"
         elif username:
             pass
 
@@ -18,8 +18,7 @@ class Users(Model):
     @classmethod
     def insert(cls, user):
         path = "INSERT INTO users (id, pup_state, name, addresses, username) VALUES "
-        path += "('" + str(user.id) + "', " + str(user.pup_state) + ", '" + user.name + "', ARRAY" + str(
-            user.addresses) + "::text[], '"+str(user.username)+"')"
+        path += f"('{str(user.id)}', {str(user.pup_state)}, '{user.name}', ARRAY{str(user.addresses)}::text[], '{str(user.username)}')"
         User.execute(path)
 
     @classmethod
@@ -55,8 +54,8 @@ class User(Model):
     def update(self):
         if self.changed:
             path = "UPDATE users SET "
-            path += "addresses= ARRAY" + str(self.addresses) + "::text[], "
-            path += "name= '" + str(self.name) + "', "
-            path += "pup_state= " + str(self.pup_state) + " "
-            path += "WHERE id='" + str(self.id) + "'"
+            path += f"addresses= ARRAY{str(self.addresses)}::text[], "
+            path += f"name= '{str(self.name)}', "
+            path += f"pup_state= {str(self.pup_state)} "
+            path += f"WHERE id='{str(self.id)}'"
             User.execute(path)

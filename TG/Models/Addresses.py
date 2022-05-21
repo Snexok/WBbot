@@ -20,17 +20,18 @@ class Address(Model):
         is_where = False
         if tg_id:
             path += "WHERE " if not is_where else ""
-            path += "tg_id='" + tg_id + "'"
+            path += f"tg_id='{tg_id}'"
         if address:
             path += "WHERE " if not is_where else ""
-            path += "address='" + address + "'"
+            path += f"address='{address}'"
         return self.format_data(self.execute(path, callback))
 
     def update(self):
         if self.changed:
             path = "UPDATE addresses SET "
-            path += "added_to_bot=" + ("TRUE" if self.added_to_bot else "FALSE") + " "
-            path += "WHERE address='" + self.address + "'"
+            added_to_bot = "TRUE" if self.added_to_bot else "FALSE"
+            path += f"added_to_bot={added_to_bot}"
+            path += f"WHERE address='{self.address}'"
             Address.execute(path)
 
     def format_data(self, data):
@@ -54,16 +55,16 @@ class Addresses(Model):
         is_where = False
         if tg_id:
             path += "WHERE " if not is_where else ""
-            path += "tg_id='" + tg_id + "'"
+            path += f"tg_id='{tg_id}'"
         if address:
             path += "WHERE " if not is_where else ""
-            path += "address='" + address + "'"
+            path += f"address='{address}'"
         return cls.format_data(cls.execute(path, callback))
 
     @classmethod
     def insert(cls, address: Address):
         path = "INSERT INTO addresses (id, address, tg_id, added_to_bot) VALUES "
-        path += "((SELECT MAX(id)+1 FROM addresses), '" + address.address + "', '" + address.tg_id + "', FALSE)"
+        path += f"((SELECT MAX(id)+1 FROM addresses), '{address.address}', '{address.tg_id}', FALSE)"
         cls.execute(path)
 
     @classmethod

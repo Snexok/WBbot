@@ -15,15 +15,16 @@ class Orders(Model):
 
         path = "SELECT * FROM orders WHERE "
         if number:
-            path += "number = " + str(number) + ", "
+            path += f"number = {str(number)}, "
         if bot_name:
-            path += "bot_name = '" + str(bot_name) + "', "
+            path += f"bot_name = '{str(bot_name)}', "
         if articles:
-            path += "articles = ARRAY" + str(articles) + "::text[], "
+            path += f"articles = ARRAY{str(articles)}::text[], "
         if address:
-            path += "address = '" + str(address) + "', "
+            path += f"address = '{str(address)}', "
         if active:
-            path += "active = " + ("TRUE" if active else "FALSE") + ", "
+            active = "TRUE" if active else "FALSE"
+            path += f"active = {active}, "
 
         path = path[:-2]
 
@@ -99,16 +100,17 @@ class Order(Model):
             v = getattr(self, k)
             if v:
                 if type(v) is int:
-                    path += str(v) + ", "
+                    path += f"{str(v)}, "
                 elif type(v) is str:
-                    path += "'" + str(v) + "', "
+                    path += f"'{str(v)}', "
                 elif type(v) is bool:
-                    path += ("TRUE" if v else "FALSE") + ", "
+                    v = "TRUE" if v else "FALSE"
+                    path += f"{v}, "
                 elif type(v) is list:
                     if type(v[0]) is str:
-                        path += "ARRAY" + str(v) + "::text[], "
+                        path += f"ARRAY{str(v)}::text[], "
                     elif type(v[0]) is int:
-                        path += "ARRAY" + str(v) + "::integer[], "
+                        path += f"ARRAY{str(v)}::integer[], "
         path = path[:-2]
         path += ")"
         print(path)
@@ -117,6 +119,6 @@ class Order(Model):
     def update(self):
         if self.changed:
             path = "UPDATE orders SET "
-            path += "addresses= ARRAY" + str(self.addresses) + "::text[] "
-            path += "WHERE name='" + str(self.name) + "'"
+            path += f"addresses= ARRAY{str(self.addresses)}::text[] "
+            path += f"WHERE name='{str(self.name)}'"
             Order.execute(path)
