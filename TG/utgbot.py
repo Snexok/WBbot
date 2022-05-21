@@ -12,6 +12,7 @@ from aiogram import Bot, Dispatcher, executor, types
 
 from TG.Admin import Admin
 from TG.Markups import get_markups
+from TG.Models.BotsWaits import BotsWait
 from TG.Models.Addresses import Addresses, Address
 from TG.Models.Orders import Orders
 from TG.Models.Users import Users, User
@@ -122,7 +123,7 @@ async def admin_handler(message: types.Message):
         res_message, state = Admin.check_not_added_pup_addresses()
         await message.answer(res_message)
         await getattr(States, state).set()
-    elif "inside" in msg:
+    elif "cделать выкуп" in msg:
         await message.answer('Я тебя понял, понял, кидай заказ')
         await States.INSIDE.set()
     elif "добавить пользователя" in msg:
@@ -140,6 +141,13 @@ async def admin_handler(message: types.Message):
             bots_name = [tg_bots[i].name for i in range(len(tg_bots))]
             markup = get_markups('admin_bots', Admin.is_admin(id), bots_name)
             await message.answer('Выберите бота', reply_markup=markup)
+    elif "Проверить ожидаемое" in msg:
+        await States.CHECK_ORDERS.set()
+        bots_wait = BotsWait.load(event='delivery')
+        bots_name = [bots_wait[i].bot_name for i in range(len(bots_wait))]
+        markup = get_markups('admin_bots', Admin.is_admin(id), bots_name)
+        await message.answer('Выберите бота', reply_markup=markup)
+
 
 @dp.message_handler(state=States.RUN_BOT)
 async def run_bot_handler(message: types.Message):
@@ -203,7 +211,7 @@ async def address_distribution_handler(message: types.Message):
     msg = message.text
     id = str(message.chat.id)
 
-    if ('проверить ботов' in msg) or ("inside" in msg) or ("добавить пользователя" in msg) or ("назад" in msg):
+    if ('проверить ботов' in msg) or ("cделать выкуп" in msg) or ("добавить пользователя" in msg) or ("назад" in msg):
         await States.ADMIN.set()
         await admin_handler(message)
         return

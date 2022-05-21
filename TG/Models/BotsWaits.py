@@ -12,12 +12,17 @@ class BotsWait(Model):
 
 
     @classmethod
-    def load(cls, bot_name=None):
+    def load(cls, bot_name=None, event=None):
         def callback(cursor):
             records = cursor.fetchall()
             return records
+        path = "SELECT * FROM bots_wait WHERE"
         if bot_name:
-            path = f"SELECT * FROM bots_wait WHERE bot_name='{bot_name}'"
+            path += f" bot_name='{bot_name}', "
+        elif event:
+            path += f" event='{event}', "
+
+        path = path[:-2]
 
         return cls.format_data(cls.execute(path, callback))
 

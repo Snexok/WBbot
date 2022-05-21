@@ -9,12 +9,13 @@ def get_markups(markup_name, is_admin=False, *args):
         return markup
     elif 'admin_main' == markup_name:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
-        markup.add("Проверить ботов")
-        markup.add("inside")
+        markup.add("Добавить пользователя")
+        markup.add("Сделать выкуп")
         if args[0]:
             if args[0] == '794329884':
                 markup.add("Открыть бота")
-        markup.add("Добавить пользователя")
+                markup.add("Проверить ожидаемое")
+        markup.add("Проверить ботов")
         markup.add("Назад")
 
         return markup

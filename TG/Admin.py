@@ -30,19 +30,19 @@ class Admin:
         print(bot.data.name)
         await asyncio.gather(asyncio.to_thread(bot.open_bot))
 
-    @staticmethod
-    async def inside(message, number):
+    @classmethod
+    async def inside(cls, message, number):
         document = io.BytesIO()
         await message.document.download(destination_file=document)
         # preprocessing
-        data_for_bots = Admin.pre_run_doc(document)
+        data_for_bots = cls.pre_run_doc(document)
 
         tg_bots_data = Bots_model.load(limit=len(data_for_bots))
 
         bots = [Bot(data=tg_bot_data) for tg_bot_data in tg_bots_data]
 
         # main process
-        run_bots = [asyncio.to_thread(Admin.run_bot, bot, data_for_bots[i], number) for i, bot in enumerate(bots)]
+        run_bots = [asyncio.to_thread(cls.run_bot, bot, data_for_bots[i], number) for i, bot in enumerate(bots)]
         reports = await asyncio.gather(*run_bots)
 
         for report in reports:
@@ -62,12 +62,12 @@ class Admin:
 
 
         for i, bot in enumerate(bots):
-            # Admin.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], message)
+            # cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], message)
             loop = asyncio.get_event_loop()
             print(reports[i]['post_place'])
             pup_address = Addresses.load(address=reports[i]['post_place'])[0]
             print(pup_address.address)
-            loop.create_task(Admin.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], pup_address.address, message))
+            loop.create_task(cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], pup_address.address, message))
 
     @staticmethod
     def run_bot(bot: Bot, data_for_bot, number):
@@ -87,12 +87,12 @@ class Admin:
 
         return report
 
-    @staticmethod
-    def pre_run_doc(document):
+    @classmethod
+    def pre_run_doc(cls, document):
         df = pd.read_excel(document)
         orders = [row.tolist() for i, row in df.iterrows()]
 
-        additional_data = Admin.get_additional_data(orders)
+        additional_data = cls.get_additional_data(orders)
         for i, a_data in enumerate(additional_data):
             orders[i] += [a_data]
 
@@ -121,8 +121,8 @@ class Admin:
 
         return additional_data
 
-    @staticmethod
-    def check_not_added_pup_addresses():
+    @classmethod
+    def check_not_added_pup_addresses(cls):
         """
         Проверяет наличие адресов ПВЗ, не распределённых по ботам
 
@@ -135,9 +135,9 @@ class Admin:
         if all_not_added_addresses:
             if len(all_not_added_addresses) > 0:
                 res_message = 'Список не распределённых адресов:\n\n' +\
-                               Admin.join_to_lines([address.address for address in all_not_added_addresses]) +\
+                               cls.join_to_lines([address.address for address in all_not_added_addresses]) +\
                                '\nСписок БОТОВ:\n\n' +\
-                               Admin.join_to_lines(bots_name) +\
+                               cls.join_to_lines(bots_name) +\
                                '\nНапишите название бота и адреса для него в формате:\n\n' +\
                                '<Имя Первого бота>\n' +\
                                '<1 адрес>\n' +\
@@ -168,17 +168,15 @@ class Admin:
 
         return secret_key
 
-    @staticmethod
-    async def wait_order_ended(bot: Bot, pred_end_date, articles, address, order_number, message):
-        async def run_wait(end_datetime, start_datetime, coro):
-            time_to_end = (end_datetime - start_datetime).total_seconds()
-            await asyncio.sleep(time_to_end)
-            return await coro
-
+    @classmethod
+    async def wait_order_ended(cls, bot: Bot, pred_end_date, articles, address, order_number, message):
         start_datetime = datetime.now()
         rnd_time = timedelta(hours=random.randint(7, 14), minutes=random.randint(0, 60), seconds=random.randint(0, 60))
         end_datetime = datetime.fromisoformat(pred_end_date) + rnd_time
 
-        await run_wait(start_datetime, end_datetime, bot. check_readiness(articles, address, order_number, message, Admin.wait_order_ended))
+        time_to_end = (end_datetime - start_datetime).total_seconds()
+        await asyncio.sleep(time_to_end)
+
+        await bot.check_readiness(articles, address, order_number, message, cls.wait_order_ended)
 
 

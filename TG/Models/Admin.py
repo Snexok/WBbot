@@ -1,7 +1,7 @@
 from TG.Models.Model import Model
 
 class Admin(Model):
-    def __init__(self, id, name, sentry=False):
+    def __init__(self, id=0, name='', sentry=False):
         self.id = id
         self.name = name
         self.sentry = sentry
