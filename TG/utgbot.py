@@ -43,6 +43,7 @@ class States(StatesGroup):
     TO_WL = State()
     REGISTER = State()
     RUN_BOT = State()
+    CHECK_WAITS = State()
 
 
 @dp.message_handler(commands=['start'])
@@ -142,7 +143,7 @@ async def admin_handler(message: types.Message):
             markup = get_markups('admin_bots', Admin.is_admin(id), bots_name)
             await message.answer('Выберите бота', reply_markup=markup)
     elif "Проверить ожидаемое" in msg:
-        await States.CHECK_ORDERS.set()
+        await States.CHECK_WAITS.set()
         bots_wait = BotsWait.load(event='delivery')
         bots_name = [bots_wait[i].bot_name for i in range(len(bots_wait))]
         markup = get_markups('admin_bots', Admin.is_admin(id), bots_name)
@@ -156,6 +157,15 @@ async def run_bot_handler(message: types.Message):
     markup = get_markups('admin_main', Admin.is_admin(id), id)
     await message.answer(msg+" открыт", reply_markup=markup)
     await Admin.open_bot(bot_name=msg)
+
+
+@dp.message_handler(state=States.CHECK_WAITS)
+async def check_waits_handler(message: types.Message):
+    msg = message.text
+    await States.ADMIN.set()
+    markup = get_markups('admin_main', Admin.is_admin(id), id)
+    await message.answer(msg+" открыт", reply_markup=markup)
+    await Admin.check_order(msg, message)
 
 
 @dp.message_handler(state=States.TO_WL)

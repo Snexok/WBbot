@@ -40,16 +40,17 @@ class Bot:
         elif name:
             self.data = Bots_model.load(name=name)
 
-    def open_bot(self):
+    def open_bot(self, manual=True):
         self.driver.maximize_window()
         self.browser.open_site('https://www.wildberries.ru')
         self.browser.load(f'./bots_sessions/{self.data.name}')
         self.browser.open_site('https://www.wildberries.ru')
-        try:
-            while self.browser.driver.current_url:
-                sleep(60)
-        except:
-            pass
+        if manual:
+            try:
+                while self.browser.driver.current_url:
+                    sleep(60)
+            except:
+                pass
 
     def buy(self, data, post_place, order_id):
         self.driver.maximize_window()

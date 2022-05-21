@@ -6,7 +6,7 @@ import io
 from TG.Models.Addresses import Addresses
 from TG.Models.Admin import Admins as Admins_model
 from TG.Models.Bot import Bots as Bots_model
-from TG.Models.Orders import Order
+from TG.Models.Orders import Order as Order_Model, Orders as Orders_Model
 
 from WB.Bot import Bot
 
@@ -52,7 +52,7 @@ class Admin:
         for report in reports:
             print(report['pred_end_date'])
             pup_address = Addresses.load(address=report['post_place'])[0]
-            order = Order(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
+            order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
                           quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
                           pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
                           start_date=start_date, pred_end_date=report['pred_end_date'], active=True)
@@ -179,4 +179,18 @@ class Admin:
 
         await bot.check_readiness(articles, address, order_number, message, cls.wait_order_ended)
 
+    @classmethod
+    async def check_order(cls, bot_name, message):
+        bot = Bot(name=bot_name)
+        orders = Orders_Model.load(bot_name=bot_name, active=True)
+        # print(bot.data.name)
+        # async def check_order(bot):
+        #     bot.open_bot(manual=False)
+        #     bot.open_delivery()
+        bot.open_bot(manual=False)
+        order = orders[0]
+        await bot.check_readiness(order.articles, order.pup_address, order.number, message, cls.wait_order_ended)
+        # for order in orders:
+        #     await bot.check_readiness(order.articles, order.pup_address, order.number, message, cls.wait_order_ended)
+        # await asyncio.gather(asyncio.to_thread(check_order(bot)))
 
