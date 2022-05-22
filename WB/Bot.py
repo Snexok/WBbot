@@ -1,16 +1,31 @@
-import datetime
+import asyncio
+import random
+from datetime import datetime, date, timedelta
 
+from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from time import sleep
 import json
 
 from selenium.webdriver.support.wait import WebDriverWait
 
+from aiogram import Bot as TG_Bot
+
 from TG.Models.Bot import Bots as Bots_model
+from TG.Models.Admin import Admin as Admin_model
+from TG.Models.Orders import Order, Orders
 from WB.Pages.Basket import Basket
 from WB.Browser import Browser
 from WB.Pages.Catalog import Catalog
 from WB.Utils import Utils
+from configs import config
+
+
+API_TOKEN = config['tokens']['telegram']
+
+ARTICLE_LEN = 8
+
+NOT_FOUND, READY, NOT_READY = range(3)
 
 
 class Bot:
@@ -23,21 +38,24 @@ class Bot:
         if data:
             self.data = data
         elif name:
-            self.data = Bots_model.load(name)
+            self.data = Bots_model.load(name=name)
 
-    def open_bot(self):
+    def open_bot(self, manual=True):
         self.driver.maximize_window()
         self.browser.open_site('https://www.wildberries.ru')
-        self.browser.load('./bots_sessions/' + self.data.name)
+        self.browser.load(f'./bots_sessions/{self.data.name}')
         self.browser.open_site('https://www.wildberries.ru')
-        while self.browser.driver.current_url:
-            sleep(60)
-
+        if manual:
+            try:
+                while self.browser.driver.current_url:
+                    sleep(60)
+            except:
+                pass
 
     def buy(self, data, post_place, order_id):
         self.driver.maximize_window()
         self.browser.open_site('https://www.wildberries.ru')
-        self.browser.load('./bots_sessions/' + self.data.name)
+        self.browser.load(f'./bots_sessions/{self.data.name}')
         self.browser.open_site('https://www.wildberries.ru')
 
         report = {}
@@ -86,10 +104,11 @@ class Bot:
     def get_data_cart(self, article, SAVE=False):
         self.driver.get("https://www.wildberries.ru/")
         sleep(2)
-        self.driver.get("https://www.wildberries.ru/catalog/" + str(article) + "/detail.aspx?targetUrl=MI")
+        self.driver.get(f"https://www.wildberries.ru/catalog/{str(article)}/detail.aspx?targetUrl=MI")
         data = {}
 
-        names = WebDriverWait(self.driver, 60).until(lambda d: d.find_elements(By.XPATH, '//h1[@class="same-part-kt__header"]/span'))
+        names = WebDriverWait(self.driver, 60).until(
+            lambda d: d.find_elements(By.XPATH, '//h1[@class="same-part-kt__header"]/span'))
         brand = names[0].text
         name = names[1].text
 
@@ -105,18 +124,15 @@ class Bot:
         data['price'] = int(price)
 
         try:
-            self.driver.find_element(By.XPATH,
-                                     '//button[contains(@class, "collapsible__toggle") and text()="Развернуть описание"]').click()
+            self.driver.find_element(By.XPATH, '//button[contains(@class, "collapsible__toggle") and text()="Развернуть описание"]').click()
         except:
             pass
         try:
-            self.driver.find_element(By.XPATH,
-                                     '//button[contains(@class, "collapsible__toggle") and text()="Развернуть характеристики"]').click()
+            self.driver.find_element(By.XPATH, '//button[contains(@class, "collapsible__toggle") and text()="Развернуть характеристики"]').click()
         except:
             pass
         try:
-            descriptions = self.driver.find_elements(By.XPATH,
-                                                     '//h2[contains(@class, "section-header") and text()="Описание"]/../../div')
+            descriptions = self.driver.find_elements(By.XPATH, '//h2[contains(@class, "section-header") and text()="Описание"]/../../div')
 
             description = descriptions[1].text
             data['description'] = description
@@ -136,18 +152,69 @@ class Bot:
         except:
             pass
         try:
-            composition = self.driver.find_element(By.XPATH,
-                                                   '//h2[contains(@class, "section-header") and text()="Состав"]/../div/div').text
+            composition = self.driver.find_element(By.XPATH, '//h2[contains(@class, "section-header") and text()="Состав"]/../div/div').text
             if composition:
                 data['composition'] = composition
         except:
             pass
 
         if SAVE:
-            with open('card_data/' + article + '.json', 'w', encoding='utf-8') as f:
+            with open('card_data/{article}.json', 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False)
         else:
             return data
+
+    async def check_readiness(self, articles, address, order_number, message, wait_order_ended):
+        sleep(1)
+        self.open_delivery()
+        order = Orders.load(number=order_number, bot_name=self.data.name, articles=articles, pup_address=address,
+                            active=True)[0]
+        orders = self.get_all_orders()
+        print('0', [order.pup_address for order in orders], address)
+        print('1', orders)
+        orders = [order for order in orders if order.pup_address == address]
+        print('2', orders)
+        try:
+            print('3',[[order_article in articles for order_article in order.articles] for order in orders])
+            i = [all([order_article in articles for order_article in order.articles]) for order in orders].index(True)
+        except:
+            await message.answer(f'{order.id} Артикулы {str(order.articles)} не найдены')
+            return
+        _order = orders[i]
+
+        order.set(statuses=_order.statuses)
+        order.set(code_for_approve=_order.code_for_approve)
+
+        if all([status == "Готов к выдаче" for status in order.statuses]):
+            msg_pup = 'Заказ готов\n' +\
+                      f'Код: {order.code_for_approve}\n' +\
+                      f'Фио: {order.bot_surname}'
+            msg_admin = msg_pup+ '\n' +\
+                        f'Номер заказа: {order.number}\n' +\
+                        f'Id заказа: {order.id}\n' +\
+                        f'Адрес: {order.pup_address}'
+
+            order.set(end_date=date.today())
+            order.set(active=False)
+            print('order 1 ', order)
+            print('ACtive - Flase')
+
+            bot = TG_Bot(token=API_TOKEN)
+
+            admin = Admin_model().get_sentry_admin()
+            await bot.send_message(admin.id, msg_admin)
+            # await bot.send_message(order.pup_tg_id, msg_pup)
+        else:
+            pred_end_date = ''
+            for status in order.statuses:
+                if 'Ожидается' in status:
+                    pred_end_date = Bot.get_end_date(status[len('Ожидается ')+1:])
+            if not pred_end_date:
+                pred_end_date = str(date.today() + timedelta(days=1))
+            print(pred_end_date)
+            await wait_order_ended(self, pred_end_date, articles, address, message)
+        print('order 2 ', order)
+        order.update()
 
     @staticmethod
     def get_end_date(wb_day_month):
@@ -167,10 +234,34 @@ class Bot:
 
         day = int(wb_day_month.split('-')[0])
 
-        year = datetime.datetime.today().year
+        year = datetime.today().year
 
-        return str(datetime.date(year, month, day))
+        return str(date(year, month, day))
 
-    async def check_readiness(self, pred_end_date, articles, message):
-        await message.answer(pred_end_date + ' Ваш заказ готов')
-        print('check_readiness')
+    def get_all_orders(self) -> list:
+        orders = []
+        sleep(2)
+        for order_row in self.driver.find_elements(By.XPATH, '//div[@class="delivery-block__content"]'):
+            order = Order()
+            order.pup_address = order_row.find_element(By.XPATH,
+                                                       './div/div/div[contains(@class, "delivery-address__info")]').text
+            item_imgs = order_row.find_elements(By.XPATH, './div/ul/li/div/div/img')
+            img_ext_len = len('-1.avif')
+            order.articles = [img.get_attribute('src')[-img_ext_len - ARTICLE_LEN:-img_ext_len] for img in item_imgs]
+            statuses = order_row.find_elements(By.XPATH,
+                                               './div/ul/li/div/div/div[@class="goods-list-delivery__price-status"]')
+            order.statuses = [status.text for status in
+                              statuses]  # Ожидается 19-21 мая, Отсортирован в сортировочном центре, В пути на пункт выдачи, Готов к выдаче
+            order.code_for_approve = order_row.find_element(By.XPATH,
+                                                            "./div/div/div[contains(@class,'delivery-code__value')]").text
+
+            orders += [order]
+        return orders
+
+    def open_delivery(self):
+        hover = ActionChains(self.driver)
+
+        profile_btn = self.driver.find_element(By.XPATH, "//span[contains(@class,'navbar-pc__icon--profile')]")
+        hover.move_to_element(profile_btn).perform()
+        delivery_btn = self.driver.find_element(By.XPATH, "//span[text()='Доставки']/../../a[contains(@class,'profile-menu__link')]")
+        delivery_btn.click()

@@ -6,35 +6,32 @@ from TG.Models.Model import Model
 
 class Bots(Model):
 
-    @staticmethod
-    def load(name=None, limit=None):
+    @classmethod
+    def load(cls, name=None, limit=None):
         def callback(cursor):
             records = cursor.fetchall()
             return records
 
         path = "SELECT * FROM bots "
         if name:
-            path += "WHERE name='" + name + "' "
+            path += f"WHERE name='{name}' "
         if limit:
-            path += "LIMIT " + str(limit)
-        data = Bots.execute(path, callback)
-        return Bots.format_data(data)
+            path += f"LIMIT {str(limit)}"
+        data = cls.execute(path, callback)
+        data = cls.format_data(data)
+        if name:
+            return data[0]
+        return data
 
-    @staticmethod
-    def format_data(data):
+    @classmethod
+    def format_data(cls, data):
         bots = []
         for d in data:
-            bot = Bot()
-            bot.id = d[0]
-            bot.name = d[1]
-            bot.addresses = [address.replace(';', ',') for address in d[2]]
-            bot.number = d[3]
-            bot.surname = d[4]
+            bot = Bot(*d)
+            bot.addresses = [address.replace(';', ',') for address in bot.addresses]
             bots += [bot]
 
         if bots:
-            if len(bots) == 1:
-                return bots[0]
             return bots
         else:
             return False
@@ -51,7 +48,7 @@ class Bot(Model):
 
     def insert(self, data):
         path = "INSERT INTO bots (id, name, addresses) VALUES "
-        path += "((SELECT MAX(id)+1 FROM addresses), '" + data.name + "', ARRAY" + str(data.addresses) + ")"
+        path += f"((SELECT MAX(id)+1 FROM addresses), '{data.name}', ARRAY{str(data.addresses)})"
         Bot.execute(path)
 
     def update(self):
@@ -60,5 +57,5 @@ class Bot(Model):
             path = "UPDATE bots SET "
             path += "addresses= ARRAY[" + ",".join(
                 "'" + a.replace(",", ";") + "'" for a in self.addresses) + "]::text[] "
-            path += "WHERE name='" + str(self.name) + "'"
+            path += f"WHERE name='{str(self.name)}'"
             Bot.execute(path)

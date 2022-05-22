@@ -45,7 +45,7 @@ class PUP:
             addresses_to_print = "".join(map(lambda x: x + '\n', [address for address in user.addresses]))
 
             update.message.reply_text(
-                'Это все адреса?\n\n' + addresses_to_print + '\nЕсли есть еще адреса напишите их?\n\nЕсли это все адреса, просто напишите "Всё"', reply_markup=markup)
+                f'Это все адреса?\n\n{addresses_to_print}\nЕсли есть еще адреса напишите их?\n\nЕсли это все адреса, просто напишите "Всё"', reply_markup=markup)
 
         user.set(pup_state=pup_state)
         user.update()
