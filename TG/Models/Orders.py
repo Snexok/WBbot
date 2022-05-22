@@ -1,45 +1,49 @@
+import datetime
+
 from TG.Models.Model import Model
 
-COLUMNS = ['id', 'number', 'total_price', 'services_price', 'prices', 'quantities', 'articles', 'statuses',
+COLUMNS = ['id', 'number', 'total_price', 'services_price', 'prices', 'quantities', 'articles',
            'pup_address', 'pup_tg_id', 'bot_name', 'bot_surname', 'start_date', 'pred_end_date', 'end_date',
-           'code_for_approve', 'active']
+           'code_for_approve', 'active', 'statuses']
 
 
 class Orders(Model):
 
     @staticmethod
-    def load(number=None, bot_name=None, articles=None, address=None, active=None):
+    def load(number=None, bot_name=None, articles=None, pup_address=None, active=None):
         def callback(cursor):
             records = cursor.fetchall()
             return records
 
         path = "SELECT * FROM orders WHERE "
         if number:
-            path += f"number = {str(number)}, "
+            path += f"number = {str(number)} AND "
         if bot_name:
-            path += f"bot_name = '{str(bot_name)}', "
+            path += f"bot_name = '{str(bot_name)}' AND "
         if articles:
-            path += f"articles = ARRAY{str(articles)}::text[], "
-        if address:
-            path += f"address = '{str(address)}', "
+            path += f"articles = ARRAY{str(articles)}::text[] AND "
+        if pup_address:
+            path += f"pup_address = '{str(pup_address)}' AND "
         if active:
             active = "TRUE" if active else "FALSE"
-            path += f"active = {active}, "
+            path += f"active = {active} AND "
 
-        path = path[:-2]
+        path = path[:-5]
 
-        return Orders.format_data(Orders.execute(path, callback))
+        print(path)
+        orders = Orders.format_data(Orders.execute(path, callback))
+        print(orders)
+        return orders
 
     @staticmethod
     def format_data(data):
         orders = []
         for d in data:
             order = Order(*d)
+            print(*d)
             orders += [order]
 
         if orders:
-            if len(orders) == 1:
-                return orders[0]
             return orders
         else:
             return False
@@ -57,9 +61,9 @@ class Orders(Model):
 
 
 class Order(Model):
-    def __init__(self, id=1, number=0, total_price=0, services_price=0, prices=[], quantities=[], articles=[],
-                 statuses=[], pup_address='', pup_tg_id='', bot_name='', bot_surname='', start_date='',
-                 pred_end_date='', end_date='', code_for_approve='', active=True):
+    def __init__(self, id=1, number=0, total_price=0, services_price=0, prices=[], quantities=[], articles=[], pup_address='', pup_tg_id='', bot_name='', bot_surname='', start_date='',
+                 pred_end_date='', end_date='', code_for_approve='', active=True,
+                 statuses=[]):
         super().__init__()
         self.id = id
         self.number = number
@@ -67,7 +71,6 @@ class Order(Model):
         self.services_price = services_price
         self.prices = prices
         self.quantities = quantities
-        self.statuses = statuses
         self.articles = articles
         self.pup_address = pup_address
         self.pup_tg_id = pup_tg_id
@@ -78,6 +81,7 @@ class Order(Model):
         self.end_date = end_date
         self.code_for_approve = code_for_approve
         self.active = active
+        self.statuses = statuses
 
     def __str__(self):
         res = ""
@@ -87,10 +91,10 @@ class Order(Model):
 
     def __dict__(self):
         return {'id': self.id, 'number': self.number, 'total_price': self.total_price, 'services_price': self.services_price,
-         'prices': self.prices, 'quantities': self.quantities, 'statuses': self.statuses, 'articles': self.articles,
+         'prices': self.prices, 'quantities': self.quantities, 'articles': self.articles,
          'pup_address': self.pup_address, 'pup_tg_id': self.pup_tg_id, 'bot_name': self.bot_name,
          'bot_surname': self.bot_surname, 'start_date': self.start_date, 'pred_end_date': self.pred_end_date,
-         'end_date': self.end_date, 'code_for_approve': self.code_for_approve, 'active': self.active}
+         'end_date': self.end_date, 'code_for_approve': self.code_for_approve, 'active': self.active, 'statuses': self.statuses}
 
     def insert(self):
         c = [col for col in COLUMNS if getattr(self, col)]
@@ -114,11 +118,30 @@ class Order(Model):
         path = path[:-2]
         path += ")"
         print(path)
-        Order.execute(path)
+        self.execute(path)
 
     def update(self):
         if self.changed:
             path = "UPDATE orders SET "
-            path += f"addresses= ARRAY{str(self.addresses)}::text[] "
-            path += f"WHERE name='{str(self.name)}'"
-            Order.execute(path)
+            for key in COLUMNS[1:]:
+                value = getattr(self, key)
+                print(key, value, type(value))
+                if value or type(value) is bool:
+                    if type(value) is int:
+                        path += f"{key} = { str(value)}, "
+                    elif type(value) is str:
+                        path += f"{key} = '{str(value)}', "
+                    elif type(value) is datetime.date:
+                        path += f"{key} = '{str(value)}', "
+                    elif type(value) is bool:
+                        value = "TRUE" if value else "FALSE"
+                        path += f"{key} = {value}, "
+                    elif type(value) is list:
+                        if type(value[0]) is str:
+                            path += f"{key} = ARRAY{str(value)}::text[], "
+                        elif type(value[0]) is int:
+                            path += f"{key} = ARRAY{str(value)}::integer[], "
+            path = path[:-2]
+            path += f" WHERE id='{str(self.id)}'"
+            print(path)
+            self.execute(path)

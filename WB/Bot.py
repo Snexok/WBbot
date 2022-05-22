@@ -165,12 +165,17 @@ class Bot:
             return data
 
     async def check_readiness(self, articles, address, order_number, message, wait_order_ended):
+        sleep(1)
         self.open_delivery()
-        order = Orders.load(number=order_number, bot_name=self.data.name, articles=articles, address=address,
-                            active=True)
+        order = Orders.load(number=order_number, bot_name=self.data.name, articles=articles, pup_address=address,
+                            active=True)[0]
         orders = self.get_all_orders()
+        print('0', [order.pup_address for order in orders], address)
+        print('1', orders)
         orders = [order for order in orders if order.pup_address == address]
+        print('2', orders)
         try:
+            print('3',[[order_article in articles for order_article in order.articles] for order in orders])
             i = [all([order_article in articles for order_article in order.articles]) for order in orders].index(True)
         except:
             await message.answer(f'{order.id} Артикулы {str(order.articles)} не найдены')
@@ -187,16 +192,18 @@ class Bot:
             msg_admin = msg_pup+ '\n' +\
                         f'Номер заказа: {order.number}\n' +\
                         f'Id заказа: {order.id}\n' +\
-                        f'Адрес: {order.address}'
+                        f'Адрес: {order.pup_address}'
 
             order.set(end_date=date.today())
             order.set(active=False)
+            print('order 1 ', order)
+            print('ACtive - Flase')
 
             bot = TG_Bot(token=API_TOKEN)
 
             admin = Admin_model().get_sentry_admin()
             await bot.send_message(admin.id, msg_admin)
-            await bot.send_message(order.pup_tg_id, msg_pup)
+            # await bot.send_message(order.pup_tg_id, msg_pup)
         else:
             pred_end_date = ''
             for status in order.statuses:
@@ -206,7 +213,7 @@ class Bot:
                 pred_end_date = str(date.today() + timedelta(days=1))
             print(pred_end_date)
             await wait_order_ended(self, pred_end_date, articles, address, message)
-
+        print('order 2 ', order)
         order.update()
 
     @staticmethod
@@ -233,10 +240,11 @@ class Bot:
 
     def get_all_orders(self) -> list:
         orders = []
+        sleep(2)
         for order_row in self.driver.find_elements(By.XPATH, '//div[@class="delivery-block__content"]'):
             order = Order()
             order.pup_address = order_row.find_element(By.XPATH,
-                                                       './div/div/div[contains(@class, "delivery-address__info")]')
+                                                       './div/div/div[contains(@class, "delivery-address__info")]').text
             item_imgs = order_row.find_elements(By.XPATH, './div/ul/li/div/div/img')
             img_ext_len = len('-1.avif')
             order.articles = [img.get_attribute('src')[-img_ext_len - ARTICLE_LEN:-img_ext_len] for img in item_imgs]

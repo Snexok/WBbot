@@ -9,7 +9,6 @@ create table IF NOT EXISTS orders
 	prices integer[],
 	quantities integer[],
 	articles text[],
-	statuses text[],
 	pup_address text,
 	pup_tg_id text,
 	bot_name text,
@@ -18,7 +17,8 @@ create table IF NOT EXISTS orders
 	pred_end_date date,
 	end_date date,
 	code_for_approve text,
-	active boolean
+	active boolean,
+	statuses text[]
 );
 
 alter table orders owner to postgres;

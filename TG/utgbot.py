@@ -135,6 +135,14 @@ async def admin_handler(message: types.Message):
         await States.MAIN.set()
         markup = get_markups('main_main', Admin.is_admin(id))
         await message.answer('Главное меню', reply_markup=markup)
+    elif "проверить ожидаемое" in msg:
+        print("проверить ожидаемое")
+        await States.CHECK_WAITS.set()
+        bots_wait = BotsWait.load(event='delivery')
+        print(bots_wait)
+        bots_name = [bots_wait[i].bot_name for i in range(len(bots_wait))]
+        markup = get_markups('admin_bots', Admin.is_admin(id), bots_name)
+        await message.answer('Выберите бота', reply_markup=markup)
     elif id == '794329884':
         if "открыть бота" in msg:
             await States.RUN_BOT.set()
@@ -142,12 +150,6 @@ async def admin_handler(message: types.Message):
             bots_name = [tg_bots[i].name for i in range(len(tg_bots))]
             markup = get_markups('admin_bots', Admin.is_admin(id), bots_name)
             await message.answer('Выберите бота', reply_markup=markup)
-    elif "Проверить ожидаемое" in msg:
-        await States.CHECK_WAITS.set()
-        bots_wait = BotsWait.load(event='delivery')
-        bots_name = [bots_wait[i].bot_name for i in range(len(bots_wait))]
-        markup = get_markups('admin_bots', Admin.is_admin(id), bots_name)
-        await message.answer('Выберите бота', reply_markup=markup)
 
 
 @dp.message_handler(state=States.RUN_BOT)
@@ -266,10 +268,10 @@ async def pup_handler(message: types.Message):
 
         pup_state = PUP_STATES['ADDRESSES']
 
-        await message.answer('Напишите адреса ваших ПВЗ')
+        await message.answer('Напишите адреса ваших ПВЗ\n\nКаждый адрес с новой строчки или каждый адрес в отдельном сообщении')
 
     elif pup_state == PUP_STATES['ADDRESSES']:
-        new_addresses = [a for a in msg.splitlines()]
+        new_addresses = [a for a in msg.splitlines() if a]
 
         user.append(addresses=new_addresses)
 
