@@ -42,6 +42,8 @@ def get_markups(markup_name, is_admin=False, *args):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add("Как ПВЗ")
         # markup.add("Для выкупов")
+
+        return markup
     elif 'admin_bots' == markup_name:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         bots_name = args[0]
