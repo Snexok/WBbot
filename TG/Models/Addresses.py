@@ -20,17 +20,18 @@ class Address(Model):
         is_where = False
         if tg_id:
             path += "WHERE " if not is_where else ""
-            path += "tg_id='" + tg_id + "'"
+            path += f"tg_id='{tg_id}'"
         if address:
             path += "WHERE " if not is_where else ""
-            path += "address='" + address + "'"
+            path += f"address='{address}'"
         return self.format_data(self.execute(path, callback))
 
     def update(self):
         if self.changed:
             path = "UPDATE addresses SET "
-            path += "added_to_bot=" + ("TRUE" if self.added_to_bot else "FALSE") + " "
-            path += "WHERE address='" + self.address + "'"
+            added_to_bot = "TRUE" if self.added_to_bot else "FALSE"
+            path += f"added_to_bot={added_to_bot}"
+            path += f"WHERE address='{self.address}'"
             Address.execute(path)
 
     def format_data(self, data):
@@ -44,8 +45,8 @@ class Address(Model):
 
 class Addresses(Model):
 
-    @staticmethod
-    def load(tg_id=None, address=None):
+    @classmethod
+    def load(cls, tg_id=None, address=None):
         def callback(cursor):
             records = cursor.fetchall()
             return records
@@ -54,29 +55,29 @@ class Addresses(Model):
         is_where = False
         if tg_id:
             path += "WHERE " if not is_where else ""
-            path += "tg_id='" + tg_id + "'"
+            path += f"tg_id='{tg_id}'"
         if address:
             path += "WHERE " if not is_where else ""
-            path += "address='" + address + "'"
-        return Addresses.format_data(Addresses.execute(path, callback))
+            path += f"address='{address}'"
+        return cls.format_data(cls.execute(path, callback))
 
-    @staticmethod
-    def insert(address: Address):
+    @classmethod
+    def insert(cls, address: Address):
         path = "INSERT INTO addresses (id, address, tg_id, added_to_bot) VALUES "
-        path += "((SELECT MAX(id)+1 FROM addresses), '" + address.address + "', '" + address.tg_id + "', FALSE)"
-        Address.execute(path)
+        path += f"((SELECT MAX(id)+1 FROM addresses), '{address.address}', '{address.tg_id}', FALSE)"
+        cls.execute(path)
 
-    @staticmethod
-    def get_all_not_added():
+    @classmethod
+    def get_all_not_added(cls):
         def callback(cursor):
             records = cursor.fetchall()
             return records
 
         path = "SELECT * FROM addresses WHERE added_to_bot=FALSE"
-        return Addresses.format_data(Addresses.execute(path, callback))
+        return cls.format_data(Addresses.execute(path, callback))
 
-    @staticmethod
-    def format_data(data):
+    @classmethod
+    def format_data(cls, data):
         addresses = []
         for d in data:
             address = Address()
@@ -91,8 +92,8 @@ class Addresses(Model):
         else:
             return False
 
-    @staticmethod
-    def compare_addresses(first_addresses: list, second_addresses: list) -> list:
+    @classmethod
+    def compare_addresses(cls, first_addresses: list, second_addresses: list) -> list:
         comp_adrses = []
         for f_adrs in first_addresses:
             if f_adrs.address not in [s_adrs.address for s_adrs in second_addresses]:

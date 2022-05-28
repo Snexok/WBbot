@@ -21,19 +21,18 @@ class Catalog():
         self.card = Card(self.driver)
 
     # simple deempl
-    min_price_field = lambda self: WebDriverWait(self.driver, 60).until(lambda d: d.find_element(By.XPATH,
-                                                                                                 '//span[text()="Цена, ₽" and contains(@class,"filter__name")]/../../div/div/div/div/div/input[@name="startN"]'))
-    max_price_field = lambda self: WebDriverWait(self.driver, 60).until(lambda d: d.find_element(By.XPATH,
-                                                                                                 '//span[text()="Цена, ₽" and contains(@class,"filter__name")]/../../div/div/div/div/div/input[@name="endN"]'))
-    search_field = lambda self, filter_name: self.driver.find_element(By.XPATH,
-                                                                      '//span[text()="' + filter_name + '" and contains(@class,"filter__name")]/../../div/div/input')
+    min_price_field = lambda self: WebDriverWait(self.driver, 60).until(lambda d: d
+        .find_element(By.XPATH, '//span[text()="Цена, ₽" and contains(@class,"filter__name")]/../../div/div/div/div/div/input[@name="startN"]'))
+    max_price_field = lambda self: WebDriverWait(self.driver, 60).until(lambda d: d
+        .find_element(By.XPATH, '//span[text()="Цена, ₽" and contains(@class,"filter__name")]/../../div/div/div/div/div/input[@name="endN"]'))
+    search_field = lambda self, filter_name: self.driver\
+        .find_element(By.XPATH, f'//span[text()="{filter_name}" and contains(@class,"filter__name")]/../../div/div/input')
 
     next_page = lambda self: self.driver.find_element(By.CLASS_NAME, 'pagination__next').click()
     get_cards = lambda self: WebDriverWait(self.driver, 60).until(
         lambda d: d.find_elements(By.XPATH, '//div[contains(@class, "product-card j-card-item")]'))
     like = lambda self: self.driver.find_element(By.CLASS_NAME, 'btn-heart').click()
-    get_sort_by = lambda self, filter: self.driver.find_element(By.XPATH,
-                                                                '//div[@class="sort"]/a/span[text()="' + filter + '"]')
+    get_sort_by = lambda self, filter: self.driver.find_element(By.XPATH, f'//div[@class="sort"]/a/span[text()="{filter}"]')
 
     def card_search(self, articles, scrolling=True, fake_choose=True):
         # data transform
@@ -78,8 +77,7 @@ class Catalog():
         return card_cnt - 1
 
     def choose_filter_checkbox(self, filter_name, value):
-        labels = self.driver.find_elements(By.XPATH,
-                                           '//span[text()="' + filter_name + '" and contains(@class,"filter__name")]/../../div/fieldset/label')
+        labels = self.driver.find_elements(By.XPATH, f'//span[text()="{filter_name}" and contains(@class,"filter__name")]/../../div/fieldset/label')
         for label in labels:
             text = label.text
             text = text[:text.index("(")]

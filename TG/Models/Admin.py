@@ -1,10 +1,10 @@
 from TG.Models.Model import Model
 
 class Admin(Model):
-    def __init__(self):
-        self.id = ''
-        self.name = ''
-        self.sentry = False
+    def __init__(self, id=0, name='', sentry=False):
+        self.id = id
+        self.name = name
+        self.sentry = sentry
 
     def load(self, id=None, sentry=None):
         def callback(cursor):
@@ -12,9 +12,10 @@ class Admin(Model):
             return records
 
         if id:
-            path = "SELECT * FROM admins WHERE id='" + id + "'"
+            path = f"SELECT * FROM admins WHERE id='{id}'"
         elif sentry:
-            path = "SELECT * FROM admins WHERE sentry='" + ("TRUE" if sentry else "FALSE") + "'"
+            sentry = "TRUE" if sentry else "FALSE"
+            path = f"SELECT * FROM admins WHERE sentry={sentry}"
 
         self.set_data(self.execute(path, callback))
         return self
@@ -29,38 +30,43 @@ class Admin(Model):
         self.load(sentry=True)
         return self
 
+
+
 class Admins(Model):
-    @staticmethod
-    def load(id=None, sentry=None, all=False):
+    @classmethod
+    def load(cls, id=None, sentry=None, all=False):
         def callback(cursor):
             records = cursor.fetchall()
             return records
 
         if all:
-            "SELECT * FROM admins"
+            path = "SELECT * FROM admins"
         elif id:
-            path = "SELECT * FROM admins WHERE id='" + id + "'"
+            path = f"SELECT * FROM admins WHERE id='{id}'"
         elif sentry:
-            path = "SELECT * FROM admins WHERE sentry='" + ("TRUE" if sentry else "FALSE") + "'"
+            sentry = "TRUE" if sentry else "FALSE"
+            path = f"SELECT * FROM admins WHERE sentry={sentry}"
 
-        return Admins.format_data(Admins.execute(path, callback))
+        return cls.format_data(cls.execute(path, callback))
 
-    @staticmethod
-    def format_data(data):
+    @classmethod
+    def format_data(cls, data):
         admins = []
         for d in data:
-            admin = Admin()
-            admin.id = d[0]
-            admin.name = d[1]
-            admin.sentry = d[2]
+            admin = Admin(*d)
             admins += [admin]
 
         if admins:
-            if len(admins) == 1:
-                return admins[0]
             return admins
         else:
             return False
 
+    @classmethod
+    def get_ids(cls):
+        def callback(cursor):
+            records = cursor.fetchall()
+            return records
 
-
+        path = "SELECT id FROM admins"
+        ids = cls.execute(path, callback)
+        return [id[0] for id in ids]

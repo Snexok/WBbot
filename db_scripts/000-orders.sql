@@ -17,7 +17,8 @@ create table IF NOT EXISTS orders
 	pred_end_date date,
 	end_date date,
 	code_for_approve text,
-	active boolean
+	active boolean,
+	statuses text[]
 );
 
 alter table orders owner to postgres;
