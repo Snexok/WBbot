@@ -37,7 +37,8 @@ class Admin:
         # preprocessing
         data_for_bots = cls.pre_run_doc(document)
 
-        tg_bots_data = Bots_model.load(limit=len(data_for_bots))
+        # tg_bots_data = Bots_model.load(limit=len(data_for_bots))
+        tg_bots_data = [Bots_model.load(name='Einstein')]
 
         bots = [Bot(data=tg_bot_data) for tg_bot_data in tg_bots_data]
 
@@ -45,8 +46,8 @@ class Admin:
         run_bots = [asyncio.to_thread(cls.run_bot, bot, data_for_bots[i], number) for i, bot in enumerate(bots)]
         reports = await asyncio.gather(*run_bots)
 
-        for report in reports:
-            await message.answer_photo(open(report['qr_code'], 'rb'))
+        # for report in reports:
+        #     await message.answer_photo(open(report['qr_code'], 'rb'))
 
         start_date = str(date.today())
         for report in reports:
@@ -67,7 +68,7 @@ class Admin:
             print(reports[i]['post_place'])
             pup_address = Addresses.load(address=reports[i]['post_place'])[0]
             print(pup_address.address)
-            loop.create_task(cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], pup_address.address, message))
+            loop.create_task(cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], pup_address.address, number, message))
 
     @staticmethod
     def run_bot(bot: Bot, data_for_bot, number):
@@ -175,6 +176,7 @@ class Admin:
         end_datetime = datetime.fromisoformat(pred_end_date) + rnd_time
 
         time_to_end = (end_datetime - start_datetime).total_seconds()
+
         await asyncio.sleep(time_to_end)
 
         await bot.check_readiness(articles, address, order_number, message, cls.wait_order_ended)

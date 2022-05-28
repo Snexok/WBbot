@@ -23,7 +23,6 @@ class Users(Model):
 
     @classmethod
     def format_data(cls, data):
-        print(data)
         users = []
         for d in data:
             user = User()

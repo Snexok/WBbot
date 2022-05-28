@@ -124,7 +124,7 @@ async def admin_handler(message: types.Message):
         res_message, state = Admin.check_not_added_pup_addresses()
         await message.answer(res_message)
         await getattr(States, state).set()
-    elif "cделать выкуп" in msg:
+    elif "сделать выкуп" in msg:
         await message.answer('Я тебя понял, понял, кидай заказ')
         await States.INSIDE.set()
     elif "добавить пользователя" in msg:

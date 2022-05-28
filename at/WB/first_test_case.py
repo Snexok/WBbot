@@ -11,12 +11,12 @@ async def main():
     client = TelegramClient('test', api_id, api_hash)
     await client.start()
     print(type(client))
-    async with client.conversation("@redempt_test_2_bot", timeout=5) as conv:
+    async with client.conversation("@redempt_test_1_bot", timeout=5) as conv:
         await conv.send_message("Admin")
 
         resp: Message = await conv.get_response()
         assert "Добро пожаловать, Лорд" in resp.raw_text
-        await conv.send_message("inside")
+        await conv.send_message("Сделать выкуп")
 
         resp: Message = await conv.get_response()
         await conv.send_file('./../test_data/Выкупы.xlsx')

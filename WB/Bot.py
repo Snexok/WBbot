@@ -93,7 +93,7 @@ class Bot:
 
         sleep(3)
         self.basket.choose_post_place(post_place)
-        # self.basket.choose_payment_method()
+        self.basket.choose_payment_method()
         shipment_date = self.basket.get_shipment_date()
 
         report['pred_end_date'] = self.get_end_date(shipment_date)
@@ -170,12 +170,8 @@ class Bot:
         order = Orders.load(number=order_number, bot_name=self.data.name, articles=articles, pup_address=address,
                             active=True)[0]
         orders = self.get_all_orders()
-        print('0', [order.pup_address for order in orders], address)
-        print('1', orders)
         orders = [order for order in orders if order.pup_address == address]
-        print('2', orders)
         try:
-            print('3',[[order_article in articles for order_article in order.articles] for order in orders])
             i = [all([order_article in articles for order_article in order.articles]) for order in orders].index(True)
         except:
             await message.answer(f'{order.id} Артикулы {str(order.articles)} не найдены')
@@ -196,8 +192,6 @@ class Bot:
 
             order.set(end_date=date.today())
             order.set(active=False)
-            print('order 1 ', order)
-            print('ACtive - Flase')
 
             bot = TG_Bot(token=API_TOKEN)
 
@@ -211,9 +205,7 @@ class Bot:
                     pred_end_date = Bot.get_end_date(status[len('Ожидается ')+1:])
             if not pred_end_date:
                 pred_end_date = str(date.today() + timedelta(days=1))
-            print(pred_end_date)
             await wait_order_ended(self, pred_end_date, articles, address, message)
-        print('order 2 ', order)
         order.update()
 
     @staticmethod

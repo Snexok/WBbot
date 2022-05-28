@@ -30,12 +30,10 @@ class BotsWait(Model):
     def insert(cls, bot_name, event, start_datetime, end_datetime):
         path = "INSERT INTO bots_wait (id, bot_name, event, start_datetime, end_datetime) VALUES "
         path += f"((SELECT MAX(id)+1 FROM bots_wait), {bot_name}, '{event}', '{start_datetime}', '{end_datetime}')"
-        print(path)
         cls.execute(path)
 
     @classmethod
     def format_data(cls, data):
-        print(data)
         bots_wait = []
         for d in data:
             bot_wait = cls(*d)
