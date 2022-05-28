@@ -48,7 +48,7 @@ class Admin:
         for report in reports:
             await message.answer_photo(open(report['qr_code'], 'rb'))
 
-        start_date = str(date.today())
+        start_date = str(datetime.now())
         for report in reports:
             print(report['pred_end_date'])
             pup_address = Addresses.load(address=report['post_place'])[0]
@@ -172,7 +172,7 @@ class Admin:
     async def wait_order_ended(cls, bot: Bot, pred_end_date, articles, address, order_number, message):
         start_datetime = datetime.now()
         rnd_time = timedelta(hours=random.randint(7, 14), minutes=random.randint(0, 60), seconds=random.randint(0, 60))
-        end_datetime = datetime.fromisoformat(pred_end_date) + rnd_time
+        end_datetime = pred_end_date + rnd_time
 
         time_to_end = (end_datetime - start_datetime).total_seconds()
         await asyncio.sleep(time_to_end)

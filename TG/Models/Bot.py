@@ -28,7 +28,7 @@ class Bots(Model):
         bots = []
         for d in data:
             bot = Bot(*d)
-            bot.addresses = [address.replace(';', ',') for address in bot.addresses]
+            bot.addresses = [address.replace(';', ',') for address in bot.addresses] if bot.addresses else []
             bots += [bot]
 
         if bots:

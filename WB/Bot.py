@@ -96,7 +96,7 @@ class Bot:
         # self.basket.choose_payment_method()
         shipment_date = self.basket.get_shipment_date()
 
-        report['pred_end_date'] = self.get_end_date(shipment_date)
+        report['pred_end_date'] = datetime.fromisoformat(self.get_end_date(shipment_date))
         report['qr_code'] = self.basket.get_qr_code(order_id, self.data.name)
 
         return report
@@ -208,16 +208,16 @@ class Bot:
             pred_end_date = ''
             for status in order.statuses:
                 if 'Ожидается' in status:
-                    pred_end_date = Bot.get_end_date(status[len('Ожидается ')+1:])
+                    pred_end_date = datetime.fromisoformat(self.get_end_date(status[len('Ожидается ')+1:]))
             if not pred_end_date:
-                pred_end_date = str(date.today() + timedelta(days=1))
-            print(pred_end_date)
+                pred_end_date = datetime.fromisoformat(str(date.today() + timedelta(days=1)))
+            print('Заказ Ожидается', pred_end_date)
             await wait_order_ended(self, pred_end_date, articles, address, message)
         print('order 2 ', order)
         order.update()
 
     @staticmethod
-    def get_end_date(wb_day_month):
+    def get_end_date(wb_day_month) -> str:
         """
         wb_day_month - День и месяц с в формате Wildberries
         """
@@ -234,7 +234,7 @@ class Bot:
 
         day = int(wb_day_month.split('-')[0])
 
-        year = datetime.today().year
+        year = date.today().year
 
         return str(date(year, month, day))
 
