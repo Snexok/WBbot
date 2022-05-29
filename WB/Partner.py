@@ -3,6 +3,8 @@ from selenium.webdriver.common.by import By
 import pickle
 from time import sleep
 
+from selenium.webdriver.support.wait import WebDriverWait
+
 from WB.Browser import Browser
 
 
@@ -56,8 +58,14 @@ class Partner:
                     _task_time = datetime.fromisoformat(str(task['datetime']))
                     task_time = datetime.fromisoformat(str(order['datetime']))
                     if abs(task_time - task_time).seconds < 120:
-
+                        check_box = task.row.find_element(By.XPATH, "./div/div/label/input")
+                        check_box.click()
                         break
+
+    def add_to_assembly(self):
+        add_btn = WebDriverWait(self.driver, 60).until(
+            lambda d: d.find_elements(By.XPATH, "//div[@class='New-tasks-table-row-view__33HSVACKTB']"))
+        add_btn.click()
 
     def get_target_task(self, article, order_datetime):
         self.tasks = self.get_tasks()
