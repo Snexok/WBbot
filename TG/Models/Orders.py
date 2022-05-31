@@ -61,9 +61,9 @@ class Orders(Model):
 
 
 class Order(Model):
-    def __init__(self, id=1, number=0, total_price=0, services_price=0, prices=[], quantities=[], articles=[], pup_address='', pup_tg_id='', bot_name='', bot_surname='', start_date='',
-                 pred_end_date='', end_date='', code_for_approve='', active=True,
-                 statuses=[]):
+    def __init__(self, id=1, number=0, total_price=0, services_price=0, prices=[], quantities=[], articles=[],
+                 pup_address='', pup_tg_id='', bot_name='', bot_surname='', start_date='',pred_end_date='',
+                 end_date='', code_for_approve='', active=True, statuses=[]):
         super().__init__()
         self.id = id
         self.number = number
@@ -102,6 +102,7 @@ class Order(Model):
         path += "((SELECT MAX(id)+1 FROM orders), "
         for k in COLUMNS[1:]:
             v = getattr(self, k)
+            print(k, v)
             if v:
                 if type(v) is int:
                     path += f"{str(v)}, "

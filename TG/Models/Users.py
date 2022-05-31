@@ -26,12 +26,8 @@ class Users(Model):
         print(data)
         users = []
         for d in data:
-            user = User()
-            user.id = d[0]
-            user.pup_state = d[1]
-            user.name = d[2]
-            user.addresses = d[3]
-            user.username = d[4]
+            user = User(*d)
+            user.addresses = [address.replace(';', ',') for address in user.addresses] if user.addresses else []
             users += [user]
 
         if users:
@@ -54,7 +50,8 @@ class User(Model):
     def update(self):
         if self.changed:
             path = "UPDATE users SET "
-            path += f"addresses= ARRAY{str(self.addresses)}::text[], "
+            path += "addresses= ARRAY[" + ",".join(
+                "'" + a.replace(",", ";") + "'" for a in self.addresses) + "]::text[], "
             path += f"name= '{str(self.name)}', "
             path += f"pup_state= {str(self.pup_state)} "
             path += f"WHERE id='{str(self.id)}'"

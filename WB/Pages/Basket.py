@@ -110,12 +110,10 @@ class Basket():
         file_name = 'order_' + str(order_id) + '_' + bot_name + '.png'
         self.driver.find_element(By.XPATH, '//button[text()="                Оплатить заказ                "]').click()
         sleep(2)
-        self.driver.find_element(By.XPATH, '//button[contains(@class,"popup__btn-main")]').click()
-        sleep(2)
+        # self.driver.find_element(By.XPATH, '//button[contains(@class,"popup__btn-main")]').click()
+        # sleep(2)
         svg = self.driver.find_element(By.XPATH, '//div[@class="qr-code__value"]')
         self.save_qr_code(svg, file_name)
-        sleep(2)
-        self.driver.find_element(By.CLASS_NAME, 'popup__close').click()
 
         return file_name
 

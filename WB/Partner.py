@@ -13,9 +13,22 @@ class Partner:
         self.browser = Browser(driver)
         self.driver = self.browser.driver
 
+    def collect_order(self, orders: list):
+        self.open()
+        inns = []
+        orders.sort(key=lambda x: x['inn'])
+        for order in orders:
+            if order['inn'] not in inns:
+                inns += [order['inn']]
+        for inn in inns:
+            self.choose_inn(inn)
+            self.open_marketplace()
+            for order in orders:
+                self.choose_task(order)
+
     def open(self):
         self.driver.get('https://seller.wildberries.ru/')
-        cookies = pickle.load(open('../bots_sessions/Parther.pkl', "rb"))
+        cookies = pickle.load(open('../bots_sessions/Partner_1.pkl', "rb"))
         for cookie in cookies:
             self.driver.add_cookie(cookie)
         self.driver.get('https://seller.wildberries.ru/')
@@ -50,17 +63,19 @@ class Partner:
 
         return orders
 
-    def choose_tasks(self, orders):
+    def choose_task(self, order):
         tasks = self.get_tasks()
+        for task in tasks:
+            if task['article'] == order['article']:
+                _task_time = datetime.fromisoformat(str(task['datetime']))
+                task_time = datetime.fromisoformat(str(order['datetime']))
+                if abs(task_time - task_time).seconds < 120:
+
+                    break
+
+    def choose_tasks(self, orders):
         for order in orders:
-            for task in tasks:
-                if task['article'] == order['article']:
-                    _task_time = datetime.fromisoformat(str(task['datetime']))
-                    task_time = datetime.fromisoformat(str(order['datetime']))
-                    if abs(task_time - task_time).seconds < 120:
-                        check_box = task.row.find_element(By.XPATH, "./div/div/label/input")
-                        check_box.click()
-                        break
+            self.choose_task(order)
 
     def add_to_assembly(self):
         add_btn = WebDriverWait(self.driver, 60).until(

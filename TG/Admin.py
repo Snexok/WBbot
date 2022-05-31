@@ -15,6 +15,8 @@ import pandas as pd
 
 USLUGI_PRICE = 150
 
+TEST = False
+
 
 class Admin:
     @staticmethod
@@ -27,11 +29,12 @@ class Admin:
     @staticmethod
     async def open_bot(bot_name):
         bot = Bot(name=bot_name)
-        print(bot.data.name)
         await asyncio.gather(asyncio.to_thread(bot.open_bot))
 
     @classmethod
     async def inside(cls, message, number):
+        print('TEST='+'TRUE' if TEST else 'FALSE')
+        print('T='+'T' if TEST else 'F')
         document = io.BytesIO()
         await message.document.download(destination_file=document)
         # preprocessing
@@ -41,6 +44,9 @@ class Admin:
 
         bots = [Bot(data=tg_bot_data) for tg_bot_data in tg_bots_data]
 
+        for bot in bots:
+            bot.open_bot(manual=False)
+
         # main process
         run_bots = [asyncio.to_thread(cls.run_bot, bot, data_for_bots[i], number) for i, bot in enumerate(bots)]
         reports = await asyncio.gather(*run_bots)
@@ -48,26 +54,41 @@ class Admin:
         for report in reports:
             await message.answer_photo(open(report['qr_code'], 'rb'))
 
-        start_date = str(datetime.now())
-        for report in reports:
-            print(report['pred_end_date'])
-            pup_address = Addresses.load(address=report['post_place'])[0]
-            order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
-                          quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
-                          pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
-                          start_date=start_date, pred_end_date=report['pred_end_date'], active=True)
-            order.insert()
+        run_bots = [asyncio.to_thread(bot.expect_payment) for i, bot in enumerate(bots)]
+        paid = await asyncio.gather(*run_bots)
+        print(paid)
+
+        # start_datetime = str(datetime.now())
+        # for i, report in enumerate(reports):
+        #     pup_address = Addresses.load(address=report['post_place'])[0]
+        #     order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
+        #                   quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
+        #                   pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
+        #                   start_date=start_datetime, pred_end_date=str(report['pred_end_date']), active=True, statuses=['payment' for _ in range(len(report['articles']))])
+        #     order.insert()
+        for i, report in enumerate(reports):
+            if paid[i]['payment'] or TEST:
+                print(paid[i]['datetime'])
+                pup_address = Addresses.load(address=report['post_place'])[0]
+                order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
+                              quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
+                              pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
+                              start_date=paid[i]['datetime'], pred_end_date=report['pred_end_date'],
+                              active=paid[i]['payment'] or TEST, statuses=['payment' for _ in range(len(report['articles']))])
+                order.insert()
+
+                await message.answer(f"Заказ бота {report['bot_name']} оплачен, время оплаты {paid[i]['datetime']}")
 
         await message.answer('Ваш заказ выполнен, до связи')
 
 
-        for i, bot in enumerate(bots):
-            # cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], message)
-            loop = asyncio.get_event_loop()
-            print(reports[i]['post_place'])
-            pup_address = Addresses.load(address=reports[i]['post_place'])[0]
-            print(pup_address.address)
-            loop.create_task(cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], pup_address.address, message))
+        # for i, bot in enumerate(bots):
+        #     # cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], message)
+        #     loop = asyncio.get_event_loop()
+        #     print(reports[i]['post_place'])
+        #     pup_address = Addresses.load(address=reports[i]['post_place'])[0]
+        #     print(pup_address.address)
+        #     loop.create_task(cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], pup_address.address, number, message))
 
     @staticmethod
     def run_bot(bot: Bot, data_for_bot, number):

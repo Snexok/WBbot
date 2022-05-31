@@ -147,7 +147,7 @@ async def admin_handler(message: types.Message):
         if "открыть бота" in msg:
             await States.RUN_BOT.set()
             tg_bots = Bots_model.load()
-            bots_name = [tg_bots[i].name for i in range(len(tg_bots))]
+            bots_name = [f"{tg_bots[i].name} {tg_bots[i].type}" for i in range(len(tg_bots))]
             markup = get_markups('admin_bots', Admin.is_admin(id), bots_name)
             await message.answer('Выберите бота', reply_markup=markup)
 
@@ -155,10 +155,11 @@ async def admin_handler(message: types.Message):
 @dp.message_handler(state=States.RUN_BOT)
 async def run_bot_handler(message: types.Message):
     msg = message.text
+    bot_name, bot_type = msg.split(' ')
     await States.ADMIN.set()
     markup = get_markups('admin_main', Admin.is_admin(id), id)
     await message.answer(msg+" открыт", reply_markup=markup)
-    await Admin.open_bot(bot_name=msg)
+    await Admin.open_bot(bot_name=bot_name)
 
 
 @dp.message_handler(state=States.CHECK_WAITS)

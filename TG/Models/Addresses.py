@@ -30,7 +30,7 @@ class Address(Model):
         if self.changed:
             path = "UPDATE addresses SET "
             added_to_bot = "TRUE" if self.added_to_bot else "FALSE"
-            path += f"added_to_bot={added_to_bot}"
+            path += f"added_to_bot={added_to_bot} "
             path += f"WHERE address='{self.address}'"
             Address.execute(path)
 
