@@ -120,11 +120,12 @@ async def admin_handler(message: types.Message):
     print(message)
     id = str(message.chat.id)
     msg = message.text.lower()
+    print(msg)
     if 'проверить ботов' in msg:
         res_message, state = Admin.check_not_added_pup_addresses()
         await message.answer(res_message)
         await getattr(States, state).set()
-    elif "cделать выкуп" in msg:
+    elif "сделать выкуп" in msg:
         await message.answer('Я тебя понял, понял, кидай заказ')
         await States.INSIDE.set()
     elif "добавить пользователя" in msg:
@@ -143,7 +144,7 @@ async def admin_handler(message: types.Message):
         bots_name = [bots_wait[i].bot_name for i in range(len(bots_wait))]
         markup = get_markups('admin_bots', Admin.is_admin(id), bots_name)
         await message.answer('Выберите бота', reply_markup=markup)
-    elif id == '794329884':
+    elif id == '794329884' or id == '535533975':
         if "открыть бота" in msg:
             await States.RUN_BOT.set()
             tg_bots = Bots_model.load()
