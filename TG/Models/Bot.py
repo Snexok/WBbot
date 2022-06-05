@@ -28,7 +28,7 @@ class Bots(Model):
         bots = []
         for d in data:
             bot = Bot(*d)
-            bot.addresses = [address.replace(';', ',') for address in bot.addresses]
+            bot.addresses = [address.replace(';', ',') for address in bot.addresses] if bot.addresses else []
             bots += [bot]
 
         if bots:
@@ -52,7 +52,6 @@ class Bot(Model):
         Bot.execute(path)
 
     def update(self):
-        print(self.changed)
         if self.changed:
             path = "UPDATE bots SET "
             path += "addresses= ARRAY[" + ",".join(

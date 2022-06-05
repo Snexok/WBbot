@@ -117,7 +117,6 @@ class Order(Model):
                         path += f"ARRAY{str(v)}::integer[], "
         path = path[:-2]
         path += ")"
-        print(path)
         self.execute(path)
 
     def update(self):
@@ -143,5 +142,4 @@ class Order(Model):
                             path += f"{key} = ARRAY{str(value)}::integer[], "
             path = path[:-2]
             path += f" WHERE id='{str(self.id)}'"
-            print(path)
             self.execute(path)

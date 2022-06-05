@@ -47,12 +47,14 @@ class Basket():
                 else:
                     return
 
-    async def choose_post_place(self, address, rerun=False):
+    def choose_post_place(self, address, rerun=False):
         if not rerun:
             try:
+                print('Выбрать адрес доставки')
                 self.driver.find_element(By.XPATH,
                                          '//h2[text()="Способ доставки"]/../../div[text()="Выбрать адрес доставки"]').click()
             except:
+                print('Изменить')
                 self.driver.find_element(By.XPATH,
                                          '//h2[text()="Способ доставки"]/../button/span[text()="Изменить"]').click()
             sleep(1)
@@ -73,16 +75,16 @@ class Basket():
             self.driver.find_element(By.XPATH, '//ymaps[contains(@class, "__first")]').click()
         except:
             pass
-        await sleep(2)
+        sleep(2)
         self.driver.find_element(By.XPATH, f'//span[contains(text(), "{address}")]').click()
-        await sleep(2)
+        sleep(2)
         try:
             self.driver.find_element(By.XPATH, '//div[@class="balloon-content-block"]/button').click()
         except:
-            await sleep(2)
-            await self.choose_post_place(address, rerun=True)
+            sleep(2)
+            self.choose_post_place(address, rerun=True)
 
-        await sleep(2)
+        sleep(2)
         if not rerun:
             self.driver.find_element(By.XPATH, '//button[@class="popup__btn-main"]').click()
             sleep(2)
@@ -110,8 +112,8 @@ class Basket():
         file_name = 'order_' + str(order_id) + '_' + bot_name + '.png'
         self.driver.find_element(By.XPATH, '//button[text()="                Оплатить заказ                "]').click()
         sleep(2)
-        self.driver.find_element(By.XPATH, '//button[contains(@class,"popup__btn-main")]').click()
-        sleep(2)
+        # self.driver.find_element(By.XPATH, '//button[contains(@class,"popup__btn-main")]').click()
+        # sleep(2)
         svg = self.driver.find_element(By.XPATH, '//div[@class="qr-code__value"]')
         self.save_qr_code(svg, file_name)
         sleep(2)
