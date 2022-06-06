@@ -11,6 +11,11 @@ class Whitelist(Model):
         self.username = username
         self.secret_key = secret_key
 
+    def insert(self):
+        path = "INSERT INTO whitelist (id, tg_id, username, secret_key) VALUES "
+        path += f"((SELECT MAX(id)+1 FROM whitelist), '', '{self.username}', '{self.secret_key}')"
+        self.execute(path)
+
     def format_data(self, data):
         self.id = data[0]
         self.tg_id = data[1]
@@ -35,19 +40,6 @@ class Whitelist(Model):
         else:
             return False
 
-    @classmethod
-    def insert(cls, username='', secret_key=''):
-        path = "INSERT INTO whitelist (id, tg_id, username, secret_key) VALUES "
-        path += f"((SELECT MAX(id)+1 FROM whitelist), '', '{username}', '{secret_key}')"
-        cls.execute(path)
-
-    @classmethod
-    def set_secret_key(cls, secret_key):
-        cls.insert(secret_key=secret_key)
-
-    @classmethod
-    def set_username(cls, username):
-        cls.insert(username=username)
 
     @classmethod
     def set_tg_id(cls, tg_id, username='', secret_key=''):

@@ -1,5 +1,3 @@
-import asyncio
-import random
 from datetime import datetime, date, timedelta
 
 from selenium.webdriver import ActionChains
@@ -58,17 +56,17 @@ class Bot:
     def buy(self, data, post_place, order_id):
 
         report = {}
-        # for d in data:
-        #     article_num, search_name, quantity, additional_data = d
-        #
-        #     self.page = Utils.search(self.driver, search_name)  # catalog
-        #     sleep(2)
-        #     price = additional_data['price']
-        #     self.catalog.price_filter(int(price * 0.75), int(price * 1.25))
-        #     sleep(2)
-        #
-        #     self.catalog.card_search(article_num)
-        #     sleep(1)
+        for d in data:
+            article_num, search_name, quantity, additional_data = d
+
+            self.page = Utils.search(self.driver, search_name)  # catalog
+            sleep(2)
+            price = additional_data['price']
+            self.catalog.price_filter(int(price * 0.75), int(price * 1.25))
+            sleep(2)
+
+            self.catalog.card_search(article_num)
+            sleep(1)
         sleep(2)
         self.page = Utils.go_to_basket(self.driver)  # basket
         self.driver.refresh()
@@ -175,10 +173,9 @@ class Bot:
         order = Orders.load(number=order_number, bot_name=self.data.name, articles=articles, pup_address=address,
                             active=True)[0]
         orders = self.get_all_orders()
-        print('0', [order.pup_address for order in orders], address)
-        print('1', orders)
+        print('1', [order.pup_address for order in orders], address)
         orders = [order for order in orders if order.pup_address == address]
-        print('2', orders)
+        print('2', [[order_article for order_article in order.articles] for order in orders], articles)
         try:
             print('3', [[order_article in articles for order_article in order.articles] for order in orders])
             i = [all([order_article in articles for order_article in order.articles]) for order in orders].index(True)
@@ -190,14 +187,14 @@ class Bot:
         order.set(statuses=_order.statuses)
         order.set(code_for_approve=_order.code_for_approve)
 
-        if all([status == "Готов к выдаче" for status in order.statuses]):
+        if all([status == "Готов к получению" for status in order.statuses]):
             msg_pup = 'Заказ готов\n' + \
-                      f'Код: {order.code_for_approve}\n' + \
-                      f'Фио: {order.bot_surname}'
+                        f'Код: {order.code_for_approve}\n' + \
+                        f'Фио: {order.bot_surname}\n' + \
+                        f'Адрес: {order.pup_address}'
             msg_admin = msg_pup + '\n' + \
                         f'Номер заказа: {order.number}\n' + \
-                        f'Id заказа: {order.id}\n' + \
-                        f'Адрес: {order.pup_address}'
+                        f'Id заказа: {order.id}\n'
 
             order.set(end_date=date.today())
             order.set(active=False)
@@ -208,16 +205,17 @@ class Bot:
 
             admin = Admin_model().get_sentry_admin()
             await bot.send_message(admin.id, msg_admin)
-            # await bot.send_message(order.pup_tg_id, msg_pup)
+            await bot.send_message(order.pup_tg_id, msg_pup)
         else:
             pred_end_date = ''
             for status in order.statuses:
                 if 'Ожидается' in status:
-                    pred_end_date = datetime.fromisoformat(self.get_end_date(status[len('Ожидается ') + 1:]))
+                    print(status)
+                    pred_end_date = datetime.fromisoformat(self.get_end_date(status[len('Ожидается '):]))
             if not pred_end_date:
                 pred_end_date = datetime.fromisoformat(str(date.today() + timedelta(days=1)))
             print('Заказ Ожидается', pred_end_date)
-            await wait_order_ended(self, pred_end_date, articles, address, message)
+            await wait_order_ended(self, pred_end_date, articles, address, message, wait_order_ended)
         print('order 2 ', order)
         order.update()
 
@@ -236,7 +234,7 @@ class Bot:
                 wb_day_month = wb_day_month[:index - 1]
                 month = i + 1
                 break
-
+        print(wb_day_month)
         day = int(wb_day_month.split('-')[0])
 
         year = date.today().year
@@ -251,7 +249,7 @@ class Bot:
             order.pup_address = order_row.find_element(By.XPATH,
                                                        './div/div/div[contains(@class, "delivery-address__info")]').text
             item_imgs = order_row.find_elements(By.XPATH, './div/ul/li/div/div/img')
-            img_ext_len = len('-1.avif')
+            img_ext_len = len('-1.avif')-1
             order.articles = [img.get_attribute('src')[-img_ext_len - ARTICLE_LEN:-img_ext_len] for img in item_imgs]
             statuses = order_row.find_elements(By.XPATH,
                                                './div/ul/li/div/div/div[@class="goods-list-delivery__price-status"]')

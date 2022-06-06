@@ -1,7 +1,7 @@
 tokens:
 #    telegram: "5142587667:AAG0hn1NKMOfvWcF9CQJbLJaw95myKPHlrM" # @redempt_sup_bot
-#    telegram: "5328375124:AAGKHa7X3iF1azoFrCAxh9e31Rm8tIG9MW8" # @redempt_test_2_bot
-    telegram: "5365372574:AAEb_edpfgvf-qdZCXf3syrlziIwHSv2fUg" # @redempt_test_1
+    telegram: "5328375124:AAGKHa7X3iF1azoFrCAxh9e31Rm8tIG9MW8" # @redempt_test_2_bot
+#    telegram: "5365372574:AAEb_edpfgvf-qdZCXf3syrlziIwHSv2fUg" # @redempt_test_1
 bots:
     Watcher:
         number: "9104499982"

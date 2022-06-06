@@ -4,66 +4,13 @@ from TG.Models.Model import Model
 
 COLUMNS = ['id', 'number', 'total_price', 'services_price', 'prices', 'quantities', 'articles',
            'pup_address', 'pup_tg_id', 'bot_name', 'bot_surname', 'start_date', 'pred_end_date', 'end_date',
-           'code_for_approve', 'active', 'statuses']
-
-
-class Orders(Model):
-
-    @staticmethod
-    def load(number=None, bot_name=None, articles=None, pup_address=None, active=None):
-        def callback(cursor):
-            records = cursor.fetchall()
-            return records
-
-        path = "SELECT * FROM orders WHERE "
-        if number:
-            path += f"number = {str(number)} AND "
-        if bot_name:
-            path += f"bot_name = '{str(bot_name)}' AND "
-        if articles:
-            path += f"articles = ARRAY{str(articles)}::text[] AND "
-        if pup_address:
-            path += f"pup_address = '{str(pup_address)}' AND "
-        if active:
-            active = "TRUE" if active else "FALSE"
-            path += f"active = {active} AND "
-
-        path = path[:-5]
-
-        print(path)
-        orders = Orders.format_data(Orders.execute(path, callback))
-        print(orders)
-        return orders
-
-    @staticmethod
-    def format_data(data):
-        orders = []
-        for d in data:
-            order = Order(*d)
-            print(*d)
-            orders += [order]
-
-        if orders:
-            return orders
-        else:
-            return False
-
-    @staticmethod
-    async def get_number():
-        def callback(cursor):
-            records = cursor.fetchall()
-            return records
-
-        path = "SELECT MAX(number)+1 FROM orders"
-        res = Orders.execute(path, callback)
-        res = res[0][0]
-        return res
+           'code_for_approve', 'active', 'statuses', 'inn', 'collected']
 
 
 class Order(Model):
     def __init__(self, id=1, number=0, total_price=0, services_price=0, prices=[], quantities=[], articles=[],
                  pup_address='', pup_tg_id='', bot_name='', bot_surname='', start_date='',pred_end_date='',
-                 end_date='', code_for_approve='', active=True, statuses=[]):
+                 end_date='', code_for_approve='', active=True, statuses=[], inn=[], collected=False):
         super().__init__()
         self.id = id
         self.number = number
@@ -82,6 +29,8 @@ class Order(Model):
         self.code_for_approve = code_for_approve
         self.active = active
         self.statuses = statuses
+        self.inn = inn
+        self.collected = collected
 
     def __str__(self):
         res = ""
@@ -94,7 +43,8 @@ class Order(Model):
          'prices': self.prices, 'quantities': self.quantities, 'articles': self.articles,
          'pup_address': self.pup_address, 'pup_tg_id': self.pup_tg_id, 'bot_name': self.bot_name,
          'bot_surname': self.bot_surname, 'start_date': self.start_date, 'pred_end_date': self.pred_end_date,
-         'end_date': self.end_date, 'code_for_approve': self.code_for_approve, 'active': self.active, 'statuses': self.statuses}
+         'end_date': self.end_date, 'code_for_approve': self.code_for_approve, 'active': self.active,
+         'statuses': self.statuses, 'inn': self.inn, 'collected': self.collected}
 
     def insert(self):
         c = [col for col in COLUMNS if getattr(self, col)]
@@ -146,3 +96,62 @@ class Order(Model):
             path += f" WHERE id='{str(self.id)}'"
             print(path)
             self.execute(path)
+
+
+class Orders(Model):
+
+    @staticmethod
+    def load(number=None, bot_name=None, articles=None, pup_address=None, active=None, collected=None):
+        def callback(cursor):
+            records = cursor.fetchall()
+            return records
+
+        path = "SELECT * FROM orders WHERE "
+        if number:
+            path += f"number = {str(number)} AND "
+        if bot_name:
+            path += f"bot_name = '{str(bot_name)}' AND "
+        if articles:
+            path += f"articles = ARRAY{str(articles)}::text[] AND "
+        if pup_address:
+            path += f"pup_address = '{str(pup_address)}' AND "
+        if active:
+            active = "TRUE" if active else "FALSE"
+            path += f"active = {active} AND "
+        if collected is not None:
+            collected = "TRUE" if collected else "FALSE"
+            path += f"collected = {collected} AND "
+
+        path = path[:-5]
+
+        print(path)
+        orders = Orders.format_data(Orders.execute(path, callback))
+        print(orders)
+        return orders
+
+    @staticmethod
+    def format_data(data):
+        orders = []
+        for d in data:
+            order = Order(*d)
+            print(*d)
+            orders += [order]
+
+        if orders:
+            return orders
+        else:
+            return False
+
+    @staticmethod
+    async def get_number():
+        def callback(cursor):
+            records = cursor.fetchall()
+            return records
+
+        path = "SELECT MAX(number)+1 FROM orders"
+        res = Orders.execute(path, callback)
+        res = res[0][0]
+        return res
+
+
+
