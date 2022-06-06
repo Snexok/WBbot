@@ -12,7 +12,7 @@ def get_markups(markup_name, is_admin=False, *args):
         markup.add("Добавить пользователя")
         markup.add("Сделать выкуп")
         if args[0]:
-            if args[0] == '794329884':
+            if args[0] == '794329884' or args[0] == '535533975':
                 markup.add("Открыть бота")
                 markup.add("Проверить ожидаемое")
         markup.add("Проверить ботов")
