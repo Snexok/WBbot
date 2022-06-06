@@ -40,8 +40,9 @@ class Admin:
         # preprocessing
         data_for_bots = cls.pre_run_doc(document)
 
-        # tg_bots_data = Bots_model.load(limit=len(data_for_bots))
-        tg_bots_data = [Bots_model.load(name='Einstein')]
+        print(len(data_for_bots))
+
+        tg_bots_data = Bots_model.load(limit=len(data_for_bots), _type="WB")
 
         bots = [Bot(data=tg_bot_data) for tg_bot_data in tg_bots_data]
 
@@ -118,16 +119,18 @@ class Admin:
         for i, a_data in enumerate(additional_data):
             orders[i] += [a_data]
 
-        max_bots = max([order[3] for order in orders])
+        # max_bots = max([order[3] for order in orders])
+        max_bots = len(orders)
         data_for_bots = [[] for _ in range(max_bots)]
 
-        for _, order in enumerate(orders):
+        for j, order in enumerate(orders):
             article, search_key, quantity, pvz_cnt, additional_data = order
+            data_for_bots[j] += [[article, search_key, quantity, additional_data]]
 
-            for i in range(max_bots):
-                if pvz_cnt > 0:
-                    data_for_bots[i] += [[article, search_key, quantity, additional_data]]
-                pvz_cnt -= 1
+            # for i in range(max_bots):
+            #     if pvz_cnt > 0:
+            #         data_for_bots[i] += [[article, search_key, quantity, additional_data]]
+            #     pvz_cnt -= 1
 
         return data_for_bots
 

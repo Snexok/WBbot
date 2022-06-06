@@ -1,7 +1,7 @@
 from aiogram import types
 
 
-def get_markups(markup_name, is_admin=False, *args):
+def get_markup(markup_name, role='', is_admin=False, id='', *args):
     if 'pup_addresses' == markup_name:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add("Всё")
@@ -11,8 +11,8 @@ def get_markups(markup_name, is_admin=False, *args):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add("Добавить пользователя")
         markup.add("Сделать выкуп")
-        if args[0]:
-            if args[0] == '794329884' or args[0] == '535533975':
+        if id:
+            if id == '794329884' or id == '535533975':
                 markup.add("Открыть бота")
                 markup.add("Проверить ожидаемое")
         markup.add("Проверить ботов")
@@ -35,6 +35,9 @@ def get_markups(markup_name, is_admin=False, *args):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         if is_admin:
             markup.add("Admin")
+        if role in "FF":
+            markup.add("Собрать выкупы")
+            markup.add("Собрать РЕАЛЬНЫЕ заказы")
         markup.add("Регистрация")
         # markup.add("Настройки")
 
@@ -42,6 +45,7 @@ def get_markups(markup_name, is_admin=False, *args):
     elif 'main_register' == markup_name:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add("Как ПВЗ")
+        markup.add("Как ФФ")
         # markup.add("Для выкупов")
 
         return markup

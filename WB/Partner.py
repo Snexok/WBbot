@@ -5,6 +5,7 @@ from time import sleep
 
 from selenium.webdriver.support.wait import WebDriverWait
 
+from TG.Models.Orders import Orders
 from WB.Browser import Browser
 
 
@@ -13,42 +14,52 @@ class Partner:
         self.browser = Browser(driver)
         self.driver = self.browser.driver
 
-    def collect_order(self, orders: list):
+    def collect_orders(self):
+        orders = self.get_not_collected_orders()
+        print(len(orders))
         self.open()
         inns = []
-        orders.sort(key=lambda x: x['inn'])
+        orders.sort(key=lambda x: x.inn)
         for order in orders:
-            if order['inn'] not in inns:
-                inns += [order['inn']]
+            if order.inn not in inns:
+                inns += [order.inn]
         for inn in inns:
             self.choose_inn(inn)
             self.open_marketplace()
             for order in orders:
-                self.choose_task(order)
+                if order.inn == inn:
+                    self.choose_task(order)
+                else:
+                    break
+
+    def get_not_collected_orders(self):
+        orders = Orders.load(collected=False)
+        return orders
 
     def open(self):
         self.driver.get('https://seller.wildberries.ru/')
-        cookies = pickle.load(open('../bots_sessions/Partner_1.pkl', "rb"))
+        cookies = pickle.load(open('./bots_sessions/Partner_1.pkl', "rb"))
         for cookie in cookies:
             self.driver.add_cookie(cookie)
         self.driver.get('https://seller.wildberries.ru/')
 
     def choose_inn(self, inn):
-        self.driver.find_element(By.XPATH, "//div[contains(@class,'DesktopProfileSelect')]/button").click()
+        WebDriverWait(self.driver, 60).until(
+            lambda d: d.find_element(By.XPATH, "//div[contains(@class,'DesktopProfileSelect')]/button")).click()
         self.driver.find_element(By.XPATH, f"//*[contains(text(),'ИНН {inn}')]").click()
 
     def open_marketplace(self):
         self.driver.find_element(By.XPATH, "//span[text()='Маркетплейс']/../../a").click()
         sleep(1)
-        marketplace = self.driver.find_element(By.XPATH,
-                                               "//span[text()='Сборочные задания (везу на склад WB)']/../../a")
-        marketplace.click()
+        # marketplace = self.driver.find_element(By.XPATH,
+        #                                        "//span[text()='Сборочные задания (везу на склад WB)']/../../a")
+        # marketplace.click()
 
     def get_tasks(self):
-        rows = self.driver.find_elements(By.XPATH, "//div[@class='New-tasks-table-row-view__33HSVACKTB']")
-        orders = []
+        rows = self.driver.find_elements(By.XPATH, "//div[contains(@class,'row__')]")[1:]
+        tasks = []
         for row in rows:
-            link = row.find_element(By.XPATH, "./div/div[@class='New-tasks-table-row-view__cell-inner-content']/a")
+            link = row.find_element(By.XPATH, "./div/div/a")
             href = link.get_attribute('href')
             cat_i = href.index('catalog/')
             start_art = cat_i + len('catalog/')
@@ -59,19 +70,25 @@ class Partner:
             time = row.find_element(By.XPATH,
                                     "./div[contains(@class,'creationDat')]/div/div/div[contains(@class,'time')]").text
             dt = datetime.strptime(date + " " + time, "%d.%m.%Y %H:%M")
-            orders += [{'date': date, 'time': time, 'datetime': dt, 'article': article, 'row': row}]
 
-        return orders
+            delivery_address = row.find_element(By.XPATH, "./div[contains(@class,'deliveryAddress')]").text
+
+            tasks += [{'date': date, 'time': time, 'datetime': dt, 'article': article, 'row': row,
+                        'delivery_address': delivery_address}]
+
+        return tasks
 
     def choose_task(self, order):
         tasks = self.get_tasks()
+        print(tasks)
         for task in tasks:
-            if task['article'] == order['article']:
+            if task['article'] == order.article:
                 _task_time = datetime.fromisoformat(str(task['datetime']))
-                task_time = datetime.fromisoformat(str(order['datetime']))
-                if abs(task_time - task_time).seconds < 120:
-
-                    break
+                order_time = datetime.fromisoformat(str(order.start_date))
+                print('times ', _task_time, order_time)
+                if abs(order_time - _task_time).seconds < 120 and task['delivery_address'] == order.pup_address:
+                    order.row.find_element(By.XPATH, "./div/div/label/input").click()
+                    print(f'picked {order.article}, {order.pup_address}, {order.datetime}')
 
     def choose_tasks(self, orders):
         for order in orders:
