@@ -1,6 +1,3 @@
-import asyncio
-import threading
-
 from TG.Models.Model import Model
 
 
@@ -38,13 +35,15 @@ class Bots(Model):
 
 
 class Bot(Model):
-    def __init__(self, id='0', name='', addresses=[], number='', surname=''):
+    def __init__(self, id='0', name='', addresses=[], number='', surname='', type='', inns=[]):
         super().__init__()
         self.id = id
         self.name = name
         self.addresses = addresses
         self.number = number
         self.surname = surname
+        self.type = type
+        self.inns = inns
 
     def insert(self, data):
         path = "INSERT INTO bots (id, name, addresses) VALUES "

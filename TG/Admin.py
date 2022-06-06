@@ -15,6 +15,8 @@ import pandas as pd
 
 USLUGI_PRICE = 150
 
+TEST = False
+
 
 class Admin:
     @staticmethod
@@ -27,11 +29,12 @@ class Admin:
     @staticmethod
     async def open_bot(bot_name):
         bot = Bot(name=bot_name)
-        print(bot.data.name)
         await asyncio.gather(asyncio.to_thread(bot.open_bot))
 
     @classmethod
     async def inside(cls, message, number):
+        print('TEST='+'TRUE' if TEST else 'FALSE')
+        print('T='+'T' if TEST else 'F')
         document = io.BytesIO()
         await message.document.download(destination_file=document)
         # preprocessing
@@ -42,6 +45,9 @@ class Admin:
 
         bots = [Bot(data=tg_bot_data) for tg_bot_data in tg_bots_data]
 
+        for bot in bots:
+            bot.open_bot(manual=False)
+
         # main process
         run_bots = [asyncio.to_thread(cls.run_bot, bot, data_for_bots[i], number) for i, bot in enumerate(bots)]
         reports = await asyncio.gather(*run_bots)
@@ -49,15 +55,30 @@ class Admin:
         # for report in reports:
         #     await message.answer_photo(open(report['qr_code'], 'rb'))
 
-        start_date = str(date.today())
-        for report in reports:
-            print(report['pred_end_date'])
-            pup_address = Addresses.load(address=report['post_place'])[0]
-            order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
-                          quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
-                          pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
-                          start_date=start_date, pred_end_date=report['pred_end_date'], active=True)
-            order.insert()
+        run_bots = [asyncio.to_thread(bot.expect_payment) for i, bot in enumerate(bots)]
+        paid = await asyncio.gather(*run_bots)
+        print(paid)
+
+        # start_datetime = str(datetime.now())
+        # for i, report in enumerate(reports):
+        #     pup_address = Addresses.load(address=report['post_place'])[0]
+        #     order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
+        #                   quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
+        #                   pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
+        #                   start_date=start_datetime, pred_end_date=str(report['pred_end_date']), active=True, statuses=['payment' for _ in range(len(report['articles']))])
+        #     order.insert()
+        for i, report in enumerate(reports):
+            if paid[i]['payment'] or TEST:
+                print(paid[i]['datetime'])
+                pup_address = Addresses.load(address=report['post_place'])[0]
+                order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
+                              quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
+                              pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
+                              start_date=paid[i]['datetime'], pred_end_date=report['pred_end_date'],
+                              active=paid[i]['payment'] or TEST, statuses=['payment' for _ in range(len(report['articles']))])
+                order.insert()
+
+                await message.answer(f"Заказ бота {report['bot_name']} оплачен, время оплаты {paid[i]['datetime']}")
 
         await message.answer('Ваш заказ выполнен, до связи')
 
@@ -173,7 +194,7 @@ class Admin:
     async def wait_order_ended(cls, bot: Bot, pred_end_date, articles, address, order_number, message):
         start_datetime = datetime.now()
         rnd_time = timedelta(hours=random.randint(7, 14), minutes=random.randint(0, 60), seconds=random.randint(0, 60))
-        end_datetime = datetime.fromisoformat(pred_end_date) + rnd_time
+        end_datetime = pred_end_date + rnd_time
 
         time_to_end = (end_datetime - start_datetime).total_seconds()
 

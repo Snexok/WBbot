@@ -20,7 +20,6 @@ from WB.Pages.Catalog import Catalog
 from WB.Utils import Utils
 from configs import config
 
-
 API_TOKEN = config['tokens']['telegram']
 
 ARTICLE_LEN = 8
@@ -42,9 +41,13 @@ class Bot:
 
     def open_bot(self, manual=True):
         self.driver.maximize_window()
-        self.browser.open_site('https://www.wildberries.ru')
+        if self.data.type == "WB":
+            path = 'https://www.wildberries.ru'
+        elif self.data.type == "WB_Partner":
+            path = 'https://seller.wildberries.ru/'
+        self.browser.open_site(path)
         self.browser.load(f'./bots_sessions/{self.data.name}')
-        self.browser.open_site('https://www.wildberries.ru')
+        self.browser.open_site(path)
         if manual:
             try:
                 while self.browser.driver.current_url:
@@ -53,23 +56,20 @@ class Bot:
                 pass
 
     def buy(self, data, post_place, order_id):
-        self.driver.maximize_window()
-        self.browser.open_site('https://www.wildberries.ru')
-        self.browser.load(f'./bots_sessions/{self.data.name}')
-        self.browser.open_site('https://www.wildberries.ru')
 
         report = {}
-        for d in data:
-            article_num, search_name, quantity, additional_data = d
-
-            self.page = Utils.search(self.driver, search_name)  # catalog
-            sleep(2)
-            price = additional_data['price']
-            self.catalog.price_filter(int(price * 0.75), int(price * 1.25))
-            sleep(2)
-
-            self.catalog.card_search(article_num)
-            sleep(1)
+        # for d in data:
+        #     article_num, search_name, quantity, additional_data = d
+        #
+        #     self.page = Utils.search(self.driver, search_name)  # catalog
+        #     sleep(2)
+        #     price = additional_data['price']
+        #     self.catalog.price_filter(int(price * 0.75), int(price * 1.25))
+        #     sleep(2)
+        #
+        #     self.catalog.card_search(article_num)
+        #     sleep(1)
+        sleep(2)
         self.page = Utils.go_to_basket(self.driver)  # basket
         self.driver.refresh()
         sleep(2)
@@ -92,11 +92,12 @@ class Bot:
             report['quantities'] += [int(quantity)]
 
         sleep(3)
+        print("in WB\Bot", post_place)
         self.basket.choose_post_place(post_place)
         self.basket.choose_payment_method()
         shipment_date = self.basket.get_shipment_date()
 
-        report['pred_end_date'] = self.get_end_date(shipment_date)
+        report['pred_end_date'] = datetime.fromisoformat(self.get_end_date(shipment_date))
         report['qr_code'] = self.basket.get_qr_code(order_id, self.data.name)
 
         return report
@@ -124,15 +125,18 @@ class Bot:
         data['price'] = int(price)
 
         try:
-            self.driver.find_element(By.XPATH, '//button[contains(@class, "collapsible__toggle") and text()="Развернуть описание"]').click()
+            self.driver.find_element(By.XPATH,
+                                     '//button[contains(@class, "collapsible__toggle") and text()="Развернуть описание"]').click()
         except:
             pass
         try:
-            self.driver.find_element(By.XPATH, '//button[contains(@class, "collapsible__toggle") and text()="Развернуть характеристики"]').click()
+            self.driver.find_element(By.XPATH,
+                                     '//button[contains(@class, "collapsible__toggle") and text()="Развернуть характеристики"]').click()
         except:
             pass
         try:
-            descriptions = self.driver.find_elements(By.XPATH, '//h2[contains(@class, "section-header") and text()="Описание"]/../../div')
+            descriptions = self.driver.find_elements(By.XPATH,
+                                                     '//h2[contains(@class, "section-header") and text()="Описание"]/../../div')
 
             description = descriptions[1].text
             data['description'] = description
@@ -152,7 +156,8 @@ class Bot:
         except:
             pass
         try:
-            composition = self.driver.find_element(By.XPATH, '//h2[contains(@class, "section-header") and text()="Состав"]/../div/div').text
+            composition = self.driver.find_element(By.XPATH,
+                                                   '//h2[contains(@class, "section-header") and text()="Состав"]/../div/div').text
             if composition:
                 data['composition'] = composition
         except:
@@ -182,12 +187,12 @@ class Bot:
         order.set(code_for_approve=_order.code_for_approve)
 
         if all([status == "Готов к выдаче" for status in order.statuses]):
-            msg_pup = 'Заказ готов\n' +\
-                      f'Код: {order.code_for_approve}\n' +\
+            msg_pup = 'Заказ готов\n' + \
+                      f'Код: {order.code_for_approve}\n' + \
                       f'Фио: {order.bot_surname}'
-            msg_admin = msg_pup+ '\n' +\
-                        f'Номер заказа: {order.number}\n' +\
-                        f'Id заказа: {order.id}\n' +\
+            msg_admin = msg_pup + '\n' + \
+                        f'Номер заказа: {order.number}\n' + \
+                        f'Id заказа: {order.id}\n' + \
                         f'Адрес: {order.pup_address}'
 
             order.set(end_date=date.today())
@@ -202,14 +207,14 @@ class Bot:
             pred_end_date = ''
             for status in order.statuses:
                 if 'Ожидается' in status:
-                    pred_end_date = Bot.get_end_date(status[len('Ожидается ')+1:])
+                    pred_end_date = datetime.fromisoformat(self.get_end_date(status[len('Ожидается ') + 1:]))
             if not pred_end_date:
                 pred_end_date = str(date.today() + timedelta(days=1))
             await wait_order_ended(self, pred_end_date, articles, address, message)
         order.update()
 
     @staticmethod
-    def get_end_date(wb_day_month):
+    def get_end_date(wb_day_month) -> str:
         """
         wb_day_month - День и месяц с в формате Wildberries
         """
@@ -226,7 +231,7 @@ class Bot:
 
         day = int(wb_day_month.split('-')[0])
 
-        year = datetime.today().year
+        year = date.today().year
 
         return str(date(year, month, day))
 
@@ -255,5 +260,20 @@ class Bot:
 
         profile_btn = self.driver.find_element(By.XPATH, "//span[contains(@class,'navbar-pc__icon--profile')]")
         hover.move_to_element(profile_btn).perform()
-        delivery_btn = self.driver.find_element(By.XPATH, "//span[text()='Доставки']/../../a[contains(@class,'profile-menu__link')]")
+        delivery_btn = self.driver.find_element(By.XPATH,
+                                                "//span[text()='Доставки']/../../a[contains(@class,'profile-menu__link')]")
         delivery_btn.click()
+
+    def expect_payment(self):
+        payment = False
+        i = 0
+        while True:
+            try:
+                payment = True if self.driver.find_element(By.XPATH, '//h1[text()="                Ваш заказ подтвержден                "]') else False
+                break
+            except:
+                if i < 3600:
+                    sleep(1)
+                i += 1
+        start_datetime = str(datetime.now())
+        return {'payment': payment, 'datetime': start_datetime}
