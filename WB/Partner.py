@@ -82,19 +82,29 @@ class Partner:
         tasks = self.get_tasks()
         print(tasks)
         for task in tasks:
-            if task['article'] == order.article:
-                _task_time = datetime.fromisoformat(str(task['datetime']))
-                order_time = datetime.fromisoformat(str(order.start_date))
-                print('times ', _task_time, order_time)
-                if abs(order_time - _task_time).seconds < 120 and task['delivery_address'] == order.pup_address:
-                    order.row.find_element(By.XPATH, "./div/div/label/input").click()
-                    print(f'picked {order.article}, {order.pup_address}, {order.datetime}')
+            for i in range(len(order.articles)):
+                if task['article'] == order.articles[i]:
+                    _task_time = datetime.fromisoformat(str(task['datetime']))
+                    order_time = datetime.fromisoformat(str(order.start_date))
+                    print('times ', _task_time, order_time)
+                    if abs(order_time - _task_time).seconds < 120 and task['delivery_address'] == order.pup_address:
+                        WebDriverWait(task['row'], 60).until(
+                            lambda d: d.find_element(By.XPATH, "./div/div/label")).click()
+                        print(f'picked {order.articles[i]}, {order.pup_address}, {order.start_date}')
 
     def choose_tasks(self, orders):
         for order in orders:
             self.choose_task(order)
 
     def add_to_assembly(self):
+        # Нажимаем кнопку принятия кукисов, если она еще на странице
+        try:
+            cookies_btn = self.driver.find_elements(By.XPATH, "//div[contains(@class, 'WarningCookiesBannerCard__button')/button")
+            cookies_btn.click()
+            sleep(1)
+        except:
+            pass
+
         add_btn = WebDriverWait(self.driver, 60).until(
             lambda d: d.find_elements(By.XPATH, "//div[@class='New-tasks-table-row-view__33HSVACKTB']"))
         add_btn.click()

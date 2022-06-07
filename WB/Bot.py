@@ -54,25 +54,27 @@ class Bot:
                 pass
 
     def buy(self, data, post_place, order_id):
-
         report = {}
+        print(f'Bot {self.data.name} started')
         for d in data:
-            article_num, search_name, quantity, additional_data = d
-
-            self.page = Utils.search(self.driver, search_name)  # catalog
+            self.page = Utils.search(self.driver, d['search_key'])  # catalog
             sleep(2)
-            price = additional_data['price']
+            price = d['additional_data']['price']
             self.catalog.price_filter(int(price * 0.75), int(price * 1.25))
             sleep(2)
 
-            self.catalog.card_search(article_num)
+            self.catalog.card_search(d['article'])
             sleep(1)
         sleep(2)
         self.page = Utils.go_to_basket(self.driver)  # basket
         self.driver.refresh()
         sleep(2)
 
-        articles = [str(d[0]) for d in data]
+        report['inn'] = data[0]['inn']
+
+        print(report['inn'])
+
+        articles = [str(d['article']) for d in data]
         report['articles'] = articles
 
         self.basket.delete_other_cards_in_basket(articles)

@@ -49,37 +49,39 @@ class Admin:
         for bot in bots:
             bot.open_bot(manual=False)
 
+
         # main process
         run_bots = [asyncio.to_thread(cls.run_bot, bot, data_for_bots[i], number) for i, bot in enumerate(bots)]
         reports = await asyncio.gather(*run_bots)
 
-        # for report in reports:
-        #     await message.answer_photo(open(report['qr_code'], 'rb'))
+        for report in reports:
+            await message.answer_photo(open(report['qr_code'], 'rb'))
 
-        run_bots = [asyncio.to_thread(bot.expect_payment) for i, bot in enumerate(bots)]
-        paid = await asyncio.gather(*run_bots)
-        print(paid)
+        # run_bots = [asyncio.to_thread(bot.expect_payment) for i, bot in enumerate(bots)]
+        # paid = await asyncio.gather(*run_bots)
+        # print(paid)
 
-        # start_datetime = str(datetime.now())
-        # for i, report in enumerate(reports):
-        #     pup_address = Addresses.load(address=report['post_place'])[0]
-        #     order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
-        #                   quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
-        #                   pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
-        #                   start_date=start_datetime, pred_end_date=str(report['pred_end_date']), active=True, statuses=['payment' for _ in range(len(report['articles']))])
-        #     order.insert()
+        start_datetime = str(datetime.now())
         for i, report in enumerate(reports):
-            if paid[i]['payment'] or TEST:
-                print(paid[i]['datetime'])
-                pup_address = Addresses.load(address=report['post_place'])[0]
-                order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
-                              quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
-                              pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
-                              start_date=paid[i]['datetime'], pred_end_date=report['pred_end_date'],
-                              active=paid[i]['payment'] or TEST, statuses=['payment' for _ in range(len(report['articles']))])
-                order.insert()
-
-                await message.answer(f"Заказ бота {report['bot_name']} оплачен, время оплаты {paid[i]['datetime']}")
+            pup_address = Addresses.load(address=report['post_place'])[0]
+            order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
+                                quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
+                                pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
+                                start_date=start_datetime, pred_end_date=str(report['pred_end_date']), active=True,
+                                statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
+            order.insert()
+        # for i, report in enumerate(reports):
+        #     if paid[i]['payment'] or TEST:
+        #         print(paid[i]['datetime'])
+        #         pup_address = Addresses.load(address=report['post_place'])[0]
+        #         order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
+        #                       quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
+        #                       pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
+        #                       start_date=paid[i]['datetime'], pred_end_date=report['pred_end_date'],
+        #                       active=paid[i]['payment'] or TEST, statuses=['payment' for _ in range(len(report['articles']))])
+        #         order.insert()
+        #
+        #         await message.answer(f"Заказ бота {report['bot_name']} оплачен, время оплаты {paid[i]['datetime']}")
 
         await message.answer('Ваш заказ выполнен, до связи')
 
@@ -124,8 +126,8 @@ class Admin:
         data_for_bots = [[] for _ in range(max_bots)]
 
         for j, order in enumerate(orders):
-            article, search_key, quantity, pvz_cnt, additional_data = order
-            data_for_bots[j] += [[article, search_key, quantity, additional_data]]
+            article, search_key, quantity, pvz_cnt, inn, additional_data = order
+            data_for_bots[j] += [{'article': article, 'search_key': search_key, 'quantity': quantity, 'inn': inn, 'additional_data': additional_data}]
 
             # for i in range(max_bots):
             #     if pvz_cnt > 0:
