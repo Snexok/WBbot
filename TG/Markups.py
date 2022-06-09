@@ -15,6 +15,7 @@ def get_markup(markup_name, role='', is_admin=False, id='', *args):
             if id == '794329884' or id == '535533975':
                 markup.add("Открыть бота")
                 markup.add("Проверить ожидаемое")
+        markup.add("Проверить адреса")
         markup.add("Проверить ботов")
         markup.add("Назад")
 
@@ -23,12 +24,14 @@ def get_markup(markup_name, role='', is_admin=False, id='', *args):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add("Файл")
         markup.add("Чат")
+        markup.add("Назад")
 
         return markup
     elif 'admin_add_user' == markup_name:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add("По username")
         markup.add("Сгененрировать ключ")
+        markup.add("Назад")
 
         return markup
     elif 'main_main' == markup_name:
@@ -46,6 +49,7 @@ def get_markup(markup_name, role='', is_admin=False, id='', *args):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add("Как ПВЗ")
         markup.add("Как ФФ")
+        markup.add("Назад")
         # markup.add("Для выкупов")
 
         return markup
@@ -54,6 +58,7 @@ def get_markup(markup_name, role='', is_admin=False, id='', *args):
         bots_name = args[0]
         for bot_name in bots_name:
             markup.add(bot_name)
+        markup.add("Назад")
 
         return markup
     elif '' == markup_name:

@@ -1,21 +1,18 @@
 from TG.Models.Model import Model
 
-COLUMNS = ["id", "address", "tg_id", "added_to_bot"]
+COLUMNS = ["id", "address", "tg_id", "added_to_bot", "checked"]
 
 
 class Address(Model):
-    def __init__(self, id=0, address='', tg_id='', added_to_bot=''):
+    def __init__(self, id=0, address='', tg_id='', added_to_bot=False, checked=False):
         super().__init__()
         self.id = id
         self.address = address
         self.tg_id = tg_id
         self.added_to_bot = added_to_bot
+        self.checked = checked
 
     def load(self, tg_id=None, address=None):
-        def callback(cursor):
-            records = cursor.fetchall()
-            return records
-
         path = "SELECT * FROM addresses "
         is_where = False
         if tg_id:
@@ -24,14 +21,16 @@ class Address(Model):
         if address:
             path += "WHERE " if not is_where else ""
             path += f"address='{address}'"
-        return self.format_data(self.execute(path, callback))
+        return self.format_data(self.execute(path, self.fetchall))
 
     def update(self):
         if self.changed:
             path = "UPDATE addresses SET "
             added_to_bot = "TRUE" if self.added_to_bot else "FALSE"
-            path += f"added_to_bot={added_to_bot}"
-            path += f" WHERE address='{self.address}'"
+            path += f"added_to_bot={added_to_bot} AND "
+            checked = "TRUE" if self.checked else "FALSE"
+            path += f"checked={checked} "
+            path += f"WHERE address='{self.address}'"
             Address.execute(path)
 
     def format_data(self, data):
@@ -40,6 +39,7 @@ class Address(Model):
         self.address = data[1]
         self.tg_id = data[2]
         self.added_to_bot = data[3]
+        self.checked = data[4]
 
         return self
 
@@ -47,10 +47,6 @@ class Addresses(Model):
 
     @classmethod
     def load(cls, tg_id=None, address=None):
-        def callback(cursor):
-            records = cursor.fetchall()
-            return records
-
         path = "SELECT * FROM addresses "
         is_where = False
         if tg_id:
@@ -59,22 +55,23 @@ class Addresses(Model):
         if address:
             path += "WHERE " if not is_where else ""
             path += f"address='{address}'"
-        return cls.format_data(cls.execute(path, callback))
+        return cls.format_data(cls.execute(path, cls.fetchall))
 
     @classmethod
     def insert(cls, address: Address):
-        path = "INSERT INTO addresses (id, address, tg_id, added_to_bot) VALUES "
-        path += f"((SELECT MAX(id)+1 FROM addresses), '{address.address}', '{address.tg_id}', FALSE)"
+        path = "INSERT INTO addresses (id, address, tg_id, added_to_bot, checked) VALUES "
+        path += f"((SELECT MAX(id)+1 FROM addresses), '{address.address}', '{address.tg_id}', FALSE, FALSE)"
         cls.execute(path)
 
     @classmethod
     def get_all_not_added(cls):
-        def callback(cursor):
-            records = cursor.fetchall()
-            return records
-
         path = "SELECT * FROM addresses WHERE added_to_bot=FALSE"
-        return cls.format_data(Addresses.execute(path, callback))
+        return cls.format_data(Addresses.execute(path, cls.fetchall))
+
+    @classmethod
+    def get_all_not_checked(cls):
+        path = "SELECT * FROM addresses WHERE checked=FALSE"
+        return cls.format_data(Addresses.execute(path, cls.fetchall))
 
     @classmethod
     def format_data(cls, data):
@@ -85,6 +82,7 @@ class Addresses(Model):
             address.address = d[1]
             address.tg_id = d[2]
             address.added_to_bot = d[3]
+            address.checked = d[4]
             addresses += [address]
 
         if addresses:

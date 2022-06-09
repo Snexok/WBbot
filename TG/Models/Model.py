@@ -15,6 +15,11 @@ class Model:
                 if callback:
                     return callback(cursor)
 
+    @staticmethod
+    def fetchall(cursor):
+        records = cursor.fetchall()
+        return records
+
     def append(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, getattr(self, k) + v)
