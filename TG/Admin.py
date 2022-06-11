@@ -198,6 +198,35 @@ class Admin:
 
         return res_message, state
 
+    @classmethod
+    def check_not_checked_pup_addresses(cls):
+        """
+        Проверяет наличие не проверенных адресов ПВЗ
+
+        return states (ADMIN_ADDRESS_VERIFICATION | ADMIN)
+        """
+        all_not_checked_addresses = Addresses.get_all_not_checked()
+
+        if all_not_checked_addresses:
+            if len(all_not_checked_addresses) > 0:
+                res_message = 'Список не проверенных адресов:\n\n' +\
+                               cls.join_to_lines([address.address for address in all_not_checked_addresses]) +\
+                               '\nПопорядку напишите правильные адреса в формате:\n\n' +\
+                               '<1 адрес>\n' +\
+                               '<2 адрес>\n' +\
+                               '<3 адрес>'
+                state = 'ADMIN_ADDRESS_VERIFICATION'
+            else:
+                res_message = "Все адреса проверены"
+
+                state = 'ADMIN'
+        else:
+            res_message = "Все адреса проверены"
+
+            state = 'ADMIN'
+
+        return res_message, state
+
     @staticmethod
     def join_to_lines(joined_elems):
         return "".join(map(lambda x: x + '\n', joined_elems))

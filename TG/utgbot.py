@@ -38,6 +38,7 @@ class States(StatesGroup):
     FF_ADDRESS_END = State()
     PUP_ADDRESSES_START = State()
     PUP_ADDRESSES_CONTINUE = State()
+    ADMIN_ADDRESS_VERIFICATION = State()
     ORDER = State()
     TO_WL = State()
     REGISTER = State()
@@ -116,6 +117,8 @@ async def main_handler(message: types.Message):
 @dp.message_handler(state=States.REGISTER)
 async def register_handler(message: types.Message):
     msg = message.text.lower()
+    id = str(message.chat.id)
+
     if "как пвз" in msg:
         id = str(message.chat.id)
         user = Users.load(id)
@@ -144,6 +147,10 @@ async def admin_handler(message: types.Message):
     print(msg)
     if 'проверить ботов' in msg:
         res_message, state = Admin.check_not_added_pup_addresses()
+        await message.answer(res_message)
+        await getattr(States, state).set()
+    elif 'проверить адреса' in msg:
+        res_message, state = Admin.check_not_checked_pup_addresses()
         await message.answer(res_message)
         await getattr(States, state).set()
     elif "сделать выкуп" in msg:
@@ -294,7 +301,6 @@ async def ff_address_start_handler(message: types.Message):
     await States.FF_ADDRESS_END.set()
     await message.answer('Напишите адрес вашего ФФ')
 
-
 @dp.message_handler(state=States.FF_ADDRESS_END)
 async def ff_address_end_handler(message: types.Message):
     id = str(message.chat.id)
@@ -314,6 +320,37 @@ async def ff_address_end_handler(message: types.Message):
     else:
         markup = get_markup('main_main', Users.load(id).role)
     await message.answer('Мы запомнили ваши данные', reply_markup=markup)
+
+@dp.message_handler(state=States.ADMIN_ADDRESS_VERIFICATION)
+async def address_verification_handler(message: types.Message):
+    msg = message.text
+    id = str(message.chat.id)
+
+    if ('проверить ботов' in msg) or ("cделать выкуп" in msg) or ("добавить пользователя" in msg) or ("назад" in msg):
+        await States.ADMIN.set()
+        await admin_handler(message)
+        return
+
+    new_addresses = msg.split('\n')
+
+    all_not_checked_addresses = Addresses.get_all_not_checked()
+
+    for i, old_address_str in enumerate(all_not_checked_addresses):
+        address = Address().load(address=old_address_str)
+        address.append(address=new_addresses[i])
+        address.update()
+
+        user = Users.load(id=address.tg_id)
+        for j, address in user.addresses:
+            if address == old_address_str:
+                user.addresses[j] = new_addresses[i]
+                user.set(addresses=user.addresses)
+                address.update()
+                break
+
+    await States.ADMIN.set()
+    markup = get_markups('admin_main', Admin.is_admin(id), id)
+    await message.answer('Все адреса обновлены', reply_markup=markup)
 
 
 @dp.message_handler(state=States.PUP_ADDRESSES_START)
