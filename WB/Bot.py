@@ -53,7 +53,7 @@ class Bot:
             except:
                 pass
 
-    def buy(self, data, post_place, order_id):
+    def search(self, data):
         report = {}
         print(f'Bot {self.data.name} started')
         for d in data:
@@ -66,9 +66,6 @@ class Bot:
             self.catalog.card_search(d['article'])
             sleep(1)
         sleep(2)
-        self.page = Utils.go_to_basket(self.driver)  # basket
-        self.driver.refresh()
-        sleep(2)
 
         report['inn'] = data[0]['inn']
 
@@ -77,17 +74,25 @@ class Bot:
         articles = [str(d['article']) for d in data]
         report['articles'] = articles
 
-        self.basket.delete_other_cards_in_basket(articles)
+        return report
+
+    def buy(self, report, post_place, order_id):
+
+        self.page = Utils.go_to_basket(self.driver)  # basket
+        self.driver.refresh()
+        sleep(2)
+
+        self.basket.delete_other_cards_in_basket(report['articles'])
 
         report['prices'] = []
-        for article in articles:
+        for article in report['articles']:
             price = self.basket.get_price(article)
             report['prices'] += [price]
 
         report['total_price'] = sum(report['prices'])
 
         report['quantities'] = []
-        for article in articles:
+        for article in report['articles']:
             quantity = self.basket.get_quantity(article)
             report['quantities'] += [int(quantity)]
 
@@ -190,9 +195,9 @@ class Bot:
 
         if all([status == "Готов к получению" for status in order.statuses]):
             msg_pup = 'Заказ готов\n' + \
-                        f'Код: {order.code_for_approve}\n' + \
-                        f'Фио: {order.bot_surname}\n' + \
-                        f'Адрес: {order.pup_address}'
+                      f'Код: {order.code_for_approve}\n' + \
+                      f'Фио: {order.bot_surname}\n' + \
+                      f'Адрес: {order.pup_address}'
             msg_admin = msg_pup + '\n' + \
                         f'Номер заказа: {order.number}\n' + \
                         f'Id заказа: {order.id}\n'
@@ -248,14 +253,17 @@ class Bot:
             order.pup_address = order_row.find_element(By.XPATH,
                                                        './div/div/div[contains(@class, "delivery-address__info")]').text
             item_imgs = order_row.find_elements(By.XPATH, './div/ul/li/div/div/img')
-            img_ext_len = len('-1.avif')-1
+            img_ext_len = len('-1.avif') - 1
             order.articles = [img.get_attribute('src')[-img_ext_len - ARTICLE_LEN:-img_ext_len] for img in item_imgs]
             statuses = order_row.find_elements(By.XPATH,
                                                './div/ul/li/div/div/div[@class="goods-list-delivery__price-status"]')
             order.statuses = [status.text for status in
                               statuses]  # Ожидается 19-21 мая, Отсортирован в сортировочном центре, В пути на пункт выдачи, Готов к выдаче
-            order.code_for_approve = order_row.find_element(By.XPATH,
-                                                            "./div/div/div[contains(@class,'delivery-code__value')]").text
+            try:
+                order.code_for_approve = order_row.find_element(By.XPATH,
+                                                                "./div/div/div[contains(@class,'delivery-code__value')]").text
+            except:
+                order.code_for_approve = ""
 
             orders += [order]
         return orders
@@ -271,14 +279,18 @@ class Bot:
 
     def expect_payment(self):
         payment = False
+        print("expect_payment run")
         i = 0
         while True:
             try:
-                payment = True if self.driver.find_element(By.XPATH, '//h1[text()="                Ваш заказ подтвержден                "]') else False
+                payment = True if self.driver.find_element(By.XPATH,
+                                                           '//h1[text()="                Ваш заказ подтвержден                "]') else False
                 break
             except:
-                if i < 3600:
+                if i < 360:
                     sleep(1)
+                else:
+                    break
                 i += 1
         start_datetime = str(datetime.now())
         return {'payment': payment, 'datetime': start_datetime}

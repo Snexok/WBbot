@@ -27,6 +27,16 @@ class BotsWait(Model):
         return cls.format_data(cls.execute(path, callback))
 
     @classmethod
+    def delete(cls, bot_name, event):
+        def callback(cursor):
+            records = cursor.fetchall()
+            return records
+
+        path = f"DELETE FROM bots_wait WHERE bot_name='{bot_name}' AND event='{event}'"
+
+        return cls.format_data(cls.execute(path, callback))
+
+    @classmethod
     def insert(cls, bot_name, event, start_datetime, end_datetime):
         path = "INSERT INTO bots_wait (id, bot_name, event, start_datetime, end_datetime) VALUES "
         path += f"((SELECT MAX(id)+1 FROM bots_wait), {bot_name}, '{event}', '{start_datetime}', '{end_datetime}')"

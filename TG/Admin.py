@@ -6,6 +6,7 @@ import io
 from TG.Models.Addresses import Addresses
 from TG.Models.Admin import Admins as Admins_model
 from TG.Models.Bot import Bots as Bots_model
+from TG.Models.BotsWaits import BotsWait
 from TG.Models.Orders import Order as Order_Model, Orders as Orders_Model
 
 from WB.Bot import Bot
@@ -50,38 +51,49 @@ class Admin:
             bot.open_bot(manual=False)
 
 
-        # main process
-        run_bots = [asyncio.to_thread(cls.run_bot, bot, data_for_bots[i], number) for i, bot in enumerate(bots)]
+        # search process
+        run_bots = [asyncio.to_thread(cls.bot_search, bot, data_for_bots[i]) for i, bot in enumerate(bots)]
         reports = await asyncio.gather(*run_bots)
+
+        print("bot_search ended")
+
+        # main process
+        run_bots = [asyncio.to_thread(cls.bot_buy, bot, reports[i], number) for i, bot in enumerate(bots)]
+        reports = await asyncio.gather(*run_bots)
+
+        print("bot_buy ended")
 
         for report in reports:
             await message.answer_photo(open(report['qr_code'], 'rb'))
 
-        # run_bots = [asyncio.to_thread(bot.expect_payment) for i, bot in enumerate(bots)]
-        # paid = await asyncio.gather(*run_bots)
-        # print(paid)
+        run_bots = [asyncio.to_thread(bot.expect_payment) for i, bot in enumerate(bots)]
+        paid = await asyncio.gather(*run_bots)
+        print(paid)
 
-        start_datetime = str(datetime.now())
-        for i, report in enumerate(reports):
-            pup_address = Addresses.load(address=report['post_place'])[0]
-            order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
-                                quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
-                                pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
-                                start_date=start_datetime, pred_end_date=str(report['pred_end_date']), active=True,
-                                statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
-            order.insert()
+        # start_datetime = str(datetime.now())
         # for i, report in enumerate(reports):
-        #     if paid[i]['payment'] or TEST:
-        #         print(paid[i]['datetime'])
-        #         pup_address = Addresses.load(address=report['post_place'])[0]
-        #         order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
-        #                       quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
-        #                       pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
-        #                       start_date=paid[i]['datetime'], pred_end_date=report['pred_end_date'],
-        #                       active=paid[i]['payment'] or TEST, statuses=['payment' for _ in range(len(report['articles']))])
-        #         order.insert()
-        #
-        #         await message.answer(f"Заказ бота {report['bot_name']} оплачен, время оплаты {paid[i]['datetime']}")
+        #     pup_address = Addresses.load(address=report['post_place'])[0]
+        #     order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
+        #                         quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
+        #                         pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
+        #                         start_date=start_datetime, pred_end_date=str(report['pred_end_date']), active=True,
+        #                         statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
+        #     order.insert()
+        for i, report in enumerate(reports):
+            if paid[i]['payment'] or TEST:
+                print(paid[i]['datetime'])
+                pup_address = Addresses.load(address=report['post_place'])[0]
+                order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
+                              quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
+                              pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
+                              start_date=paid[i]['datetime'], pred_end_date=report['pred_end_date'],
+                              active=paid[i]['payment'] or TEST, statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
+                order.insert()
+
+                await message.answer(f"Оплачен заказ бота {report['bot_name']} оплачен, время оплаты {paid[i]['datetime']}")
+            else:
+                await message.answer(f"НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
+
 
         await message.answer('Ваш заказ выполнен, до связи')
 
@@ -95,20 +107,22 @@ class Admin:
             loop.create_task(cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], pup_address.address, number, message))
 
     @staticmethod
-    def run_bot(bot: Bot, data_for_bot, number):
-        """
-        Принцип размещения операций:
-        Делить операции на блоке, между которыми можно отправлять статусные сообщения
-        """
+    def bot_search(bot: Bot, data_for_bot):
+        report = bot.search(data_for_bot)
 
+        report['bot_name'] = bot.data.name
+        report['bot_surname'] = bot.data.surname
+
+        return report
+
+    @staticmethod
+    def bot_buy(bot: Bot, report, number):
         addresses = bot.data.addresses
         post_place = random.choice(addresses if type(addresses) is list else [addresses])
 
-        report = bot.buy(data_for_bot, post_place, number)
+        report = bot.buy(report, post_place, number)
 
         report['post_place'] = post_place
-        report['bot_name'] = bot.data.name
-        report['bot_surname'] = bot.data.surname
 
         return report
 
@@ -211,14 +225,17 @@ class Admin:
     async def check_order(cls, bot_name, message):
         bot = Bot(name=bot_name)
         orders = Orders_Model.load(bot_name=bot_name, active=True)
+        if len(orders) == 0:
+            BotsWait.delete(bot_name=bot_name, event='delivery')
         # print(bot.data.name)
         # async def check_order(bot):
         #     bot.open_bot(manual=False)
         #     bot.open_delivery()
         bot.open_bot(manual=False)
-        order = orders[0]
-        await bot.check_readiness(order.articles, order.pup_address, order.number, message, cls.wait_order_ended)
-        # for order in orders:
-        #     await bot.check_readiness(order.articles, order.pup_address, order.number, message, cls.wait_order_ended)
+        # order = orders[0]
+        # await bot.check_readiness(order.articles, order.pup_address, order.number, message, cls.wait_order_ended)
+        for order in orders:
+            await bot.check_readiness(order.articles, order.pup_address, order.number, message, cls.wait_order_ended)
+
         # await asyncio.gather(asyncio.to_thread(check_order(bot)))
 

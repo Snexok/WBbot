@@ -6,7 +6,7 @@ from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram import Bot, Dispatcher, executor, types
 
 from TG.Admin import Admin
-from TG.Markups import get_markup
+from TG.Markups import get_markup, get_keyboard
 from TG.Models.BotsWaits import BotsWait
 from TG.Models.Addresses import Addresses, Address
 from TG.Models.Orders import Orders
@@ -167,36 +167,36 @@ async def admin_handler(message: types.Message):
         bots_wait = BotsWait.load(event='delivery')
         print(bots_wait)
         bots_name = [bots_wait[i].bot_name for i in range(len(bots_wait))]
-        markup = get_markup('admin_bots', '', True, '', bots_name)
-        await message.answer('Выберите бота', reply_markup=markup)
+        keyboard = get_keyboard('admin_bots', bots_name)
+        await message.answer('Выберите бота', reply_markup=keyboard)
     elif id == '794329884' or id == '535533975':
         if "открыть бота" in msg:
             await States.RUN_BOT.set()
             tg_bots = Bots_model.load()
             bots_name = [f"{tg_bots[i].name} {tg_bots[i].type}" for i in range(len(tg_bots))]
-            markup = get_markup('admin_bots', '', Admin.is_admin(id), id, bots_name)
+            markup = get_keyboard('admin_bots', bots_name)
             await message.answer('Выберите бота', reply_markup=markup)
 
 
-@dp.message_handler(state=States.RUN_BOT)
-async def run_bot_handler(message: types.Message):
-    id = str(message.chat.id)
-    msg = message.text
+@dp.callback_query_handler(state=States.RUN_BOT)
+async def run_bot_handler(call: types.CallbackQuery):
+    id = str(call.message.chat.id)
+    msg = call.data
     bot_name, bot_type = msg.split(' ')
     await States.ADMIN.set()
     markup = get_markup('admin_main', id=id)
-    await message.answer(msg + " открыт", reply_markup=markup)
+    await call.message.answer(msg + " открыт", reply_markup=markup)
     await Admin.open_bot(bot_name=bot_name)
 
 
-@dp.message_handler(state=States.CHECK_WAITS)
-async def check_waits_handler(message: types.Message):
-    id = str(message.chat.id)
-    msg = message.text
+@dp.callback_query_handler(state=States.CHECK_WAITS)
+async def check_waits_handler(call: types.CallbackQuery):
+    id = str(call.message.chat.id)
+    msg = call.data
     await States.ADMIN.set()
     markup = get_markup('admin_main', id=id)
-    await message.answer(msg + " открыт", reply_markup=markup)
-    await Admin.check_order(msg, message)
+    await call.message.answer(msg + " открыт", reply_markup=markup)
+    await Admin.check_order(msg, call.message)
 
 
 @dp.message_handler(state=States.TO_WL)
@@ -252,8 +252,8 @@ async def inside_handler(message: types.Message):
 async def address_distribution_handler(message: types.Message):
     msg = message.text
     id = str(message.chat.id)
-
-    if ('проверить ботов' in msg) or ("cделать выкуп" in msg) or ("добавить пользователя" in msg) or ("назад" in msg):
+    _msg = msg.lower()
+    if ('проверить ботов' in _msg) or ("cделать выкуп" in _msg) or ("добавить пользователя" in _msg) or ("назад" in _msg):
         await States.ADMIN.set()
         await admin_handler(message)
         return

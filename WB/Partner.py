@@ -31,6 +31,8 @@ class Partner:
                     self.choose_task(order)
                 else:
                     break
+            self.add_to_assembly()
+            self.go_to_assembly()
 
     def get_not_collected_orders(self):
         orders = Orders.load(collected=False)
@@ -99,15 +101,23 @@ class Partner:
     def add_to_assembly(self):
         # Нажимаем кнопку принятия кукисов, если она еще на странице
         try:
-            cookies_btn = self.driver.find_elements(By.XPATH, "//div[contains(@class, 'WarningCookiesBannerCard__button')/button")
+            cookies_btn = self.driver.find_element(By.XPATH,
+                                                   "//div[contains(@class, 'WarningCookiesBannerCard__button')]/button")
             cookies_btn.click()
             sleep(1)
         except:
+            print("cookies_btn not defined")
             pass
 
         add_btn = WebDriverWait(self.driver, 60).until(
-            lambda d: d.find_elements(By.XPATH, "//div[@class='New-tasks-table-row-view__33HSVACKTB']"))
+            lambda d: d.find_element(By.XPATH, "//span[text()='Добавить к сборке']/.."))
         add_btn.click()
+        sleep(1)
+
+    def go_to_assembly(self):
+        on_assembly_tab = self.driver.find_element(By.XPATH, "//a[contains(text(),'На сборке')]")
+        on_assembly_tab.click()
+        sleep(1)
 
     def get_target_task(self, article, order_datetime):
         self.tasks = self.get_tasks()

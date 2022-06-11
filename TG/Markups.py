@@ -1,7 +1,7 @@
 from aiogram import types
 
 
-def get_markup(markup_name, role='', is_admin=False, id='', *args):
+def get_markup(markup_name, role='', is_admin=False, id=''):
     if 'pup_addresses' == markup_name:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add("Всё")
@@ -49,14 +49,19 @@ def get_markup(markup_name, role='', is_admin=False, id='', *args):
         # markup.add("Для выкупов")
 
         return markup
-    elif 'admin_bots' == markup_name:
-        markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
+    elif '' == markup_name:
+        pass
+    elif '' == markup_name:
+        pass
+
+
+def get_keyboard(keyboard_name, *args):
+    if 'admin_bots' == keyboard_name:
+        keyboard = types.InlineKeyboardMarkup()
+        bots = []
         bots_name = args[0]
         for bot_name in bots_name:
-            markup.add(bot_name)
+            bots += [types.InlineKeyboardButton(text=bot_name, callback_data=bot_name)]
+        keyboard.add(*bots)
 
-        return markup
-    elif '' == markup_name:
-        pass
-    elif '' == markup_name:
-        pass
+        return keyboard
