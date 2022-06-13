@@ -3,6 +3,8 @@ from selenium.webdriver import Keys
 from time import sleep
 import random
 
+from selenium.webdriver.support.wait import WebDriverWait
+
 CONTROL = Keys.CONTROL
 DELETE = Keys.DELETE
 ENTER = Keys.ENTER
@@ -36,7 +38,8 @@ class Utils:
     @staticmethod
     def search(driver, key):
         # vars
-        search_input = driver.find_element(By.ID, 'searchInput')
+        search_input = WebDriverWait(driver, 60).until(
+            lambda d: d.find_element(By.ID, 'searchInput'))
 
         # resolve
         search_input.click()

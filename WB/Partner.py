@@ -17,30 +17,31 @@ class Partner:
     def collect_orders(self):
         orders = self.get_not_collected_orders()
         print(len(orders))
-        self.open()
         inns = []
         orders.sort(key=lambda x: x.inn)
         for order in orders:
             if order.inn not in inns:
                 inns += [order.inn]
         for inn in inns:
-            self.choose_inn(inn)
+            self.open(inn)
             self.open_marketplace()
+            sleep(10)
             for order in orders:
                 if order.inn == inn:
+                    print(order)
                     self.choose_task(order)
                 else:
                     break
-            self.add_to_assembly()
-            self.go_to_assembly()
+            # self.add_to_assembly()
+            # self.go_to_assembly()
 
     def get_not_collected_orders(self):
         orders = Orders.load(collected=False)
         return orders
 
-    def open(self):
+    def open(self, inn):
         self.driver.get('https://seller.wildberries.ru/')
-        cookies = pickle.load(open('./bots_sessions/Partner_1.pkl', "rb"))
+        cookies = pickle.load(open(f'../bots_sessions/Partner_{inn}.pkl', "rb"))
         for cookie in cookies:
             self.driver.add_cookie(cookie)
         self.driver.get('https://seller.wildberries.ru/')
@@ -51,14 +52,18 @@ class Partner:
         self.driver.find_element(By.XPATH, f"//*[contains(text(),'ИНН {inn}')]").click()
 
     def open_marketplace(self):
-        self.driver.find_element(By.XPATH, "//span[text()='Маркетплейс']/../../a").click()
-        sleep(1)
+        marketplace_btn = WebDriverWait(self.driver, 60).until(
+            lambda d: d.find_element(By.XPATH, "//span[text()='Маркетплейс']/../../a"))
+        sleep(2)
+        marketplace_btn.click()
         # marketplace = self.driver.find_element(By.XPATH,
         #                                        "//span[text()='Сборочные задания (везу на склад WB)']/../../a")
         # marketplace.click()
 
     def get_tasks(self):
-        rows = self.driver.find_elements(By.XPATH, "//div[contains(@class,'row__')]")[1:]
+        sleep(2)
+        rows = WebDriverWait(self.driver, 60).until(
+            lambda d: d.find_elements(By.XPATH, "//div[contains(@class,'row__')]"))[1:]
         tasks = []
         for row in rows:
             link = row.find_element(By.XPATH, "./div/div/a")
@@ -82,17 +87,19 @@ class Partner:
 
     def choose_task(self, order):
         tasks = self.get_tasks()
-        print(tasks)
-        for task in tasks:
-            for i in range(len(order.articles)):
-                if task['article'] == order.articles[i]:
+        for i in range(len(order.articles)):
+            for j, task in enumerate(tasks):
+                if task['article'] == order.articles[i] and task['delivery_address'] == order.pup_address:
                     _task_time = datetime.fromisoformat(str(task['datetime']))
                     order_time = datetime.fromisoformat(str(order.start_date))
                     print('times ', _task_time, order_time)
-                    if abs(order_time - _task_time).seconds < 120 and task['delivery_address'] == order.pup_address:
+                    if abs(order_time - _task_time).seconds < 120:
                         WebDriverWait(task['row'], 60).until(
                             lambda d: d.find_element(By.XPATH, "./div/div/label")).click()
                         print(f'picked {order.articles[i]}, {order.pup_address}, {order.start_date}')
+                        break
+                if j == len(tasks)-1:
+                    print(f"Артикул {order.articles[i]} не найден")
 
     def choose_tasks(self, orders):
         for order in orders:

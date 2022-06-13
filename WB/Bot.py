@@ -69,10 +69,10 @@ class Bot:
 
         report['inn'] = data[0]['inn']
 
-        print(report['inn'])
 
         articles = [str(d['article']) for d in data]
         report['articles'] = articles
+        print(self.data.name, articles)
 
         return report
 
