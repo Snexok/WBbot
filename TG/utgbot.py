@@ -1,5 +1,6 @@
 # Python Modules
 from datetime import datetime
+import io
 
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import StatesGroup, State
@@ -45,6 +46,8 @@ class States(StatesGroup):
     REGISTER = State()
     RUN_BOT = State()
     CHECK_WAITS = State()
+    BOT_SEARCH = State()
+    BOT_BUY = State()
 
 
 @dp.message_handler(commands=['start'])
@@ -158,10 +161,14 @@ async def admin_handler(message: types.Message):
         res_message, state = Admin.check_not_checked_pup_addresses()
         await message.answer(res_message)
         await getattr(States, state).set()
-    elif "сделать выкуп" in msg:
+    elif "🔎 Поиск товаров" in msg:
         await message.answer('Пришлите Excel файл заказа')
         await message.answer('Или напишите артикул, сколько штук, на сколько ПВЗ')
-        await States.INSIDE.set()
+        await States.BOT_SEARCH.set()
+    elif "💰 Выкуп собраных заказов" in msg:
+        await message.answer('Пришлите Excel файл заказа')
+        await message.answer('Или напишите артикул, сколько штук, на сколько ПВЗ')
+        await States.BOT_SEARCH.set()
     elif "➕ добавить пользователя ➕" in msg:
         await States.TO_WL.set()
         markup = get_markup('admin_add_user')
@@ -239,22 +246,29 @@ async def to_whitelist_handler(message: types.Message):
         await message.answer(f"Пользователь с username {msg} добавлен", reply_markup=markup)
 
 
-@dp.message_handler(state=States.INSIDE, content_types=['document'])
+@dp.message_handler(state=States.BOT_SEARCH, content_types=['document'])
 async def inside_handler(message: types.Message):
-    number = await Orders.get_number()
-
     await States.ADMIN.set()
+
+    document = io.BytesIO()
+    await message.document.download(destination_file=document)
+    data_for_bots = Admin.pre_run_doc(document)
+    await message.answer('Поиск начался')
     if DEBUG:
-        await Admin.inside(message, number)
+        msgs = await Admin.bot_search(data_for_bots)
     else:
         try:
-            await Admin.inside(message, number)
+            msgs = await Admin.bot_search(data_for_bots)
         except:
-            admin = Admin_model().get_sentry_admin()
-            await bot.send_message(admin.id, f"Упал заказ номер {str(number)}")
+            await message.answer('Поиск упал')
+
+    for msg in msgs:
+        await message.answer(msg)
+
+    await message.answer('Поиск завершен')
 
 
-@dp.message_handler(state=States.INSIDE, content_types=['text'])
+@dp.message_handler(state=States.BOT_SEARCH, content_types=['text'])
 async def inside_handler(message: types.Message):
     msg = message.text.lower()
     id = str(message.chat.id)

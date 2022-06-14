@@ -10,7 +10,8 @@ def get_markup(markup_name, role='', is_admin=False, id=''):
     elif 'admin_main' == markup_name:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add("➕ Добавить пользователя ➕")
-        markup.add("Сделать выкуп")
+        markup.add("🔎 Поиск товаров")
+        markup.add("💰 Выкуп собраных заказов")
         if id:
             if id == '794329884' or id == '535533975':
                 markup.add("Открыть бота")

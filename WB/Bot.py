@@ -55,6 +55,8 @@ class Bot:
 
     def search(self, data):
         report = {}
+        report['bot_name'] = self.data.name
+        report['bot_username'] = self.data.username
         print(f'Bot {self.data.name} started')
         for d in data:
             self.page = Utils.search(self.driver, d['search_key'])  # catalog

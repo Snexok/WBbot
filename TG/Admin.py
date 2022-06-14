@@ -1,7 +1,7 @@
 import asyncio
 import random
-import io
 
+import ujson as ujson
 
 from TG.Models.Addresses import Addresses
 from TG.Models.Admin import Admins as Admins_model
@@ -34,29 +34,6 @@ class Admin:
 
     @classmethod
     async def inside(cls, message, number):
-        print('TEST='+'TRUE' if TEST else 'FALSE')
-        print('T='+'T' if TEST else 'F')
-        document = io.BytesIO()
-        await message.document.download(destination_file=document)
-        # preprocessing
-        data_for_bots = cls.pre_run_doc(document)
-
-        print(len(data_for_bots))
-
-        # tg_bots_data = Bots_model.load(limit=len(data_for_bots), _type="WB")
-        tg_bots_data = Bots_model.load_must_free(limit=len(data_for_bots), _type="WB")
-
-        bots = [Bot(data=tg_bot_data) for tg_bot_data in tg_bots_data]
-
-        for bot in bots:
-            bot.open_bot(manual=False)
-
-
-        # search process
-        run_bots = [asyncio.to_thread(cls.bot_search, bot, data_for_bots[i]) for i, bot in enumerate(bots)]
-        reports = await asyncio.gather(*run_bots)
-
-        print("bot_search ended")
 
         # main process
         run_bots = [asyncio.to_thread(cls.bot_buy, bot, reports[i], number) for i, bot in enumerate(bots)]
@@ -110,15 +87,35 @@ class Admin:
             print(pup_address.address)
             loop.create_task(cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], pup_address.address, number, message))
 
-    @staticmethod
-    def bot_search(bot: Bot, data_for_bot):
-        report = bot.search(data_for_bot)
+    @classmethod
+    def bot_search(cls, data):
+        print('TEST=' + 'TRUE' if TEST else 'FALSE')
+        print("bot_search started")
 
-        report['bot_name'] = bot.data.name
-        print(bot.data)
-        report['bot_username'] = bot.data.username
+        # tg_bots_data = Bots_model.load(limit=len(data_for_bots), _type="WB")
+        tg_bots_data = Bots_model.load_must_free(limit=len(data), _type="WB")
 
-        return report
+        bots = [Bot(data=tg_bot_data) for tg_bot_data in tg_bots_data]
+
+        for bot in bots:
+            bot.open_bot(manual=False)
+
+        # search process
+        run_bots = [asyncio.to_thread(bot.search, data[i]) for i, bot in enumerate(bots)]
+        reports = await asyncio.gather(*run_bots)
+
+        msgs = []
+        for i, report in enumerate(reports):
+            data = ujson.dump(report)
+            bot_wait = BotsWait(bot_name=bots[i].data.name, event="FOUND", wait=True,
+                                start_datetime=datetime.now(), data=data)
+            bot_wait.insert()
+
+            msgs += [f"Собран заказ бота {report['bot_name']}, с артикулами {report['articles']}"]
+
+        print("bot_search ended")
+
+        return msgs
 
     @staticmethod
     def bot_buy(bot: Bot, report, number):
