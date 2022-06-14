@@ -1,4 +1,4 @@
-import datetime
+from datetime import datetime
 
 from TG.Models.Model import Model
 
@@ -47,16 +47,16 @@ class Order(Model):
          'statuses': self.statuses, 'inn': self.inn, 'collected': self.collected}
 
     def insert(self):
-        c = [col for col in COLUMNS if getattr(self, col)]
+        c = [col for col in COLUMNS if getattr(self, col) or type(getattr(self, col)) is bool]
         path = "INSERT INTO orders (" + ", ".join(c) + ") VALUES "
         path += "((SELECT MAX(id)+1 FROM orders), "
         for k in COLUMNS[1:]:
             v = getattr(self, k)
-            print(k, v)
-            if v:
+            print(k, v, type(v))
+            if v or type(v) is bool:
                 if type(v) is int:
                     path += f"{str(v)}, "
-                elif type(v) is str:
+                elif type(v) is str or type(v) is datetime:
                     path += f"'{str(v)}', "
                 elif type(v) is bool:
                     v = "TRUE" if v else "FALSE"
@@ -68,6 +68,7 @@ class Order(Model):
                         path += f"ARRAY{str(v)}::integer[], "
         path = path[:-2]
         path += ")"
+        print(path)
         self.execute(path)
 
     def update(self):

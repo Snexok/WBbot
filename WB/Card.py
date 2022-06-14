@@ -69,7 +69,6 @@ class Card():
     def close_card_modal(self):
         try:
             self.driver.find_element(By.CLASS_NAME, 'popup__close').click()
-            print('.driver.find_element(By.CLASS_NAME, "popup__close").click()')
         except:
             self.page_back()
             sleep(2.5)

@@ -43,7 +43,8 @@ class Admin:
 
         print(len(data_for_bots))
 
-        tg_bots_data = Bots_model.load(limit=len(data_for_bots), _type="WB")
+        # tg_bots_data = Bots_model.load(limit=len(data_for_bots), _type="WB")
+        tg_bots_data = Bots_model.load_must_free(limit=len(data_for_bots), _type="WB")
 
         bots = [Bot(data=tg_bot_data) for tg_bot_data in tg_bots_data]
 
@@ -66,8 +67,11 @@ class Admin:
         for report in reports:
             await message.answer_photo(open(report['qr_code'], 'rb'))
 
-        run_bots = [asyncio.to_thread(bot.expect_payment) for i, bot in enumerate(bots)]
-        paid = await asyncio.gather(*run_bots)
+        if TEST:
+            paid = [{'payment': True, 'datetime': datetime.now()} for _ in range(len(bots))]
+        else:
+            run_bots = [asyncio.to_thread(bot.expect_payment) for i, bot in enumerate(bots)]
+            paid = await asyncio.gather(*run_bots)
         print(paid)
 
         # start_datetime = str(datetime.now())
@@ -85,7 +89,7 @@ class Admin:
                 pup_address = Addresses.load(address=report['post_place'])[0]
                 order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
                               quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
-                              pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
+                              pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_username'],
                               start_date=paid[i]['datetime'], pred_end_date=report['pred_end_date'],
                               active=paid[i]['payment'] or TEST, statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
                 order.insert()
@@ -111,7 +115,8 @@ class Admin:
         report = bot.search(data_for_bot)
 
         report['bot_name'] = bot.data.name
-        report['bot_surname'] = bot.data.surname
+        print(bot.data)
+        report['bot_username'] = bot.data.username
 
         return report
 

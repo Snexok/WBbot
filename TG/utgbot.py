@@ -59,7 +59,11 @@ async def start(message: types.Message):
         if is_admin:
             markup = get_markup('main_main', is_admin=is_admin)
         else:
-            markup = get_markup('main_main', Users.load(id).role)
+            user = Users.load(id)
+            if user:
+                markup = get_markup('main_main', user.role)
+            else:
+                markup = get_markup('main_main')
         await message.reply("Привет", reply_markup=markup)
     elif username:
         wl = Whitelist.set_tg_id(id, username=username)
@@ -95,23 +99,23 @@ async def set_admin(message: types.Message):
 @dp.message_handler(state=States.MAIN)
 async def main_handler(message: types.Message):
     msg = message.text.lower()
-    if "регистрация" in msg:
+    if "⚡ регистрация ⚡" in msg:
         await States.REGISTER.set()
         markup = get_markup('main_register')
         await message.answer("Как вы хотите зарегистрировать:", reply_markup=markup)
-    elif "собрать выкупы" in msg:
+    elif "🚀 собрать самовыкупы 🚀" in msg:
         await message.answer('Сборка началась')
         Partner().collect_orders()
         await message.answer('Сборка закончилась')
-    elif "собрать реальные заказы" in msg:
-        await message.answer('Сборка РЕАЛЬНЫХ заказов началась')
-
-        await message.answer('Сборка РЕАЛЬНЫХ заказов закончилась')
+    elif "⛔ собрать реальные заказы 🚚" in msg:
+        # await message.answer('Сборка РЕАЛЬНЫХ заказов началась')
+        await message.answer('⛔ Сборка РЕАЛЬНЫХ заказов ПОКА НЕДОСТУПНА ⛔')
+        # await message.answer('Сборка РЕАЛЬНЫХ заказов закончилась')
     elif "заказ" in msg:
         await States.ORDER.set()
         markup = get_markup('main_order')
         await message.answer('Файлом или через чат?', reply_markup=markup)
-    if "admin" in msg:
+    if "🌈 admin" in msg:
         await set_admin(message)
 
 
@@ -128,7 +132,7 @@ async def register_handler(message: types.Message):
             user.insert()
 
         await States.PUP_ADDRESSES_START.set()
-    elif "как фф" in msg:
+    elif "как сотрудник фф" in msg:
         id = str(message.chat.id)
         user = Users.load(id)
         if not user:
@@ -158,11 +162,11 @@ async def admin_handler(message: types.Message):
         await message.answer('Пришлите Excel файл заказа')
         await message.answer('Или напишите артикул, сколько штук, на сколько ПВЗ')
         await States.INSIDE.set()
-    elif "добавить пользователя" in msg:
+    elif "➕ добавить пользователя ➕" in msg:
         await States.TO_WL.set()
         markup = get_markup('admin_add_user')
         await message.answer('Выберите способ', reply_markup=markup)
-    elif "назад" in msg:
+    elif "◄ назад" in msg:
         await States.MAIN.set()
         is_admin = Admin.is_admin(id)
         if is_admin:
@@ -254,7 +258,7 @@ async def inside_handler(message: types.Message):
 async def inside_handler(message: types.Message):
     msg = message.text.lower()
     id = str(message.chat.id)
-    if "назад" in msg:
+    if "◄ назад" in msg:
         await States.ADMIN.set()
         markup = get_markup('admin_main', id=id)
         await message.answer('Главное меню админки', reply_markup=markup)
@@ -268,7 +272,7 @@ async def address_distribution_handler(message: types.Message):
     msg = message.text
     id = str(message.chat.id)
     _msg = msg.lower()
-    if ('проверить ботов' in _msg) or ("cделать выкуп" in _msg) or ("добавить пользователя" in _msg) or ("назад" in _msg):
+    if ('проверить ботов' in _msg) or ("cделать выкуп" in _msg) or ("➕ добавить пользователя ➕" in _msg) or ("◄ назад" in _msg):
         await States.ADMIN.set()
         await admin_handler(message)
         return
@@ -298,7 +302,7 @@ async def address_distribution_handler(message: types.Message):
 @dp.message_handler(state=States.FF_ADDRESS_START)
 async def ff_address_start_handler(message: types.Message):
     id = str(message.chat.id)
-    msg = message.text.lower()
+    msg = message.text
 
     user = Users.load(id)
 
@@ -312,7 +316,7 @@ async def ff_address_start_handler(message: types.Message):
 @dp.message_handler(state=States.FF_ADDRESS_END)
 async def ff_address_end_handler(message: types.Message):
     id = str(message.chat.id)
-    msg = message.text.lower()
+    msg = message.text
 
     user = Users.load(id)
 
@@ -334,7 +338,7 @@ async def address_verification_handler(message: types.Message):
     msg = message.text
     id = str(message.chat.id)
 
-    if ('проверить ботов' in msg) or ("cделать выкуп" in msg) or ("добавить пользователя" in msg) or ("назад" in msg):
+    if ('проверить ботов' in msg) or ("cделать выкуп" in msg) or ("➕ добавить пользователя ➕" in msg) or ("◄ назад" in msg):
         await States.ADMIN.set()
         await admin_handler(message)
         return
@@ -364,7 +368,7 @@ async def address_verification_handler(message: types.Message):
 @dp.message_handler(state=States.PUP_ADDRESSES_START)
 async def pup_addresses_start_handler(message: types.Message):
     id = str(message.chat.id)
-    msg = message.text.lower()
+    msg = message.text
 
     user = Users.load(id)
 

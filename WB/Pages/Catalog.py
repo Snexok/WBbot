@@ -50,19 +50,21 @@ class Catalog():
             cards = self.get_cards()
             for c in cards:
                 sleep(SPEED * random.uniform(0, 1))
+                try:
+                    article = c.get_attribute("id")
+                    if scrolling:
+                        card_cnt_for_scroll = self.scroll(card_cnt_for_scroll)
+                    if article[1:] in articles:
+                        self.card.add_card(article, target=True)
 
-                article = c.get_attribute("id")
-                if scrolling:
-                    card_cnt_for_scroll = self.scroll(card_cnt_for_scroll)
-                if article[1:] in articles:
-                    self.card.add_card(article, target=True)
-
-                    cnt += 1
-                    if cnt >= len(articles):
-                        return
-                elif fake_choose:
-                    if random.randint(0, 5) == 3:
-                        self.card.add_card(article, target=False)
+                        cnt += 1
+                        if cnt >= len(articles):
+                            return
+                    elif fake_choose:
+                        if random.randint(0, 5) == 3:
+                            self.card.add_card(article, target=False)
+                except:
+                    print("article = c.get_attribute(id)")
 
             self.next_page()
             sleep(2)
