@@ -1,4 +1,6 @@
 # Python Modules
+from datetime import datetime
+
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
@@ -6,7 +8,6 @@ from aiogram.dispatcher.filters.state import StatesGroup, State
 from aiogram import Bot, Dispatcher, executor, types
 
 from TG.Admin import Admin
-from TG.Markups import get_markup, get_keyboard
 from TG.Models.BotsWaits import BotsWait
 from TG.Models.Addresses import Addresses, Address
 from TG.Models.Orders import Orders
@@ -14,6 +15,7 @@ from TG.Models.Users import Users, User
 from TG.Models.Bot import Bots as Bots_model
 from TG.Models.Whitelist import Whitelist
 from TG.Models.Admin import Admin as Admin_model
+from TG.Markups import get_markup, get_keyboard
 from WB.Partner import Partner
 
 from configs import config
@@ -23,8 +25,7 @@ DEBUG = True
 API_TOKEN = config['tokens']['telegram']
 # Initialize bot and dispatcher
 bot = Bot(token=API_TOKEN)
-storage = MemoryStorage()
-dp = Dispatcher(bot, storage=storage)
+dp = Dispatcher(bot, storage=MemoryStorage())
 
 
 # States
@@ -154,7 +155,8 @@ async def admin_handler(message: types.Message):
         await message.answer(res_message)
         await getattr(States, state).set()
     elif "сделать выкуп" in msg:
-        await message.answer('Я тебя понял, понял, кидай заказ')
+        await message.answer('Пришлите Excel файл заказа')
+        await message.answer('Или напишите артикул, сколько штук, на сколько ПВЗ')
         await States.INSIDE.set()
     elif "добавить пользователя" in msg:
         await States.TO_WL.set()
@@ -171,9 +173,12 @@ async def admin_handler(message: types.Message):
     elif "проверить ожидаемое" in msg:
         print("проверить ожидаемое")
         await States.CHECK_WAITS.set()
-        bots_wait = BotsWait.load(event='delivery')
-        print(bots_wait)
-        bots_name = [bots_wait[i].bot_name for i in range(len(bots_wait))]
+
+        orders = Orders.load(active=True, pred_end_date=datetime.now())
+        bots_name = []
+        for order in orders:
+            if order.bot_name not in bots_name:
+                bots_name += [order.bot_name]
         keyboard = get_keyboard('admin_bots', bots_name)
         await message.answer('Выберите бота', reply_markup=keyboard)
     elif id == '794329884' or id == '535533975':
@@ -253,6 +258,9 @@ async def inside_handler(message: types.Message):
         await States.ADMIN.set()
         markup = get_markup('admin_main', id=id)
         await message.answer('Главное меню админки', reply_markup=markup)
+    else:
+        article, cnt, pvz_cnt = msg.split(' ')
+        
 
 
 @dp.message_handler(state=States.ADMIN_ADDRESS_DISTRIBUTION)
@@ -349,7 +357,7 @@ async def address_verification_handler(message: types.Message):
                 break
 
     await States.ADMIN.set()
-    markup = get_markups('admin_main', Admin.is_admin(id), id)
+    markup = get_markup('admin_main', Admin.is_admin(id), id)
     await message.answer('Все адреса обновлены', reply_markup=markup)
 
 

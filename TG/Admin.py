@@ -253,9 +253,7 @@ class Admin:
     @classmethod
     async def check_order(cls, bot_name, message):
         bot = Bot(name=bot_name)
-        orders = Orders_Model.load(bot_name=bot_name, active=True)
-        if len(orders) == 0:
-            BotsWait.delete(bot_name=bot_name, event='delivery')
+        orders = Orders_Model.load(bot_name=bot_name, active=True, pred_end_date=datetime.now())
         # print(bot.data.name)
         # async def check_order(bot):
         #     bot.open_bot(manual=False)

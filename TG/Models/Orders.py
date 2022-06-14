@@ -99,7 +99,8 @@ class Order(Model):
 class Orders(Model):
 
     @staticmethod
-    def load(number=None, bot_name=None, articles=None, pup_address=None, active=None, collected=None):
+    def load(number=None, bot_name=None, articles=None, pup_address=None, active=None, collected=None,
+             pred_end_date=None):
         def callback(cursor):
             records = cursor.fetchall()
             return records
@@ -119,6 +120,8 @@ class Orders(Model):
         if collected is not None:
             collected = "TRUE" if collected else "FALSE"
             path += f"collected = {collected} AND "
+        if pred_end_date:
+            path += f"pred_end_date < '{str(pred_end_date)}' AND "
 
         path = path[:-5]
 
@@ -152,4 +155,10 @@ class Orders(Model):
         return res
 
 
+
+if __name__ == '__main__':
+    orders = Orders.load(pred_end_date=datetime.datetime.now())
+    if orders:
+        for order in orders:
+            print(order)
 
