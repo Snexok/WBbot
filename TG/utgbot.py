@@ -1,7 +1,9 @@
 # Python Modules
 from datetime import datetime
 import io
+from random import random
 
+import ujson
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
@@ -21,7 +23,11 @@ from WB.Partner import Partner
 
 from configs import config
 
+import pandas as pd
+
 DEBUG = True
+
+ADMIN_BTNS = ['🏡 распределить адреса по ботам 🏡', '🔍 поиск товаров 🔎', '➕ добавить пользователя ➕', '◄ назад']
 
 API_TOKEN = config['tokens']['telegram']
 # Initialize bot and dispatcher
@@ -107,12 +113,13 @@ async def main_handler(message: types.Message):
         markup = get_markup('main_register')
         await message.answer("Как вы хотите зарегистрировать:", reply_markup=markup)
     elif "🚀 собрать самовыкупы 🚀" in msg:
-        await message.answer('Сборка началась')
-        Partner().collect_orders()
-        await message.answer('Сборка закончилась')
+        await message.answer('⛔ 🚀 собрать самовыкупы 🚀 ⛔')
+        # await message.answer('Сборка началась')
+        # Partner().collect_orders()
+        # await message.answer('Сборка закончилась')
     elif "⛔ собрать реальные заказы 🚚" in msg:
-        # await message.answer('Сборка РЕАЛЬНЫХ заказов началась')
         await message.answer('⛔ Сборка РЕАЛЬНЫХ заказов ПОКА НЕДОСТУПНА ⛔')
+        # await message.answer('Сборка РЕАЛЬНЫХ заказов началась')
         # await message.answer('Сборка РЕАЛЬНЫХ заказов закончилась')
     elif "заказ" in msg:
         await States.ORDER.set()
@@ -143,6 +150,10 @@ async def register_handler(message: types.Message):
             user.insert()
 
         await States.FF_ADDRESS_START.set()
+    elif "назад" in msg:
+        await States.MAIN.set()
+        markup = get_markup('main_main')
+        await message.reply("Привет", reply_markup=markup)
 
     await message.answer("Ваше ФИО?")
 
@@ -153,22 +164,31 @@ async def admin_handler(message: types.Message):
     id = str(message.chat.id)
     msg = message.text.lower()
     print(msg)
-    if 'проверить ботов' in msg:
+    if '🏡 распределить адреса по ботам 🏡' in msg:
         res_message, state = Admin.check_not_added_pup_addresses()
-        await message.answer(res_message)
+        markup = get_markup('admin_main', id=id)
+        await message.answer(res_message, reply_markup=markup)
         await getattr(States, state).set()
-    elif 'проверить адреса' in msg:
+    elif '✉ проверить адреса ✉' in msg:
         res_message, state = Admin.check_not_checked_pup_addresses()
-        await message.answer(res_message)
+        markup = get_markup('admin_main', id=id)
+        await message.answer(res_message, reply_markup=markup)
         await getattr(States, state).set()
-    elif "🔎 Поиск товаров" in msg:
+    elif "🔍 поиск товаров 🔎" in msg:
         await message.answer('Пришлите Excel файл заказа')
-        await message.answer('Или напишите артикул, сколько штук, на сколько ПВЗ')
+        keyboard = get_keyboard('admin_bot_search')
+        await message.answer('Или выберите артикул и выкупиться 1 товар с таким артикулом', reply_markup=keyboard)
         await States.BOT_SEARCH.set()
-    elif "💰 Выкуп собраных заказов" in msg:
-        await message.answer('Пришлите Excel файл заказа')
-        await message.answer('Или напишите артикул, сколько штук, на сколько ПВЗ')
-        await States.BOT_SEARCH.set()
+    elif "💰 выкуп собраных заказов 💰" in msg:
+        bots_wait = BotsWait.load(event="FOUND")
+        if bots_wait:
+            await message.answer(f'{len(bots_wait)} ботов ожидают выкупа, скольких вы хотите выкупить?')
+            await message.answer('<b>ФИЧА</b>: <i>нажмите кнопку</i> <b>"💰 выкуп собраных заказов 💰"</b> <i>для того, чтобы выкупить</i> <b>только один</b>.', parse_mode="HTML")
+            await States.BOT_BUY.set()
+        else:
+            markup = get_markup('admin_main', id=id)
+            await message.answer('----------🎉Поздравляю!🎉--------\n'
+                                 '💲Вы выкупили все заказы!💲', reply_markup=markup)
     elif "➕ добавить пользователя ➕" in msg:
         await States.TO_WL.set()
         markup = get_markup('admin_add_user')
@@ -181,8 +201,7 @@ async def admin_handler(message: types.Message):
         else:
             markup = get_markup('main_main', Users.load(id).role)
         await message.answer('Главное меню', reply_markup=markup)
-    elif "проверить ожидаемое" in msg:
-        print("проверить ожидаемое")
+    elif "🕙 проверить ожидаемое 🕑" in msg:
         await States.CHECK_WAITS.set()
 
         orders = Orders.load(active=True, pred_end_date=datetime.now())
@@ -192,17 +211,49 @@ async def admin_handler(message: types.Message):
                 bots_name += [order.bot_name]
         keyboard = get_keyboard('admin_bots', bots_name)
         await message.answer('Выберите бота', reply_markup=keyboard)
-    elif id == '794329884' or id == '535533975':
-        if "открыть бота" in msg:
-            await States.RUN_BOT.set()
-            tg_bots = Bots_model.load()
-            bots_name = [f"{tg_bots[i].name} {tg_bots[i].type}" for i in range(len(tg_bots))]
-            markup = get_keyboard('admin_bots', bots_name)
-            await message.answer('Выберите бота', reply_markup=markup)
+    else:
+        if id == '794329884' or id == '535533975':
+            if "🤖 открыть бота 🤖" in msg:
+                await States.RUN_BOT.set()
+                tg_bots = Bots_model.load()
+                bots_name = [f"{tg_bots[i].name} {tg_bots[i].type}" for i in range(len(tg_bots))]
+                markup = get_keyboard('admin_bots', bots_name)
+                await message.answer('Выберите бота', reply_markup=markup)
+            if "🤖 статус ботов 🤖":
+                pass
+        else:
+            await main_handler(message)
 
+@dp.callback_query_handler(state=States.BOT_SEARCH)
+async def bot_search_callback_query_handler(call: types.CallbackQuery):
+    id = str(call.message.chat.id)
+    msg = call.data
+    article = msg
+    if article in ['90086267','90086484','90086527']:
+        search_key = 'купальник женский раздельный с высокой талией'
+    if article in '90085903':
+        search_key = 'слитный купальник женский утягивающий'
+
+    await States.ADMIN.set()
+
+    orders = [[article, search_key, "1", "1", "381108544328"]]
+    data_for_bots = Admin.pre_run(orders)
+    await call.message.answer('Поиск начался')
+    if DEBUG:
+        msgs = await Admin.bot_search(data_for_bots)
+    else:
+        try:
+            msgs = await Admin.bot_search(data_for_bots)
+        except:
+            await call.message.answer('Поиск упал')
+
+    for msg in msgs:
+        await call.message.answer(msg)
+
+    await call.message.answer('Поиск завершен')
 
 @dp.callback_query_handler(state=States.RUN_BOT)
-async def run_bot_handler(call: types.CallbackQuery):
+async def run_bot_callback_query_handler(call: types.CallbackQuery):
     id = str(call.message.chat.id)
     msg = call.data
     bot_name, bot_type = msg.split(' ')
@@ -211,15 +262,38 @@ async def run_bot_handler(call: types.CallbackQuery):
     await call.message.answer(msg + " открыт", reply_markup=markup)
     await Admin.open_bot(bot_name=bot_name)
 
+@dp.message_handler(state=States.RUN_BOT)
+async def run_bot_handler(message: types.Message):
+    id = str(message.chat.id)
+    msg = message.text
+    if msg.lower() in ADMIN_BTNS:
+        await States.ADMIN.set()
+        if msg.lower() == '◄ назад':
+            markup = get_markup('admin_main', id=id)
+            await message.answer('Вы в меню Админа', reply_markup=markup)
+        else:
+            await admin_handler(message)
 
 @dp.callback_query_handler(state=States.CHECK_WAITS)
-async def check_waits_handler(call: types.CallbackQuery):
+async def check_waits_callback_query_handler(call: types.CallbackQuery):
     id = str(call.message.chat.id)
     msg = call.data
     await States.ADMIN.set()
     markup = get_markup('admin_main', id=id)
     await call.message.answer(msg + " открыт", reply_markup=markup)
     await Admin.check_order(msg, call.message)
+
+@dp.message_handler(state=States.CHECK_WAITS)
+async def check_waits_handler(message: types.Message):
+    id = str(message.chat.id)
+    msg = message.text
+    if msg.lower() in ADMIN_BTNS:
+        await States.ADMIN.set()
+        if msg.lower() == '◄ назад':
+            markup = get_markup('admin_main', id=id)
+            await message.answer('Вы в меню Админа', reply_markup=markup)
+        else:
+            await admin_handler(message)
 
 
 @dp.message_handler(state=States.TO_WL)
@@ -244,15 +318,25 @@ async def to_whitelist_handler(message: types.Message):
         await States.ADMIN.set()
         markup = get_markup('admin_main', id=id)
         await message.answer(f"Пользователь с username {msg} добавлен", reply_markup=markup)
+    elif msg in ADMIN_BTNS and Admin.is_admin(id):
+        await States.ADMIN.set()
+        if msg.lower() == '◄ назад':
+            markup = get_markup('admin_main', id=id)
+            await message.answer('Вы в меню Админа', reply_markup=markup)
+        else:
+            await admin_handler(message)
+        return
 
 
 @dp.message_handler(state=States.BOT_SEARCH, content_types=['document'])
-async def inside_handler(message: types.Message):
+async def bot_search_handler(message: types.Message):
     await States.ADMIN.set()
 
     document = io.BytesIO()
     await message.document.download(destination_file=document)
-    data_for_bots = Admin.pre_run_doc(document)
+    df = pd.read_excel(document)
+    orders = [row.tolist() for i, row in df.iterrows()]
+    data_for_bots = Admin.pre_run(orders)
     await message.answer('Поиск начался')
     if DEBUG:
         msgs = await Admin.bot_search(data_for_bots)
@@ -268,27 +352,62 @@ async def inside_handler(message: types.Message):
     await message.answer('Поиск завершен')
 
 
+@dp.message_handler(state=States.BOT_BUY, content_types=['text'])
+async def bot_buy_handler(message: types.Message):
+    id = str(message.chat.id)
+    msg = message.text
+    if msg.lower() == "💰 выкуп собраных заказов 💰":
+        bots_cnt = 1
+    elif msg.lower() in ADMIN_BTNS:
+        await States.ADMIN.set()
+        if msg.lower() == '◄ назад':
+            markup = get_markup('admin_main', id=id)
+            await message.answer('Вы в меню Админа', reply_markup=markup)
+        else:
+            await admin_handler(message)
+        return
+    else:
+        try:
+            bots_cnt = int(msg)
+        except:
+            await message.answer('Вы указали не цифру, укажите цифру')
+            return
+
+    await States.ADMIN.set()
+
+    await message.answer('Выкуп начался')
+
+    await Admin.bot_buy(message, bots_cnt)
+
+    await message.answer('Выкуп завершен')
+
+
 @dp.message_handler(state=States.BOT_SEARCH, content_types=['text'])
 async def inside_handler(message: types.Message):
     msg = message.text.lower()
     id = str(message.chat.id)
-    if "◄ назад" in msg:
+    if msg in ADMIN_BTNS:
         await States.ADMIN.set()
-        markup = get_markup('admin_main', id=id)
-        await message.answer('Главное меню админки', reply_markup=markup)
-    else:
-        article, cnt, pvz_cnt = msg.split(' ')
-        
+        if msg.lower() == '◄ назад':
+            markup = get_markup('admin_main', id=id)
+            await message.answer('Вы в меню Админа', reply_markup=markup)
+        else:
+            await admin_handler(message)
+        return
+
 
 
 @dp.message_handler(state=States.ADMIN_ADDRESS_DISTRIBUTION)
 async def address_distribution_handler(message: types.Message):
     msg = message.text
     id = str(message.chat.id)
-    _msg = msg.lower()
-    if ('проверить ботов' in _msg) or ("cделать выкуп" in _msg) or ("➕ добавить пользователя ➕" in _msg) or ("◄ назад" in _msg):
+    if msg.lower() in ADMIN_BTNS:
         await States.ADMIN.set()
-        await admin_handler(message)
+        if msg.lower() == '◄ назад':
+            markup = get_markup('admin_main', id=id)
+            await message.answer('Вы в меню Админа', reply_markup=markup)
+        else:
+            await admin_handler(message)
         return
 
     bots_data_str = msg.split('\n\n')
@@ -352,9 +471,13 @@ async def address_verification_handler(message: types.Message):
     msg = message.text
     id = str(message.chat.id)
 
-    if ('проверить ботов' in msg) or ("cделать выкуп" in msg) or ("➕ добавить пользователя ➕" in msg) or ("◄ назад" in msg):
+    if msg.lower() in ADMIN_BTNS:
         await States.ADMIN.set()
-        await admin_handler(message)
+        if msg.lower() == '◄ назад':
+            markup = get_markup('admin_main', id=id)
+            await message.answer('Вы в меню Админа', reply_markup=markup)
+        else:
+            await admin_handler(message)
         return
 
     new_addresses = msg.split('\n')
@@ -431,6 +554,19 @@ async def pup_addresses_continue_handler(message: types.Message):
 
     user.update()
 
-
+@dp.message_handler()
+async def default_handler(message: types.Message):
+    username = message.chat.username
+    id = str(message.chat.id)
+    print(username, id, 'in default')
+    whitelisted = Whitelist.check(id)
+    if whitelisted:
+        is_admin = Admin.is_admin(id)
+        if is_admin:
+            await States.ADMIN.set()
+            await admin_handler(message)
+        else:
+            await States.MAIN.set()
+            await main_handler(message)
 if __name__ == '__main__':
     executor.start_polling(dp)

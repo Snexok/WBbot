@@ -11,7 +11,7 @@ from TG.Models.Orders import Order as Order_Model, Orders as Orders_Model
 
 from WB.Bot import Bot
 
-from  datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta
 import pandas as pd
 
 USLUGI_PRICE = 150
@@ -32,81 +32,41 @@ class Admin:
         bot = Bot(name=bot_name)
         await asyncio.gather(asyncio.to_thread(bot.open_bot))
 
-    @classmethod
-    async def inside(cls, message, number):
-
-        # main process
-        run_bots = [asyncio.to_thread(cls.bot_buy, bot, reports[i], number) for i, bot in enumerate(bots)]
-        reports = await asyncio.gather(*run_bots)
-
-        print("bot_buy ended")
-
-        for report in reports:
-            await message.answer_photo(open(report['qr_code'], 'rb'))
-
-        if TEST:
-            paid = [{'payment': True, 'datetime': datetime.now()} for _ in range(len(bots))]
-        else:
-            run_bots = [asyncio.to_thread(bot.expect_payment) for i, bot in enumerate(bots)]
-            paid = await asyncio.gather(*run_bots)
-        print(paid)
-
-        # start_datetime = str(datetime.now())
-        # for i, report in enumerate(reports):
-        #     pup_address = Addresses.load(address=report['post_place'])[0]
-        #     order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
-        #                         quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
-        #                         pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_surname'],
-        #                         start_date=start_datetime, pred_end_date=str(report['pred_end_date']), active=True,
-        #                         statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
-        #     order.insert()
-        for i, report in enumerate(reports):
-            if paid[i]['payment'] or TEST:
-                print(paid[i]['datetime'])
-                pup_address = Addresses.load(address=report['post_place'])[0]
-                order = Order_Model(number=number, total_price=report['total_price'], services_price=150, prices=report['prices'],
-                              quantities=report['quantities'], articles=report['articles'], pup_address=pup_address.address,
-                              pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'], bot_surname=report['bot_username'],
-                              start_date=paid[i]['datetime'], pred_end_date=report['pred_end_date'],
-                              active=paid[i]['payment'] or TEST, statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
-                order.insert()
-
-                await message.answer(f"Оплачен заказ бота {report['bot_name']} оплачен, время оплаты {paid[i]['datetime']}")
-            else:
-                await message.answer(f"НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
-
-
-        await message.answer('Ваш заказ выполнен, до связи')
-
-
-        for i, bot in enumerate(bots):
-            # cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], message)
-            loop = asyncio.get_event_loop()
-            print(reports[i]['post_place'])
-            pup_address = Addresses.load(address=reports[i]['post_place'])[0]
-            print(pup_address.address)
-            loop.create_task(cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], pup_address.address, number, message))
+    # @classmethod
+    # async def inside(cls, message, number):
+    #
+    #
+    #
+    #     # for i, bot in enumerate(bots):
+    #     #     # cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], message)
+    #     #     loop = asyncio.get_event_loop()
+    #     #     print(reports[i]['post_place'])
+    #     #     pup_address = Addresses.load(address=reports[i]['post_place'])[0]
+    #     #     print(pup_address.address)
+    #     #     loop.create_task(cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], pup_address.address, number, message))
 
     @classmethod
-    def bot_search(cls, data):
-        print('TEST=' + 'TRUE' if TEST else 'FALSE')
+    async def bot_search(cls, data):
         print("bot_search started")
 
-        # tg_bots_data = Bots_model.load(limit=len(data_for_bots), _type="WB")
-        tg_bots_data = Bots_model.load_must_free(limit=len(data), _type="WB")
+        bots_data = Bots_model.load_must_free(limit=len(data), _type="WB")
 
-        bots = [Bot(data=tg_bot_data) for tg_bot_data in tg_bots_data]
+        for bot_data in bots_data:
+            bot_data.set(status="SEARCH")
+            bot_data.update()
+
+        bots = [Bot(data=tg_bot_data) for tg_bot_data in bots_data]
 
         for bot in bots:
             bot.open_bot(manual=False)
 
-        # search process
         run_bots = [asyncio.to_thread(bot.search, data[i]) for i, bot in enumerate(bots)]
         reports = await asyncio.gather(*run_bots)
 
         msgs = []
         for i, report in enumerate(reports):
-            data = ujson.dump(report)
+            print(report)
+            data = ujson.dumps(report)
             bot_wait = BotsWait(bot_name=bots[i].data.name, event="FOUND", wait=True,
                                 start_datetime=datetime.now(), data=data)
             bot_wait.insert()
@@ -115,24 +75,89 @@ class Admin:
 
         print("bot_search ended")
 
+        for bot in bots:
+            del bot
+        del bots
+
+        for bot_data in bots_data:
+            bot_data.set(status="FOUND")
+            bot_data.update()
+
         return msgs
 
     @staticmethod
-    def bot_buy(bot: Bot, report, number):
-        addresses = bot.data.addresses
-        post_place = random.choice(addresses if type(addresses) is list else [addresses])
+    async def bot_buy(message, bots_cnt):
+        bots_wait = BotsWait.load(event="FOUND", limit=bots_cnt)
 
-        report = bot.buy(report, post_place, number)
+        for bot_wait in bots_wait:
+            print(type(bot_wait.data))
+            report = bot_wait.data
+            # report = ujson.loads(bot_wait.data)
 
-        report['post_place'] = post_place
+            bot_name = bot_wait.bot_name
+            print("Bot Name _ ", bot_name)
+            bot_data = Bots_model.load(bot_name)
 
-        return report
+            bot_data.set(status="BUYS")
+            bot_data.update()
+
+            bot = Bot(data=bot_data)
+
+            bot.open_bot(manual=False)
+
+            addresses = bot.data.addresses
+            post_place = random.choice(addresses if type(addresses) is list else [addresses])
+            report['post_place'] = post_place
+
+            number = Orders_Model.get_number()
+
+            run_bot = asyncio.to_thread(bot.buy, report, post_place, number)
+            reports = await asyncio.gather(run_bot)
+            report = reports[0]
+
+            print(report)
+            bot_wait.event = "PAID"
+            bot_wait.end_datetime = datetime.now()
+            bot_wait.wait = False
+            bot_wait.data = []
+            bot_wait.update()
+
+            await message.answer_photo(open(report['qr_code'], 'rb'))
+
+            if TEST:
+                paid = {'payment': True, 'datetime': datetime.now()}
+            else:
+                run_bot = asyncio.to_thread(bot.expect_payment)
+                paid = await asyncio.gather(run_bot)
+                paid = paid[0]
+
+            print(paid)
+            if paid['payment']:
+                print(paid['datetime'])
+                pup_address = Addresses.load(address=report['post_place'])[0]
+                order = Order_Model(number=number, total_price=report['total_price'], services_price=50,
+                                    prices=report['prices'],
+                                    quantities=report['quantities'], articles=report['articles'],
+                                    pup_address=pup_address.address,
+                                    pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
+                                    bot_surname=report['bot_username'],
+                                    start_date=paid['datetime'], pred_end_date=report['pred_end_date'],
+                                    active=paid['payment'] or TEST,
+                                    statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
+                order.insert()
+
+                await message.answer(f"Оплачен заказ бота {report['bot_name']}\n\n"
+                                     f"Адрес доставки {report['post_place']}\n\n"
+                                     f"Артикулы {report['articles']}\n\n"
+                                     f"Время оплаты {paid['datetime']}")
+            else:
+                await message.answer(f"НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
+
+            bot_data.set(status="FREE")
+            bot_data.update()
 
     @classmethod
-    def pre_run_doc(cls, document):
-        df = pd.read_excel(document)
-        orders = [row.tolist() for i, row in df.iterrows()]
-
+    def pre_run(cls, orders):
         additional_data = cls.get_additional_data(orders)
         for i, a_data in enumerate(additional_data):
             orders[i] += [a_data]
@@ -143,7 +168,8 @@ class Admin:
 
         for j, order in enumerate(orders):
             article, search_key, quantity, pvz_cnt, inn, additional_data = order
-            data_for_bots[j] += [{'article': article, 'search_key': search_key, 'quantity': quantity, 'inn': inn, 'additional_data': additional_data}]
+            data_for_bots[j] += [{'article': article, 'search_key': search_key, 'quantity': quantity, 'inn': inn,
+                                  'additional_data': additional_data}]
 
             # for i in range(max_bots):
             #     if pvz_cnt > 0:
@@ -177,17 +203,17 @@ class Admin:
         bots_name = [tg_bots[i].name for i in range(len(tg_bots))]
         if all_not_added_addresses:
             if len(all_not_added_addresses) > 0:
-                res_message = 'Список не распределённых адресов:\n\n' +\
-                               cls.join_to_lines([address.address for address in all_not_added_addresses]) +\
-                               '\nСписок БОТОВ:\n\n' +\
-                               cls.join_to_lines(bots_name) +\
-                               '\nНапишите название бота и адреса для него в формате:\n\n' +\
-                               '<Имя Первого бота>\n' +\
-                               '<1 адрес>\n' +\
-                               '<2 адрес>\n\n' +\
-                               '<Имя Второго бота>\n' +\
-                               '<1 адрес>\n' +\
-                               '<2 адрес>'
+                res_message = 'Список не распределённых адресов:\n\n' + \
+                              cls.join_to_lines([address.address for address in all_not_added_addresses]) + \
+                              '\nСписок БОТОВ:\n\n' + \
+                              cls.join_to_lines(bots_name) + \
+                              '\nНапишите название бота и адреса для него в формате:\n\n' + \
+                              '<Имя Первого бота>\n' + \
+                              '<1 адрес>\n' + \
+                              '<2 адрес>\n\n' + \
+                              '<Имя Второго бота>\n' + \
+                              '<1 адрес>\n' + \
+                              '<2 адрес>'
                 state = 'ADMIN_ADDRESS_DISTRIBUTION'
             else:
                 res_message = "Все адреса распределены"
@@ -211,12 +237,12 @@ class Admin:
 
         if all_not_checked_addresses:
             if len(all_not_checked_addresses) > 0:
-                res_message = 'Список не проверенных адресов:\n\n' +\
-                               cls.join_to_lines([address.address for address in all_not_checked_addresses]) +\
-                               '\nПопорядку напишите правильные адреса в формате:\n\n' +\
-                               '<1 адрес>\n' +\
-                               '<2 адрес>\n' +\
-                               '<3 адрес>'
+                res_message = 'Список не проверенных адресов:\n\n' + \
+                              cls.join_to_lines([address.address for address in all_not_checked_addresses]) + \
+                              '\nПопорядку напишите правильные адреса в формате:\n\n' + \
+                              '<1 адрес>\n' + \
+                              '<2 адрес>\n' + \
+                              '<3 адрес>'
                 state = 'ADMIN_ADDRESS_VERIFICATION'
             else:
                 res_message = "Все адреса проверены"
@@ -267,4 +293,3 @@ class Admin:
             await bot.check_readiness(order.articles, order.pup_address, order.number, message, cls.wait_order_ended)
 
         # await asyncio.gather(asyncio.to_thread(check_order(bot)))
-

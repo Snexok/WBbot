@@ -145,7 +145,7 @@ class Orders(Model):
             return False
 
     @staticmethod
-    async def get_number():
+    def get_number():
         def callback(cursor):
             records = cursor.fetchall()
             return records

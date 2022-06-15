@@ -79,7 +79,7 @@ class Bot:
         return report
 
     def buy(self, report, post_place, order_id):
-
+        sleep(3)
         self.page = Utils.go_to_basket(self.driver)  # basket
         self.driver.refresh()
         sleep(2)

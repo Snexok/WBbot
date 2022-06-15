@@ -37,11 +37,15 @@ class Partner:
                     self.choose_task(order)
                 else:
                     break
+            sleep(5)
             self.add_to_assembly()
+            self.driver.execute_script("window.scrollTo({top: 0,behavior: 'smooth'})")
             self.go_to_assembly()
+            self.create_assembly()
             self.open_and_send_shks()
             self.pick_all_tasks()
-
+            self.print_all_tasks_shk()
+            self.close_assembly()
 
     def get_not_collected_orders(self):
         orders = Orders.load(collected=False)
@@ -152,6 +156,15 @@ class Partner:
         on_assembly_tab.click()
         sleep(1)
 
+    def create_assembly(self):
+        self.driver.switch_to.window(self.driver.window_handles[0])
+        self.driver.find_element(By.XPATH, "//span[text()='Создать поставку']/..").click()
+        sleep(2)
+        self.driver.find_element(By.XPATH, "//span[text()='Готово']/..").click()
+        sleep(2)
+        self.driver.find_element(By.XPATH, "//div[contains(@class, 'Modal__close')]/button").click()
+        sleep(2)
+
     def get_target_task(self, article, order_datetime):
         self.tasks = self.get_tasks()
         min_dif = timedelta(weeks=6)
@@ -210,6 +223,8 @@ class Partner:
             # получаем байткод pdf файла и отправляем его на адрес Фулфилмента
             shk_bytes = self.get_file_content_chrome()
             bot.send_document("794329884", (f'{article}.pdf', shk_bytes))
+            bot.send_document("791436094", (f'{article}.pdf', shk_bytes))
+            bot.send_document("424847668", (f'{article}.pdf', shk_bytes))
             sleep(1)
 
             # закрываем таб с pdf файлом
@@ -241,8 +256,9 @@ class Partner:
         # нажимаем кнопку "Распечатать этикетки и добавить товары в поставку" и подтверждаем это
         self.driver.find_element(By.XPATH,
                                     "//span[text()='Распечатать этикетки и добавить товары в поставку']/..").click()
-        sleep(1)
+        sleep(2)
         self.driver.find_element(By.XPATH, "//span[@class='Button-link__text' and text()='Ок']").click()
+        sleep(2)
 
         # возвращаемся на первую вкладку
         self.to_only_one_tab()
@@ -256,6 +272,8 @@ class Partner:
         self.driver.switch_to.window(self.driver.window_handles[-1])
         shk_bytes = self.get_file_content_chrome()
         bot.send_document("794329884", (f'{tasks_shk}.pdf', shk_bytes))
+        bot.send_document("791436094", (f'{tasks_shk}.pdf', shk_bytes))
+        bot.send_document("424847668", (f'{tasks_shk}.pdf', shk_bytes))
         sleep(1)
 
         # возвращаемся на первую вкладку

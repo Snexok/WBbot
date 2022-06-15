@@ -77,12 +77,7 @@ class Addresses(Model):
     def format_data(cls, data):
         addresses = []
         for d in data:
-            address = Address()
-            address.id = d[0]
-            address.address = d[1]
-            address.tg_id = d[2]
-            address.added_to_bot = d[3]
-            address.checked = d[4]
+            address = Address(*d)
             addresses += [address]
 
         if addresses:

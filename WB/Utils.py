@@ -37,6 +37,7 @@ class Utils:
 
     @staticmethod
     def search(driver, key):
+        sleep(3)
         # vars
         search_input = WebDriverWait(driver, 60).until(
             lambda d: d.find_element(By.ID, 'searchInput'))

@@ -1,9 +1,9 @@
 from TG.Models.Model import Model
 
-COLUMNS = ['id', 'name', 'addresses', 'number', 'username', 'type', 'inns']
+COLUMNS = ['id', 'name', 'addresses', 'number', 'username', 'type', 'inns', 'status']
 
 class Bot(Model):
-    def __init__(self, id='0', name='', addresses=[], number='', username='', type='', inns=[]):
+    def __init__(self, id='0', name='', addresses=[], number='', username='', type='', inns=[], status=''):
         super().__init__()
         self.id = id
         self.name = name
@@ -12,6 +12,7 @@ class Bot(Model):
         self.username = username
         self.type = type
         self.inns = inns
+        self.status = status
 
     def insert(self):
         path = "INSERT INTO bots (id, name, addresses) VALUES "
@@ -23,7 +24,8 @@ class Bot(Model):
         if self.changed:
             path = "UPDATE bots SET "
             path += "addresses= ARRAY[" + ",".join(
-                "'" + a.replace(",", ";") + "'" for a in self.addresses) + "]::text[] "
+                "'" + a.replace(",", ";") + "'" for a in self.addresses) + "]::text[], "
+            path += f"status = '{self.status}' "
             path += f"WHERE name='{str(self.name)}'"
             Bot.execute(path)
 
@@ -54,7 +56,7 @@ class Bots(Model):
     @classmethod
     def load_must_free(cls, limit=None, _type=None):
         path = f"SELECT b.*, coalesce (o.active_cnt, 0) as active_cnt FROM  " \
-               f"(SELECT * FROM bots WHERE type = '{_type}') b " \
+               f"(SELECT * FROM bots WHERE type = '{_type}' AND status = 'FREE') b " \
                f"LEFT JOIN " \
                f"(SELECT bot_name,COUNT(active) active_cnt FROM orders WHERE active=TRUE GROUP BY bot_name, active ) o " \
                f"ON b.name=o.bot_name " \

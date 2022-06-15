@@ -9,15 +9,15 @@ def get_markup(markup_name, role='', is_admin=False, id=''):
         return markup
     elif 'admin_main' == markup_name:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
+        markup.add("🔍 Поиск товаров 🔎")
+        markup.add("💰 Выкуп собраных заказов 💰")
         markup.add("➕ Добавить пользователя ➕")
-        markup.add("🔎 Поиск товаров")
-        markup.add("💰 Выкуп собраных заказов")
         if id:
             if id == '794329884' or id == '535533975':
-                markup.add("Открыть бота")
-                markup.add("Проверить ожидаемое")
-        markup.add("Проверить адреса")
-        markup.add("Проверить ботов")
+                markup.add("🤖 Открыть бота 🤖")
+                markup.add("🕙 Проверить ожидаемое 🕑")
+        markup.add("✉ Проверить адреса ✉")
+        markup.add("🏡 Распределить адреса по ботам 🏡")
         markup.add("◄ Назад")
 
         return markup
@@ -67,6 +67,16 @@ def get_keyboard(keyboard_name, *args):
         bots_name = args[0]
         for bot_name in bots_name:
             bots += [types.InlineKeyboardButton(text=bot_name, callback_data=bot_name)]
+        keyboard.add(*bots)
+
+        return keyboard
+    elif 'admin_bot_search' == keyboard_name:
+        keyboard = types.InlineKeyboardMarkup()
+        bots = []
+        bots += [types.InlineKeyboardButton(text='90086267', callback_data='90086267')]
+        bots += [types.InlineKeyboardButton(text='90086484', callback_data='90086484')]
+        bots += [types.InlineKeyboardButton(text='90086527', callback_data='90086527')]
+        bots += [types.InlineKeyboardButton(text='90085903', callback_data='90085903')]
         keyboard.add(*bots)
 
         return keyboard
