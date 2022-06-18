@@ -74,6 +74,8 @@ class BotsWait(Model):
                     path += f"{key} = '{str(value)}', "
                 elif type(value) is datetime.date:
                     path += f"{key} = '{str(value)}', "
+                elif type(value) is datetime:
+                    path += f"{key} = '{str(value)}', "
                 elif type(value) is bool:
                     value = "TRUE" if value else "FALSE"
                     path += f"{key} = {value}, "

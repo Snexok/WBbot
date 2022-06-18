@@ -1,12 +1,15 @@
 from datetime import date, datetime, timedelta
+
+from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 import pickle
-from time import sleep
+from asyncio import sleep
 import base64
 from aiogram import Bot as TG_Bot
 
 from selenium.webdriver.support.wait import WebDriverWait
 
+from TG.Models.ExceptedOrders import ExceptedOrders
 from TG.Models.Orders import Orders
 from WB.Browser import Browser
 from configs import config
@@ -18,62 +21,76 @@ class Partner:
         self.browser = Browser(driver)
         self.driver = self.browser.driver
 
-    def collect_orders(self):
-        orders = self.get_not_collected_orders()
+    async def collect_orders(self):
+        orders = await self.get_not_collected_orders()
         print(orders)
-        self.open()
         inns = []
         orders.sort(key=lambda x: x.inn)
         for order in orders:
             if order.inn not in inns:
                 inns += [order.inn]
         for inn in inns:
-            self.open(inn)
-            self.open_marketplace()
-            sleep(10)
+            await self.open(inn)
+            await self.open_marketplace()
+            await sleep(10)
             for order in orders:
                 if order.inn == inn:
                     print(order)
-                    self.choose_task(order)
+                    await self.choose_task(order)
                 else:
                     break
-            sleep(5)
-            self.add_to_assembly()
-            self.driver.execute_script("window.scrollTo({top: 0,behavior: 'smooth'})")
-            self.go_to_assembly()
-            self.create_assembly()
-            self.open_and_send_shks()
-            self.pick_all_tasks()
-            self.print_all_tasks_shk()
-            self.close_assembly()
+            await sleep(5)
+            await self.add_to_assembly()
+            await self.go_to_assembly()
+            await self.create_assembly()
+            await self.open_and_send_shks()
+            await self.pick_all_tasks()
+            await self.print_all_tasks_shk()
+            await self.close_assembly()
 
-    def get_not_collected_orders(self):
+    async def collect_other_orders(self, inn):
+        await self.open(inn)
+        await self.open_marketplace()
+        await sleep(10)
+        excepted_orders = ExceptedOrders.load(inn)
+        excepted_orders_numbers = [eo.order_number for eo in excepted_orders]
+        self.choose_all_tasks_except(excepted_orders_numbers)
+        await sleep(5)
+        # await self.add_to_assembly()
+        # await self.go_to_assembly()
+        # await self.create_assembly()
+        # await self.open_and_send_shks()
+        # await self.pick_all_tasks()
+        # await self.print_all_tasks_shk()
+        # await self.close_assembly()
+
+    async def get_not_collected_orders(self):
         orders = Orders.load(collected=False)
         return orders
 
-    def open(self, inn):
+    async def open(self, inn):
         self.driver.get('https://seller.wildberries.ru/')
-        cookies = pickle.load(open('./bots_sessions/Partner_{inn}.pkl', "rb"))
+        cookies = pickle.load(open(f'./bots_sessions/Partner_{inn}.pkl', "rb"))
         for cookie in cookies:
             self.driver.add_cookie(cookie)
         self.driver.get('https://seller.wildberries.ru/')
 
-    def choose_inn(self, inn):
+    async def choose_inn(self, inn):
         WebDriverWait(self.driver, 60).until(
             lambda d: d.find_element(By.XPATH, "//div[contains(@class,'DesktopProfileSelect')]/button")).click()
         self.driver.find_element(By.XPATH, f"//*[contains(text(),'ИНН {inn}')]").click()
 
-    def open_marketplace(self):
+    async def open_marketplace(self):
         marketplace_btn = WebDriverWait(self.driver, 60).until(
             lambda d: d.find_element(By.XPATH, "//span[text()='Маркетплейс']/../../a"))
-        sleep(2)
+        await sleep(2)
         marketplace_btn.click()
         # marketplace = self.driver.find_element(By.XPATH,
         #                                        "//span[text()='Сборочные задания (везу на склад WB)']/../../a")
         # marketplace.click()
 
-    def get_tasks(self):
-        sleep(2)
+    async def get_tasks(self):
+        await sleep(2)
         rows = WebDriverWait(self.driver, 60).until(
             lambda d: d.find_elements(By.XPATH, "//div[contains(@class,'row__')]"))[1:]
         tasks = []
@@ -97,7 +114,7 @@ class Partner:
 
         return tasks
 
-    def choose_task(self, order):
+    async def choose_task(self, order):
         """
         Выбирает товар на сборку, который по параметрам совпадает с переданныым в него заказом.
         Сравнивает заказ и товар в списке сборочных заданий
@@ -105,7 +122,7 @@ class Partner:
         приблизительно одинаковому времени
         и схожему адресу доставки.
         """
-        tasks = self.get_tasks()
+        tasks = await self.get_tasks()
         for i in range(len(order.articles)):
             for j, task in enumerate(tasks):
                 if task['article'] == order.articles[i] and task['delivery_address'] == order.pup_address:
@@ -120,11 +137,11 @@ class Partner:
                 if j == len(tasks)-1:
                     print(f"Артикул {order.articles[i]} не найден")
 
-    def choose_tasks(self, orders):
+    async def choose_tasks(self, orders):
         for order in orders:
-            self.choose_task(order)
+            await self.choose_task(order)
 
-    def add_to_assembly(self):
+    async def add_to_assembly(self):
         """
         Нажимаем кнопку "Собрать сборку"
         """
@@ -133,12 +150,12 @@ class Partner:
             cookies_btn = self.driver.find_element(By.XPATH,
                                                    "//div[contains(@class, 'WarningCookiesBannerCard__button')]/button")
             cookies_btn.click()
-            sleep(1)
+            await sleep(1)
         except:
             print("cookies_btn not defined")
             pass
         
-        sleep(2)
+        await sleep(2)
         try:
             collect_btn = self.driver.find_element(By.XPATH, "//span[text()='Создать поставку']/..")
             collect_btn.click()
@@ -149,27 +166,32 @@ class Partner:
                 collect_btn.click()
             except:
                 print("Нет кнопки Добавить в сборку")
-        sleep(1)
+        await sleep(1)
 
-    def go_to_assembly(self):
+    async def go_to_assembly(self):
         on_assembly_tab = self.driver.find_element(By.XPATH, "//a[contains(text(),'На сборке')]")
-        on_assembly_tab.click()
-        sleep(1)
 
-    def create_assembly(self):
+        hover = ActionChains(self.driver)
+
+        # resolve
+        hover.move_to_element(on_assembly_tab).perform()
+        on_assembly_tab.click()
+        await sleep(1)
+
+    async def create_assembly(self):
         self.driver.switch_to.window(self.driver.window_handles[0])
         self.driver.find_element(By.XPATH, "//span[text()='Создать поставку']/..").click()
-        sleep(2)
+        await sleep(2)
         self.driver.find_element(By.XPATH, "//span[text()='Готово']/..").click()
-        sleep(2)
+        await sleep(2)
         self.driver.find_element(By.XPATH, "//div[contains(@class, 'Modal__close')]/button").click()
-        sleep(2)
+        await sleep(2)
 
-    def get_target_task(self, article, order_datetime):
+    async def get_target_task(self, article, order_datetime):
         self.tasks = self.get_tasks()
         min_dif = timedelta(weeks=6)
         min_task = None
-        for task in self.tasks:
+        for task in await self.tasks:
             if task['article'] == article:
                 task_time = datetime.fromisoformat(str(task['datetime']))
                 order_time = datetime.fromisoformat(str(order_datetime))
@@ -180,7 +202,7 @@ class Partner:
         
         return min_task
 
-    def pick_all_tasks(self):
+    async def pick_all_tasks(self):
         """
         Выбирает все сборочные задания
         """
@@ -189,13 +211,13 @@ class Partner:
             checkbox = task.find_element(By.XPATH, "./div/div/label")
             checkbox.click()
 
-    def open_and_send_shks(self):
+    async def open_and_send_shks(self):
         """
         Открывает все штрихкоды товаров и отправлет их в Фулфилмент
         Для использования этой функции нужно находиться на странице сборки товаров
         """
         # на всякий случай возвращаемся на первую вкладку
-        self.to_only_one_tab()
+        await self.to_only_one_tab()
 
         # получаем бота для отправки сообщения от его имени
         bot = TG_Bot(token=API_TOKEN)
@@ -215,25 +237,25 @@ class Partner:
 
             # открываем blob с артикулом в новой вкладке
             task.find_element(By.XPATH, "./div/div/button").click()
-            sleep(1)
+            await sleep(1)
             self.driver.find_element(By.XPATH, "//span[text()='Распечатать этикетку']").click()
-            sleep(1)
+            await sleep(1)
             self.driver.switch_to.window(self.driver.window_handles[-1])
 
             # получаем байткод pdf файла и отправляем его на адрес Фулфилмента
             shk_bytes = self.get_file_content_chrome()
-            bot.send_document("794329884", (f'{article}.pdf', shk_bytes))
-            bot.send_document("791436094", (f'{article}.pdf', shk_bytes))
-            bot.send_document("424847668", (f'{article}.pdf', shk_bytes))
-            sleep(1)
+            await bot.send_document("794329884", (f'{article}.pdf', shk_bytes))
+            await bot.send_document("791436094", (f'{article}.pdf', shk_bytes))
+            await bot.send_document("424847668", (f'{article}.pdf', shk_bytes))
+            await sleep(1)
 
             # закрываем таб с pdf файлом
             self.driver.close()
 
         # возвращаемся на первую вкладку
-        self.to_only_one_tab()
+        await self.to_only_one_tab()
 
-    def get_file_content_chrome(self):
+    async def get_file_content_chrome(self):
         result = self.driver.execute_async_script("""
             var uri = arguments[0];
             var callback = arguments[1];
@@ -249,49 +271,49 @@ class Partner:
             raise Exception("Request failed with status %s" % result)
         return base64.b64decode(result)
 
-    def print_all_tasks_shk(self):
+    async def print_all_tasks_shk(self):
         # получаем бота для отправки сообщения от его имени
         bot = TG_Bot(token=API_TOKEN)
 
         # нажимаем кнопку "Распечатать этикетки и добавить товары в поставку" и подтверждаем это
         self.driver.find_element(By.XPATH,
                                     "//span[text()='Распечатать этикетки и добавить товары в поставку']/..").click()
-        sleep(2)
+        await sleep(2)
         self.driver.find_element(By.XPATH, "//span[@class='Button-link__text' and text()='Ок']").click()
-        sleep(2)
+        await sleep(2)
 
         # возвращаемся на первую вкладку
-        self.to_only_one_tab()
+        await self.to_only_one_tab()
 
         # закрываем модалку, нажимаем на "Распечатать код поставка" и отправляем штрихкод на Фуллфилмент
         self.driver.find_element(By.XPATH, "//div[contains(@class, 'Modal__close')]/button").click()
-        sleep(1)
+        await sleep(1)
         tasks_shk = self.driver.find_element(By.XPATH, "//div[contains(@class,'All-tasks-view__shk')]").text
         self.driver.find_element(By.XPATH, "//span[text()='Распечатать']").click()
-        sleep(1)
+        await sleep(1)
         self.driver.switch_to.window(self.driver.window_handles[-1])
         shk_bytes = self.get_file_content_chrome()
-        bot.send_document("794329884", (f'{tasks_shk}.pdf', shk_bytes))
-        bot.send_document("791436094", (f'{tasks_shk}.pdf', shk_bytes))
-        bot.send_document("424847668", (f'{tasks_shk}.pdf', shk_bytes))
-        sleep(1)
+        await bot.send_document("794329884", (f'{tasks_shk}.pdf', shk_bytes))
+        await bot.send_document("791436094", (f'{tasks_shk}.pdf', shk_bytes))
+        await bot.send_document("424847668", (f'{tasks_shk}.pdf', shk_bytes))
+        await sleep(1)
 
         # возвращаемся на первую вкладку
-        self.to_only_one_tab()
+        await self.to_only_one_tab()
 
-    def close_assembly(self):
+    async def close_assembly(self):
         """
         Нажимает кнопку "Закрыть поставку"
         """
         self.driver.find_element(By.XPATH, "//span[text()='Закрыть поставку']").click()
-        sleep(1)
+        await sleep(1)
 
-    def to_only_one_tab(self):
+    async def to_only_one_tab(self):
         """
         Закрываем все вкладки, кроме первой
         """
         while len(self.driver.window_handles) > 1:
             self.driver.switch_to.window(self.driver.window_handles[-1])
-            sleep(1)
+            await sleep(1)
             self.driver.close()
         self.driver.switch_to.window(self.driver.window_handles[0])

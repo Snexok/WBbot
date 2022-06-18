@@ -59,6 +59,13 @@ def get_markup(markup_name, role='', is_admin=False, id=''):
     elif '' == markup_name:
         pass
 
+def get_list_keyboard(keys):
+    keyboard = types.InlineKeyboardMarkup()
+    btns = []
+    for key in keys:
+        btns += [types.InlineKeyboardButton(text=key, callback_data=key)]
+
+    return keyboard
 
 def get_keyboard(keyboard_name, *args):
     if 'admin_bots' == keyboard_name:
@@ -72,11 +79,11 @@ def get_keyboard(keyboard_name, *args):
         return keyboard
     elif 'admin_bot_search' == keyboard_name:
         keyboard = types.InlineKeyboardMarkup()
-        bots = []
-        bots += [types.InlineKeyboardButton(text='90086267', callback_data='90086267')]
-        bots += [types.InlineKeyboardButton(text='90086484', callback_data='90086484')]
-        bots += [types.InlineKeyboardButton(text='90086527', callback_data='90086527')]
-        bots += [types.InlineKeyboardButton(text='90085903', callback_data='90085903')]
-        keyboard.add(*bots)
+        btns = []
+        btns += [types.InlineKeyboardButton(text='90086267', callback_data='90086267')]
+        btns += [types.InlineKeyboardButton(text='90086484', callback_data='90086484')]
+        btns += [types.InlineKeyboardButton(text='90086527', callback_data='90086527')]
+        btns += [types.InlineKeyboardButton(text='90085903', callback_data='90085903')]
+        keyboard.add(*btns)
 
         return keyboard

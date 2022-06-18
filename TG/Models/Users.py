@@ -2,7 +2,10 @@ from TG.Models.Model import Model
 
 
 class User(Model):
-    def __init__(self, id='0', name='', addresses=[], username='', role='', cities=[]):
+    COLUMNS = ['id', 'name', 'addresses', 'username', 'role', 'cities', 'inn', 'ie']
+    table_name = 'users'
+
+    def __init__(self, id='0', name='', addresses=[], username='', role='', cities=[], inn='', ie=''):
         super().__init__()
         self.id = id
         self.name = name
@@ -10,48 +13,41 @@ class User(Model):
         self.username = username
         self.role = role
         self.cities = cities
-
-    def insert(self):
-        path = "INSERT INTO users (id, name, addresses, username, role, cities) VALUES " \
-               f"('{str(self.id)}', '{self.name}', ARRAY{str(self.addresses)}::text[], " \
-               f"'{self.username}', '{self.role}', ARRAY{str(self.cities)}::text[])"
-        User.execute(path)
-
-    def update(self):
-        if self.changed:
-            path = "UPDATE users SET "
-            path += "addresses= ARRAY[" + ",".join(
-                "'" + a.replace(",", ";") + "'" for a in self.addresses) + "]::text[], "
-            path += f"name= '{self.name}' "
-            path += f"WHERE id='{str(self.id)}'"
-            User.execute(path)
-
+        self.inn = inn
+        self.ie = ie
 
 class Users(Model):
+    single_model = User
+    table_name = single_model.table_name
 
     @classmethod
-    def load(cls, id=None, username=None):
-        def callback(cursor):
-            records = cursor.fetchall()
-            return records
+    def load(cls, id=None, username=None, role=None, inn=None, ie=None):
         if id:
-            path = f"SELECT * FROM users WHERE id='{id}'"
+            path = f"SELECT * FROM {cls.table_name} WHERE id='{id}'"
         elif username:
             pass
+        elif role:
+            path = f"SELECT * FROM {cls.table_name} WHERE role='{role}'"
+        elif inn:
+            path = f"SELECT * FROM {cls.table_name} WHERE inn='{inn}'"
+        elif ie:
+            path = f"SELECT * FROM {cls.table_name} WHERE ie='{ie}'"
 
-        return cls.format_data(cls.execute(path, callback))
+        data = cls.format_data(cls.execute(path, cls.fetchall))
+
+        if id or username or inn or ie:
+            return data[0]
+        return data
 
     @classmethod
     def format_data(cls, data):
         users = []
         for d in data:
-            user = User(*d)
+            user = cls.single_model(*d)
             user.addresses = [address.replace(';', ',') for address in user.addresses] if user.addresses else []
             users += [user]
 
         if users:
-            if len(users) == 1:
-                return users[0]
             return users
         else:
             return False

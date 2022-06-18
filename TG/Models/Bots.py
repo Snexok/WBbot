@@ -1,8 +1,10 @@
 from TG.Models.Model import Model
 
-COLUMNS = ['id', 'name', 'addresses', 'number', 'username', 'type', 'inns', 'status']
 
 class Bot(Model):
+    COLUMNS = ['id', 'name', 'addresses', 'number', 'username', 'type', 'inns', 'status']
+    table_name = 'bots'
+
     def __init__(self, id='0', name='', addresses=[], number='', username='', type='', inns=[], status=''):
         super().__init__()
         self.id = id
@@ -14,41 +16,23 @@ class Bot(Model):
         self.inns = inns
         self.status = status
 
-    def insert(self):
-        path = "INSERT INTO bots (id, name, addresses) VALUES "
-        path += f"((SELECT MAX(id)+1 FROM addresses), '{self.name}', ARRAY{str(self.addresses)})"
-        Bot.execute(path)
-
-    def update(self):
-        print(self.changed)
-        if self.changed:
-            path = "UPDATE bots SET "
-            path += "addresses= ARRAY[" + ",".join(
-                "'" + a.replace(",", ";") + "'" for a in self.addresses) + "]::text[], "
-            path += f"status = '{self.status}' "
-            path += f"WHERE name='{str(self.name)}'"
-            Bot.execute(path)
-
-    def __str__(self):
-        res = ""
-        for i, col in enumerate(COLUMNS):
-            res += col + " = " + str(getattr(self, col)) + "; "
-        return res
-
-
 class Bots(Model):
+    single_model = Bot
+    table_name = single_model.table_name
 
     @classmethod
     def load(cls, name=None, limit=None, _type=None):
-        path = "SELECT * FROM bots "
+        path = f"SELECT * FROM {cls.table_name} "
+
         if name:
             path += f"WHERE name='{name}' "
         if _type:
             path += f"WHERE type='{_type}' "
         if limit:
             path += f"LIMIT {str(limit)}"
-        data = cls.execute(path, cls.fetchall)
-        data = cls.format_data(data)
+
+        data = cls.format_data(cls.execute(path, cls.fetchall))
+
         if name:
             return data[0]
         return data
@@ -61,9 +45,11 @@ class Bots(Model):
                f"(SELECT bot_name,COUNT(active) active_cnt FROM orders WHERE active=TRUE GROUP BY bot_name, active ) o " \
                f"ON b.name=o.bot_name " \
                f"ORDER BY active_cnt LIMIT {limit}"
+
         data = cls.execute(path, cls.fetchall)
         data = [d[:-1] for d in data]
         data = cls.format_data(data)
+
         return data
 
     @classmethod

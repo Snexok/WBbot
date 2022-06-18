@@ -4,8 +4,8 @@ import random
 import ujson as ujson
 
 from TG.Models.Addresses import Addresses
-from TG.Models.Admin import Admins as Admins_model
-from TG.Models.Bot import Bots as Bots_model
+from TG.Models.Admins import Admins as Admins_model
+from TG.Models.Bots import Bots as Bots_model
 from TG.Models.BotsWaits import BotsWait
 from TG.Models.Orders import Order as Order_Model, Orders as Orders_Model
 
@@ -100,61 +100,71 @@ class Admin:
 
             bot_data.set(status="BUYS")
             bot_data.update()
-
             bot = Bot(data=bot_data)
 
             bot.open_bot(manual=False)
+            try:
+                bot_wait.event = "CHOOSE_ADDRESS"
 
-            addresses = bot.data.addresses
-            post_place = random.choice(addresses if type(addresses) is list else [addresses])
-            report['post_place'] = post_place
+                addresses = bot.data.addresses
+                post_place = random.choice(addresses if type(addresses) is list else [addresses])
+                report['post_place'] = post_place
 
-            number = Orders_Model.get_number()
+                number = Orders_Model.get_number()
 
-            run_bot = asyncio.to_thread(bot.buy, report, post_place, number)
-            reports = await asyncio.gather(run_bot)
-            report = reports[0]
+                bot_wait.event = "BUYS"
+
+                run_bot = asyncio.to_thread(bot.buy, report, post_place, number)
+                reports = await asyncio.gather(run_bot)
+                report = reports[0]
+
+                bot_wait.event = "PAID"
+            except:
+                bot_wait.event += " FAIL"
+
 
             print(report)
-            bot_wait.event = "PAID"
             bot_wait.end_datetime = datetime.now()
             bot_wait.wait = False
             bot_wait.data = []
             bot_wait.update()
 
-            await message.answer_photo(open(report['qr_code'], 'rb'))
-
-            if TEST:
-                paid = {'payment': True, 'datetime': datetime.now()}
+            if "FAIL" in bot_wait.event:
+                await message.answer('Ошибка выкупа')
             else:
-                run_bot = asyncio.to_thread(bot.expect_payment)
-                paid = await asyncio.gather(run_bot)
-                paid = paid[0]
+                await message.answer_photo(open(report['qr_code'], 'rb'))
 
-            print(paid)
-            if paid['payment']:
-                print(paid['datetime'])
-                pup_address = Addresses.load(address=report['post_place'])[0]
-                order = Order_Model(number=number, total_price=report['total_price'], services_price=50,
-                                    prices=report['prices'],
-                                    quantities=report['quantities'], articles=report['articles'],
-                                    pup_address=pup_address.address,
-                                    pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
-                                    bot_surname=report['bot_username'],
-                                    start_date=paid['datetime'], pred_end_date=report['pred_end_date'],
-                                    active=paid['payment'] or TEST,
-                                    statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
-                order.insert()
+                if TEST:
+                    paid = {'payment': True, 'datetime': datetime.now()}
+                else:
+                    run_bot = asyncio.to_thread(bot.expect_payment)
+                    paid = await asyncio.gather(run_bot)
+                    paid = paid[0]
 
-                await message.answer(f"Оплачен заказ бота {report['bot_name']}\n\n"
-                                     f"Адрес доставки {report['post_place']}\n\n"
-                                     f"Артикулы {report['articles']}\n\n"
-                                     f"Время оплаты {paid['datetime']}")
-            else:
-                await message.answer(f"НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
+                print(paid)
+                if paid['payment']:
+                    print(paid['datetime'])
+                    pup_address = Addresses.load(address=report['post_place'])[0]
+                    order = Order_Model(number=number, total_price=report['total_price'], services_price=50,
+                                        prices=report['prices'],
+                                        quantities=report['quantities'], articles=report['articles'],
+                                        pup_address=pup_address.address,
+                                        pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
+                                        bot_surname=report['bot_username'],
+                                        start_date=paid['datetime'], pred_end_date=report['pred_end_date'],
+                                        active=paid['payment'] or TEST,
+                                        statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
+                    order.insert()
 
-            bot_data.set(status="FREE")
-            bot_data.update()
+                    await message.answer(f"Оплачен заказ бота {report['bot_name']}\n\n"
+                                         f"Артикулы {report['articles']}\n\n"
+                                         f"Адрес доставки {report['post_place']}\n\n"
+                                         f"Время оплаты {paid['datetime']}")
+                else:
+                    await message.answer(f"НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
+
+                bot_data.set(status="FREE")
+                bot_data.update()
 
     @classmethod
     def pre_run(cls, orders):
@@ -167,8 +177,8 @@ class Admin:
         data_for_bots = [[] for _ in range(max_bots)]
 
         for j, order in enumerate(orders):
-            article, search_key, quantity, pvz_cnt, inn, additional_data = order
-            data_for_bots[j] += [{'article': article, 'search_key': search_key, 'quantity': quantity, 'inn': inn,
+            article, search_key, category, quantity, pvz_cnt, inn, additional_data = order
+            data_for_bots[j] += [{'article': article, 'search_key': search_key, 'category': category, 'quantity': quantity, 'inn': inn,
                                   'additional_data': additional_data}]
 
             # for i in range(max_bots):
@@ -289,7 +299,6 @@ class Admin:
         bot.open_bot(manual=False)
         # order = orders[0]
         # await bot.check_readiness(order.articles, order.pup_address, order.number, message, cls.wait_order_ended)
-        for order in orders:
-            await bot.check_readiness(order.articles, order.pup_address, order.number, message, cls.wait_order_ended)
+        await bot.check_readiness(orders, message, cls.wait_order_ended)
 
         # await asyncio.gather(asyncio.to_thread(check_order(bot)))

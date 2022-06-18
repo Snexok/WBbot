@@ -1,5 +1,5 @@
 from selenium.webdriver.common.by import By
-from selenium.webdriver import Keys
+from selenium.webdriver import Keys, ActionChains
 from time import sleep
 import random
 
@@ -50,6 +50,30 @@ class Utils:
         search_input.send_keys(ENTER)
 
         return 'catalog'
+
+    @staticmethod
+    def open_category(driver, key):
+        sleep(3)
+        hover = ActionChains(driver)
+
+
+        key = key.split(";")
+
+        category_menu_btn = WebDriverWait(driver, 60).until(
+            lambda d: d.find_element(By.XPATH, '//button[contains(@class, "nav-element__burger")]'))
+
+        sleep(1)
+        category_menu_btn.click()
+
+        for i, k in enumerate(key):
+            sleep(1)
+            category_btn = driver.find_element(By.XPATH, f'//*[text()="{k}"]')
+            hover.move_to_element(category_btn).perform()
+            if i == len(key)-1 or category_btn.tag_name == "span":
+                category_btn.click()
+
+        return 'catalog'
+
 
     @staticmethod
     def go_to_basket(driver):

@@ -9,8 +9,8 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 from aiogram import Bot as TG_Bot
 
-from TG.Models.Bot import Bots as Bots_model
-from TG.Models.Admin import Admin as Admin_model
+from TG.Models.Bots import Bots as Bots_model
+from TG.Models.Admins import Admin as Admin_model
 from TG.Models.Orders import Order, Orders
 from WB.Pages.Basket import Basket
 from WB.Browser import Browser
@@ -59,7 +59,13 @@ class Bot:
         report['bot_username'] = self.data.username
         print(f'Bot {self.data.name} started')
         for d in data:
-            self.page = Utils.search(self.driver, d['search_key'])  # catalog
+            if d['search_key']:
+                Utils.search(self.driver, d['search_key'])
+            elif d['category']:
+                Utils.open_category(self.driver, d['category'])
+            else:
+                print("Не указан не ключ поиска, не категория")
+
             sleep(2)
             price = d['additional_data']['price']
             self.catalog.price_filter(int(price * 0.75), int(price * 1.25))
@@ -115,10 +121,17 @@ class Bot:
         self.driver.get(f"https://www.wildberries.ru/catalog/{str(article)}/detail.aspx?targetUrl=MI")
         data = {}
 
-        names = WebDriverWait(self.driver, 60).until(
-            lambda d: d.find_elements(By.XPATH, '//h1[@class="same-part-kt__header"]/span'))
-        brand = names[0].text
-        name = names[1].text
+        try:
+            names = WebDriverWait(self.driver, 5).until(
+                lambda d: d.find_elements(By.XPATH, '//h1[@class="same-part-kt__header"]/span'))
+            brand = names[0].text
+            name = names[1].text
+        except:
+            names = WebDriverWait(self.driver, 5).until(
+                lambda d: d.find_element(By.XPATH, '//div[@class="product-page__header"]'))
+            brand = names.find_element(By.XPATH, './span').text
+            name = names.find_element(By.XPATH, './h1').text
+            print(brand,name)
 
         data['name'] = {'brand': brand, 'name': name}
 
@@ -176,54 +189,65 @@ class Bot:
         else:
             return data
 
-    async def check_readiness(self, articles, address, order_number, message, wait_order_ended):
+    async def check_readiness(self, orders, message, wait_order_ended):
+        bot = TG_Bot(token=API_TOKEN)
         sleep(1)
+        # открываем страницу с заказами бота
         self.open_delivery()
-        order = Orders.load(number=order_number, bot_name=self.data.name, articles=articles, pup_address=address,
-                            active=True)[0]
-        orders = self.get_all_orders()
-        print('1', [order.pup_address for order in orders], address)
-        orders = [order for order in orders if order.pup_address == address]
-        print('2', [[order_article for order_article in order.articles] for order in orders], articles)
-        try:
-            i = [all([order_article in articles for order_article in order.articles]) for order in orders].index(True)
-        except:
-            await message.answer(f'{order.id} Артикулы {str(order.articles)} не найдены')
-            return
-        _order = orders[i]
+        # полуыаем все заказы бота
+        local_orders = self.get_all_orders()
+        for _order in local_orders:
+            print("local_orders", _order)
+        sleep(1)
 
-        order.set(statuses=_order.statuses)
-        order.set(code_for_approve=_order.code_for_approve)
+        for order in orders:
+            # фильтруем заказы бота адресу
+            local_orders_by_address = [_order for _order in local_orders if _order.pup_address == order.pup_address]
+            # берем единственное совпадение по адресу
+            _order = local_orders_by_address[0]
 
-        if all([status == "Готов к получению" for status in order.statuses]):
-            msg_pup = 'Заказ готов\n' + \
-                      f'Код: {order.code_for_approve}\n' + \
-                      f'Фио: {order.bot_surname}\n' + \
-                      f'Адрес: {order.pup_address}'
-            msg_admin = msg_pup + '\n' + \
-                        f'Номер заказа: {order.number}\n' + \
-                        f'Id заказа: {order.id}\n'
+            statuses = []
+            for article in order.articles:
+                for i in range(len(_order.articles)):
+                    _article, _status = _order.articles[i], _order.statuses[i]
+                    print("_status", _status)
+                    if article == _article:
+                        statuses += [_status]
+            print(statuses)
 
-            order.set(end_date=date.today())
-            order.set(active=False)
+            if len(statuses) < len(order.articles):
+                await message.answer(f'Один из артикулов заказа {order.id} не был найден.\n '
+                                     f'Артикулы {str(order.articles)}')
+            else:
+                order.set(statuses=statuses)
+                order.set(code_for_approve=_order.code_for_approve)
+                for i, status in enumerate(statuses):
+                    if status in ["Готов к получению", "Отгружено по данным Продавца"]:
+                        msg_pup = 'Заказ готов\n' + \
+                                  f'Код: {order.code_for_approve}\n' + \
+                                  f'Фио: {order.bot_surname}\n' + \
+                                  f'Адрес: {order.pup_address}\n' + \
+                                  f'Артикул: {order.articles[i]}'
+                        msg_admin = msg_pup + '\n' + \
+                                    f'Номер заказа: {order.number}\n' + \
+                                    f'Id заказа: {order.id}\n'
 
-            bot = TG_Bot(token=API_TOKEN)
+                        order.set(end_date=date.today())
+                        order.set(active=False)
 
-            admin = Admin_model().get_sentry_admin()
-            await bot.send_message(admin.id, msg_admin)
-            await bot.send_message(order.pup_tg_id, msg_pup)
-        else:
-            pred_end_date = ''
-            for status in order.statuses:
-                if 'Ожидается' in status:
-                    print(status)
-                    pred_end_date = datetime.fromisoformat(self.get_end_date(status[len('Ожидается '):]))
-            if not pred_end_date:
-                pred_end_date = datetime.fromisoformat(str(date.today() + timedelta(days=1)))
-            print('Заказ Ожидается', pred_end_date)
-            await wait_order_ended(self, pred_end_date, articles, address, message, wait_order_ended)
-        print('order 2 ', order)
-        order.update()
+                        admin = Admin_model().get_sentry_admin()
+                        await bot.send_message(admin.id, msg_admin, parse_mode="HTML")
+                        await bot.send_message(order.pup_tg_id, msg_pup, parse_mode="HTML")
+                    else:
+                        pred_end_date = ''
+                        for status in order.statuses:
+                            if 'Ожидается' in status:
+                                print(status)
+                                pred_end_date = datetime.fromisoformat(self.get_end_date(status[len('Ожидается '):]))
+                        if not pred_end_date:
+                            pred_end_date = datetime.fromisoformat(str(date.today() + timedelta(days=1)))
+                    print('order ', order)
+                    order.update()
 
     @staticmethod
     def get_end_date(wb_day_month) -> str:
@@ -275,6 +299,7 @@ class Bot:
 
         profile_btn = self.driver.find_element(By.XPATH, "//span[contains(@class,'navbar-pc__icon--profile')]")
         hover.move_to_element(profile_btn).perform()
+        sleep(1)
         delivery_btn = self.driver.find_element(By.XPATH,
                                                 "//span[text()='Доставки']/../../a[contains(@class,'profile-menu__link')]")
         delivery_btn.click()

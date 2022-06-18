@@ -32,11 +32,6 @@ class Order(Model):
         self.inn = inn
         self.collected = collected
 
-    def __str__(self):
-        res = ""
-        for i, col in enumerate(COLUMNS):
-            res += col + " = " + str(getattr(self, col)) + "; "
-        return res
 
     def __dict__(self):
         return {'id': self.id, 'number': self.number, 'total_price': self.total_price, 'services_price': self.services_price,
