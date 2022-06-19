@@ -27,7 +27,7 @@ from configs import config
 
 import pandas as pd
 
-DEBUG = False
+DEBUG = True
 
 ADMIN_BTNS = ['🏡 распределить адреса по ботам 🏡', '🔍 поиск товаров 🔎', '➕ добавить пользователя ➕', '◄ назад']
 
@@ -200,9 +200,9 @@ async def admin_handler(message: types.Message):
         await message.answer(res_message, reply_markup=markup)
         await getattr(States, state).set()
     elif "🔍 поиск товаров 🔎" in msg:
-        await message.answer('Пришлите Excel файл заказа')
         keyboard = get_keyboard('admin_bot_search')
-        await message.answer('Или выберите артикул и выкупиться 1 товар с таким артикулом', reply_markup=keyboard)
+        await message.answer('Пришлите Excel файл заказа\n'
+                             'Или выберите артикул и выкупиться 1 товар с таким артикулом', reply_markup=keyboard)
         await States.BOT_SEARCH.set()
     elif "💰 выкуп собраных заказов 💰" in msg:
         bots_wait = BotsWait.load(event="FOUND")
@@ -270,24 +270,37 @@ async def bot_search_callback_query_handler(call: types.CallbackQuery):
     await States.ADMIN.set()
 
     orders = [[article, search_key, category, "1", "1", "381108544328"]]
+    await call.message.edit_text(f'Начался поиск артикула {article}')
 
-    run_bot = asyncio.to_thread(Admin.pre_run, orders)
-    data_for_bots = await asyncio.gather(run_bot)
-    data_for_bots = data_for_bots[0]
+    res_msg = ''
+    if DEBUG:
+        run_bot = asyncio.to_thread(Admin.pre_run, orders)
+        data_for_bots = await asyncio.gather(run_bot)
+        data_for_bots = data_for_bots[0]
+    else:
+        try:
+            run_bot = asyncio.to_thread(Admin.pre_run, orders)
+            data_for_bots = await asyncio.gather(run_bot)
+            data_for_bots = data_for_bots[0]
+        except:
+            await call.message.answer(f'Поиск артикула {article} упал на анализе карточки')
 
-    await call.message.answer('Поиск начался')
     if DEBUG:
         msgs = await Admin.bot_search(data_for_bots)
     else:
         try:
             msgs = await Admin.bot_search(data_for_bots)
         except:
-            await call.message.answer('Поиск упал')
+            await call.message.answer(f'Поиск артикула {article} упал')
+    try:
+        for msg in msgs:
+            res_msg += msg + "\n"
+    except:
+        pass
 
-    for msg in msgs:
-        await call.message.answer(msg)
+    res_msg += f'Поиск артикула {article} завершен'
 
-    await call.message.answer('Поиск завершен')
+    await call.message.answer(res_msg)
 
 
 @dp.message_handler(state=States.BOT_SEARCH, content_types=['document'])
@@ -335,7 +348,7 @@ async def run_bot_callback_query_handler(call: types.CallbackQuery):
     bot_name, bot_type = msg.split(' ')
     await States.ADMIN.set()
     markup = get_markup('admin_main', id=id)
-    await call.message.answer(msg + " открыт", reply_markup=markup)
+    await call.message.edit_text(msg + " открыт", reply_markup=markup)
     await Admin.open_bot(bot_name=bot_name)
 
 
@@ -358,7 +371,7 @@ async def check_waits_callback_query_handler(call: types.CallbackQuery):
     msg = call.data
     await States.ADMIN.set()
     markup = get_markup('admin_main', id=id)
-    await call.message.answer(msg + " открыт", reply_markup=markup)
+    await call.message.edit_text(msg + " открыт", reply_markup=markup)
     await Admin.check_order(msg, call.message)
 
 

@@ -10,7 +10,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 from aiogram import Bot as TG_Bot
 
 from TG.Models.Bots import Bots as Bots_model
-from TG.Models.Admins import Admin as Admin_model
+from TG.Models.Admins import Admins as Admins_model
 from TG.Models.Orders import Order, Orders
 from WB.Pages.Basket import Basket
 from WB.Browser import Browser
@@ -235,7 +235,7 @@ class Bot:
                         order.set(end_date=date.today())
                         order.set(active=False)
 
-                        admin = Admin_model().get_sentry_admin()
+                        admin = Admins_model().get_sentry_admin()
                         await bot.send_message(admin.id, msg_admin, parse_mode="HTML")
                         await bot.send_message(order.pup_tg_id, msg_pup, parse_mode="HTML")
                     else:

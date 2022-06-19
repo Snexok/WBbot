@@ -144,7 +144,7 @@ class Admin:
                 print(paid)
                 if paid['payment']:
                     print(paid['datetime'])
-                    pup_address = Addresses.load(address=report['post_place'])[0]
+                    pup_address = Addresses.load(address=report['post_place'])
                     order = Order_Model(number=number, total_price=report['total_price'], services_price=50,
                                         prices=report['prices'],
                                         quantities=report['quantities'], articles=report['articles'],
