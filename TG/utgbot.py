@@ -6,6 +6,7 @@ from random import random
 import asyncio
 import ujson
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters.state import StatesGroup, State
 
 # For telegram api
@@ -14,7 +15,7 @@ from aiogram import Bot, Dispatcher, executor, types
 from TG.Admin import Admin
 from TG.Models.BotsWaits import BotsWait
 from TG.Models.Addresses import Addresses, Address
-from TG.Models.ExceptedOrders import ExceptedOrders
+from TG.Models.ExceptedOrders import ExceptedOrders, ExceptedOrder
 from TG.Models.Orders import Orders
 from TG.Models.Users import Users, User
 from TG.Models.Bots import Bots as Bots_model
@@ -57,6 +58,8 @@ class States(StatesGroup):
     BOT_SEARCH = State()
     BOT_BUY = State()
     COLLECT_OTHER_ORDERS = State()
+    EXCEPTED_ORDERS_LIST = State()
+    EXCEPTED_ORDERS_LIST_CHANGE = State()
 
 
 @dp.message_handler(commands=['start'])
@@ -134,18 +137,24 @@ async def main_handler(message: types.Message):
         # markup = get_list_keyboard(ies)
         # await message.answer('Выберите ИП, по которому хотите собрать заказы', reply_markup=markup)
     elif "📑 список исключенных из сборки заказов 📑" in msg:
-        excepted_orders = ExceptedOrders.load()
+        # excepted_orders = ExceptedOrders.load()
 
-        excepted_orders_ie = []
-        for eo in excepted_orders:
-            if eo.inn not in excepted_orders_ie:
-                user = Users.load(inn=eo.inn)
-                excepted_orders_ie += [user.ie]
+        # excepted_orders_ie = []
+        # for eo in excepted_orders:
+        #     if eo.inn not in excepted_orders_ie:
+        #         user = Users.load(inn=eo.inn)
+        #         excepted_orders_ie += [user.ie]
 
-        print(excepted_orders_ie)
-        await States.EXCEPTED_ORDERS_LIST.set()
-        markup = get_list_keyboard(excepted_orders_ie)
-        await message.answer('Выберите ИП, по которому хотите посомтреть или изменить список', reply_markup=markup)
+
+        users = Users.load(role='IE')
+        if users:
+            ies = [user.ie for user in users]
+            print(ies)
+            await States.EXCEPTED_ORDERS_LIST.set()
+            markup = get_list_keyboard(ies)
+            await message.answer('Выберите ИП, по которому хотите посмотреть или изменить список', reply_markup=markup)
+        else:
+            await message.answer('Ни одно ИП не найдено')
     elif "заказ" in msg:
         await States.ORDER.set()
         markup = get_markup('main_order')
@@ -381,13 +390,87 @@ async def run_bot_callback_query_handler(call: types.CallbackQuery):
     ie = call.data
     inn = Users.load(ie=ie).inn
     await States.MAIN.set()
-    markup = get_markup('main_main')
+    markup = get_markup('main_main', Users.load(id).role)
 
     await call.message.reply(f'Началась сборка РЕАЛЬНЫХ заказов {ie}', reply_markup=markup)
 
     await Partner().collect_other_orders(inn)
 
     await call.message.reply(f'Закончилась сборка РЕАЛЬНЫХ заказов  {ie}')
+
+
+@dp.callback_query_handler(state=States.EXCEPTED_ORDERS_LIST)
+async def run_bot_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
+    id = str(call.message.chat.id)
+    ie = call.data
+    inn = Users.load(ie=ie).inn
+    excepted_orders = ExceptedOrders.load(inn=inn)
+    await state.update_data(inn=inn)
+
+    if excepted_orders:
+
+        res_msg = f"Для клиента {ie} исключены заказы с номерами:"
+        for eo in excepted_orders:
+            res_msg += "\n" + eo.order_number
+        res_msg += f"\n\nНапишите номера заказов,которые хотите изменить или добавить"
+    else:
+        res_msg = f"У клиента {ie} нет исключенных заказов"
+        res_msg += f"\n\nНапишите номера заказов, которые хотите исключить"
+    await States.EXCEPTED_ORDERS_LIST_CHANGE.set()
+    await call.message.edit_text(res_msg)
+
+
+
+@dp.message_handler(state=States.EXCEPTED_ORDERS_LIST_CHANGE)
+async def run_bot_callback_query_handler(message: types.Message, state: FSMContext):
+    msg = message.text
+    id = str(message.chat.id)
+    order_numbers = msg.replace("\n", " ").strip().split(" ")
+
+    data = await state.get_data()
+    inn = data['inn']
+    excepted_orders = ExceptedOrders.load(inn=inn)
+
+    if excepted_orders:
+
+        local_order_numbers = [eo.order_number for eo in excepted_orders]
+
+    added = []
+    deleted = []
+    for order_number in order_numbers:
+        try:
+            i = local_order_numbers.index(order_number)
+            print(i)
+            excepted_orders[i].delete()
+            deleted += [order_number]
+        except:
+            eo = ExceptedOrder(inn=inn, order_number=order_number, start_datetime=datetime.now())
+            eo.insert()
+            added += [order_number]
+
+    res_msg = ""
+    if len(added):
+        res_msg = f"Добавлены заказы:"
+        for order_number in added:
+            res_msg += "\n" + order_number
+
+        if len(deleted):
+            res_msg += "\n"
+    if len(deleted):
+        res_msg += "\n" + "Удалены заказы:"
+        for order_number in deleted:
+            res_msg += "\n" + order_number
+
+    ie = Users.load(inn=inn).ie
+    res_msg += "\n\n" + f"Для клиента {ie} исключены заказы с номерами:"
+    excepted_orders = ExceptedOrders.load(inn=inn)
+
+    for eo in excepted_orders:
+        res_msg += "\n" + eo.order_number
+
+    await States.MAIN.set()
+    markup = get_markup('main_main', Users.load(id).role)
+    await message.answer(res_msg, reply_markup=markup)
 
 
 @dp.message_handler(state=States.TO_WL)
