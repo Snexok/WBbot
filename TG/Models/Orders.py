@@ -2,14 +2,15 @@ from datetime import datetime
 
 from TG.Models.Model import Model
 
-COLUMNS = ['id', 'number', 'total_price', 'services_price', 'prices', 'quantities', 'articles',
-           'pup_address', 'pup_tg_id', 'bot_name', 'bot_surname', 'start_date', 'pred_end_date', 'end_date',
-           'code_for_approve', 'active', 'statuses', 'inn', 'collected']
-
 
 class Order(Model):
+    COLUMNS = ['id', 'number', 'total_price', 'services_price', 'prices', 'quantities', 'articles',
+               'pup_address', 'pup_tg_id', 'bot_name', 'bot_surname', 'start_date', 'pred_end_date', 'end_date',
+               'code_for_approve', 'active', 'statuses', 'inn', 'collected']
+    table_name = 'orders'
+
     def __init__(self, id=1, number=0, total_price=0, services_price=0, prices=[], quantities=[], articles=[],
-                 pup_address='', pup_tg_id='', bot_name='', bot_surname='', start_date='',pred_end_date='',
+                 pup_address='', pup_tg_id='', bot_name='', bot_surname='', start_date='', pred_end_date='',
                  end_date='', code_for_approve='', active=True, statuses=[], inn=[], collected=False):
         super().__init__()
         self.id = id
@@ -32,76 +33,25 @@ class Order(Model):
         self.inn = inn
         self.collected = collected
 
-
     def __dict__(self):
-        return {'id': self.id, 'number': self.number, 'total_price': self.total_price, 'services_price': self.services_price,
-         'prices': self.prices, 'quantities': self.quantities, 'articles': self.articles,
-         'pup_address': self.pup_address, 'pup_tg_id': self.pup_tg_id, 'bot_name': self.bot_name,
-         'bot_surname': self.bot_surname, 'start_date': self.start_date, 'pred_end_date': self.pred_end_date,
-         'end_date': self.end_date, 'code_for_approve': self.code_for_approve, 'active': self.active,
-         'statuses': self.statuses, 'inn': self.inn, 'collected': self.collected}
-
-    def insert(self):
-        c = [col for col in COLUMNS if getattr(self, col) or type(getattr(self, col)) is bool]
-        path = "INSERT INTO orders (" + ", ".join(c) + ") VALUES "
-        path += "((SELECT MAX(id)+1 FROM orders), "
-        for k in COLUMNS[1:]:
-            v = getattr(self, k)
-            print(k, v, type(v))
-            if v or type(v) is bool:
-                if type(v) is int:
-                    path += f"{str(v)}, "
-                elif type(v) is str or type(v) is datetime:
-                    path += f"'{str(v)}', "
-                elif type(v) is bool:
-                    v = "TRUE" if v else "FALSE"
-                    path += f"{v}, "
-                elif type(v) is list:
-                    if type(v[0]) is str:
-                        path += f"ARRAY{str(v)}::text[], "
-                    elif type(v[0]) is int:
-                        path += f"ARRAY{str(v)}::integer[], "
-        path = path[:-2]
-        path += ")"
-        print(path)
-        self.execute(path)
-
-    def update(self):
-        if self.changed:
-            path = "UPDATE orders SET "
-            for key in COLUMNS[1:]:
-                value = getattr(self, key)
-                print(key, value, type(value))
-                if value or type(value) is bool:
-                    if type(value) is int:
-                        path += f"{key} = { str(value)}, "
-                    elif type(value) is str:
-                        path += f"{key} = '{str(value)}', "
-                    elif type(value) is datetime.date:
-                        path += f"{key} = '{str(value)}', "
-                    elif type(value) is bool:
-                        value = "TRUE" if value else "FALSE"
-                        path += f"{key} = {value}, "
-                    elif type(value) is list:
-                        if type(value[0]) is str:
-                            path += f"{key} = ARRAY{str(value)}::text[], "
-                        elif type(value[0]) is int:
-                            path += f"{key} = ARRAY{str(value)}::integer[], "
-            path = path[:-2]
-            path += f" WHERE id='{str(self.id)}'"
-            self.execute(path)
+        return {'id': self.id, 'number': self.number, 'total_price': self.total_price,
+                'services_price': self.services_price,
+                'prices': self.prices, 'quantities': self.quantities, 'articles': self.articles,
+                'pup_address': self.pup_address, 'pup_tg_id': self.pup_tg_id, 'bot_name': self.bot_name,
+                'bot_surname': self.bot_surname, 'start_date': self.start_date, 'pred_end_date': self.pred_end_date,
+                'end_date': self.end_date, 'code_for_approve': self.code_for_approve, 'active': self.active,
+                'statuses': self.statuses, 'inn': self.inn, 'collected': self.collected}
 
 
 class Orders(Model):
+    single_model = Order
+    table_name = single_model.table_name
 
-    @staticmethod
-    def load(number=None, bot_name=None, articles=None, pup_address=None, active=None, collected=None,
+    @classmethod
+    def load(cls, number=None, bot_name=None, articles=None, pup_address=None, active=None, collected=None,
              pred_end_date=None):
-        def callback(cursor):
-            records = cursor.fetchall()
-            return records
 
-        path = "SELECT * FROM orders WHERE "
+        path = f"SELECT * FROM {cls.table_name} WHERE "
         if number:
             path += f"number = {str(number)} AND "
         if bot_name:
@@ -122,39 +72,13 @@ class Orders(Model):
         path = path[:-5]
 
         print(path)
-        orders = Orders.format_data(Orders.execute(path, callback))
-        print(orders)
+        orders = cls.format_data(cls.execute(path, cls.fetchall))
+
         return orders
 
-    @staticmethod
-    def format_data(data):
-        orders = []
-        for d in data:
-            order = Order(*d)
-            print(*d)
-            orders += [order]
-
-        if orders:
-            return orders
-        else:
-            return False
-
-    @staticmethod
-    def get_number():
-        def callback(cursor):
-            records = cursor.fetchall()
-            return records
-
-        path = "SELECT MAX(number)+1 FROM orders"
-        res = Orders.execute(path, callback)
+    @classmethod
+    def get_number(cls):
+        path = f"SELECT MAX(number)+1 FROM {cls.table_name}"
+        res = cls.execute(path, cls.fetchall)
         res = res[0][0]
         return res
-
-
-
-if __name__ == '__main__':
-    orders = Orders.load(pred_end_date=datetime.datetime.now())
-    if orders:
-        for order in orders:
-            print(order)
-

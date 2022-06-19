@@ -1,7 +1,7 @@
 create table IF NOT EXISTS excepted_orders
 (
 	id int not null
-		constraint users_pkey
+		constraint excepted_orders_pkey
 			primary key,
 	inn text,
 	order_number text,

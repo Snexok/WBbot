@@ -1,9 +1,10 @@
 from TG.Models.Model import Model
 
-COLUMNS = ["id", "tg_id", "username", "secret_key"]
-
 
 class Whitelist(Model):
+    COLUMNS = ["id", "tg_id", "username", "secret_key"]
+    table_name = 'whitelist'
+
     def __init__(self, id=0, tg_id='', username='', secret_key=''):
         super().__init__()
         self.id = id
@@ -11,35 +12,16 @@ class Whitelist(Model):
         self.username = username
         self.secret_key = secret_key
 
-    def insert(self):
-        path = "INSERT INTO whitelist (id, tg_id, username, secret_key) VALUES "
-        path += f"((SELECT MAX(id)+1 FROM whitelist), '', '{self.username}', '{self.secret_key}')"
-        self.execute(path)
-
-    def format_data(self, data):
-        self.id = data[0]
-        self.tg_id = data[1]
-        self.username = data[2]
-        self.secret_key = data[3]
-
-        return self
-
     @classmethod
     def check(cls, tg_id):
-        def callback(cursor):
-            records = cursor.fetchone()
-            return records
+        path = f"SELECT * FROM {cls.table_name} WHERE tg_id='{tg_id}' LIMIT 1"
 
-        path = "SELECT * FROM whitelist "
-        path += f"WHERE tg_id='{tg_id}' LIMIT 1"
-
-        whitelist = cls.execute(path, callback)
+        whitelist = cls.execute(path, cls.fetchall)
 
         if whitelist:
             return True
         else:
             return False
-
 
     @classmethod
     def set_tg_id(cls, tg_id, username='', secret_key=''):
