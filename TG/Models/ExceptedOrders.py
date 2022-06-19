@@ -25,12 +25,6 @@ class ExceptedOrders(Model):
         if inn:
             path += f" WHERE inn='{inn}', "
 
-        path = path[:-2]
+            path = path[:-2]
 
         return cls.format_data(cls.execute(path, cls.fetchall))
-
-    @classmethod
-    def delete(cls, order_number):
-        path = f"DELETE FROM {cls.table_name} WHERE order_number='{order_number}'"
-
-        return cls.execute(path)
