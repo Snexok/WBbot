@@ -6,7 +6,7 @@ import ujson as ujson
 from TG.Models.Addresses import Addresses
 from TG.Models.Admins import Admins as Admins_model
 from TG.Models.Bots import Bots as Bots_model
-from TG.Models.BotsWaits import BotsWait
+from TG.Models.BotsWaits import BotWait, BotsWait
 from TG.Models.Orders import Order as Order_Model, Orders as Orders_Model
 
 from WB.Bot import Bot
@@ -14,7 +14,7 @@ from WB.Bot import Bot
 from datetime import date, datetime, timedelta
 import pandas as pd
 
-USLUGI_PRICE = 150
+USLUGI_PRICE = 50
 
 TEST = False
 
@@ -67,11 +67,12 @@ class Admin:
         for i, report in enumerate(reports):
             print(report)
             data = ujson.dumps(report)
-            bot_wait = BotsWait(bot_name=bots[i].data.name, event="FOUND", wait=True,
+            bot_wait = BotWait(bot_name=bots[i].data.name, event="FOUND", wait=True,
                                 start_datetime=datetime.now(), data=data)
             bot_wait.insert()
 
-            msgs += [f"Собран заказ бота {report['bot_name']}, с артикулами {report['articles']}"]
+            msgs += [f"✅ Собран заказ бота {report['bot_name']}✅\n"
+                     f"Артикулы {report['articles']}"]
 
         print("bot_search ended")
 
@@ -88,6 +89,8 @@ class Admin:
     @staticmethod
     async def bot_buy(message, bots_cnt):
         bots_wait = BotsWait.load(event="FOUND", limit=bots_cnt)
+
+        reports = []
 
         for bot_wait in bots_wait:
             print(type(bot_wait.data))
@@ -119,18 +122,18 @@ class Admin:
                 report = reports[0]
 
                 bot_wait.event = "PAID"
-            except:
+            except Exception as e:
+                print(e)
                 bot_wait.event += " FAIL"
 
 
-            print(report)
             bot_wait.end_datetime = datetime.now()
             bot_wait.wait = False
             bot_wait.data = []
             bot_wait.update()
 
             if "FAIL" in bot_wait.event:
-                await message.answer('Ошибка выкупа')
+                await message.answer('❌ Ошибка выкупа ❌')
             else:
                 await message.answer_photo(open(report['qr_code'], 'rb'))
 
@@ -141,14 +144,14 @@ class Admin:
                     paid = await asyncio.gather(run_bot)
                     paid = paid[0]
 
-                print(paid)
+                reports += [report]
                 if paid['payment']:
                     print(paid['datetime'])
                     pup_address = Addresses.load(address=report['post_place'])
                     order = Order_Model(number=number, total_price=report['total_price'], services_price=50,
                                         prices=report['prices'],
                                         quantities=report['quantities'], articles=report['articles'],
-                                        pup_address=pup_address.address,
+                                        pup_address=report['post_place'],
                                         pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
                                         bot_surname=report['bot_username'],
                                         start_date=paid['datetime'], pred_end_date=report['pred_end_date'],
@@ -156,16 +159,17 @@ class Admin:
                                         statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
                     order.insert()
 
-                    await message.answer(f"Оплачен заказ бота {report['bot_name']}\n\n"
+                    await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"
                                          f"Артикулы {report['articles']}\n\n"
                                          f"Адрес доставки {report['post_place']}\n\n"
                                          f"Время оплаты {paid['datetime']}")
                 else:
-                    await message.answer(f"НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
+                    await message.answer(f"❌ НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
 
                 bot_data.set(status="FREE")
                 bot_data.update()
 
+        return reports
     @classmethod
     def pre_run(cls, orders):
         additional_data = cls.get_additional_data(orders)

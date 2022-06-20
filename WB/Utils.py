@@ -77,5 +77,6 @@ class Utils:
 
     @staticmethod
     def go_to_basket(driver):
-        driver.find_element(By.CLASS_NAME, 'navbar-pc__icon--basket').click()
+        WebDriverWait(driver, 10).until(
+            lambda d: d.find_element(By.CLASS_NAME, 'navbar-pc__icon--basket')).click()
         return 'basket' #page

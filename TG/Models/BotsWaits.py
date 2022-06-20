@@ -2,9 +2,9 @@ from datetime import datetime
 
 from TG.Models.Model import Model
 
-
-class BotsWait(Model):
+class BotWait(Model):
     COLUMNS = ['id', 'bot_name', 'event', 'start_datetime', 'end_datetime', 'wait', 'data']
+    table_name = 'bots_wait'
 
     def __init__(self, id=1, bot_name='', event='', start_datetime='', end_datetime='', wait=False, data=''):
         super().__init__()
@@ -16,6 +16,9 @@ class BotsWait(Model):
         self.wait = wait
         self.data = data
 
+class BotsWait(Model):
+    single_model = BotWait
+    table_name = single_model.table_name
 
     @classmethod
     def load(cls, bot_name=None, event=None, limit=None):

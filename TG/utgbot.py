@@ -62,6 +62,24 @@ class States(StatesGroup):
     EXCEPTED_ORDERS_LIST_CHANGE = State()
 
 
+@dp.message_handler(text='◄ Назад', state="*")
+async def back_handler(message: types.Message, state: FSMContext):
+    id = str(message.chat.id)
+    is_admin = Admin.is_admin(id)
+    if is_admin:
+        current_state = await state.get_state()
+        if current_state == "States:ADMIN" or current_state is None:
+            markup = get_markup('main_main', is_admin=is_admin)
+        else:
+            await States.ADMIN.set()
+            markup = get_markup('admin_main', id=id)
+            await message.answer('Вы в меню Админа', reply_markup=markup)
+            return
+    else:
+        markup = get_markup('main_main', Users.load(id).role)
+    await States.MAIN.set()
+    await message.answer('Главное меню', reply_markup=markup)
+
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     username = message.chat.username
@@ -114,53 +132,64 @@ async def set_admin(message: types.Message):
 @dp.message_handler(state=States.MAIN)
 async def main_handler(message: types.Message):
     msg = message.text.lower()
-    if "⚡ регистрация ⚡" in msg:
-        await States.REGISTER.set()
-        markup = get_markup('main_register')
-        await message.answer("Как вы хотите зарегистрировать:", reply_markup=markup)
-    elif "🚀 собрать самовыкупы 🚀" in msg:
-        # orders = Orders.load(collected=False)
-        # for order in orders:
-        #     await message.answer(f'Артикулы заказа {order.articles}\n\n'
-        #                          f'Адрес заказа {order.pup_address}\n\n'
-        #                          f'Время заказа {order.start_date}')
-        # await message.answer('⛔ 🚀 Сборка самовыкупов пока не доступна 🚀 ⛔')
-        await message.answer('Сборка началась')
-        await Partner().collect_orders()
-        await message.answer('Сборка закончилась')
-    elif "⛔ собрать реальные заказы 🚚" in msg:
-        await message.answer('⛔ Сборка РЕАЛЬНЫХ заказов ПОКА НЕДОСТУПНА ⛔')
-        # users = Users.load(role='IE')
-        # ies = [user.ie for user in users]
-        # print(ies)
-        # await States.COLLECT_OTHER_ORDERS.set()
-        # markup = get_list_keyboard(ies)
-        # await message.answer('Выберите ИП, по которому хотите собрать заказы', reply_markup=markup)
-    elif "📑 список исключенных из сборки заказов 📑" in msg:
-        # excepted_orders = ExceptedOrders.load()
+    id = str(message.chat.id)
+    user = Users.load(id)
 
-        # excepted_orders_ie = []
-        # for eo in excepted_orders:
-        #     if eo.inn not in excepted_orders_ie:
-        #         user = Users.load(inn=eo.inn)
-        #         excepted_orders_ie += [user.ie]
+    print(user)
 
-
-        users = Users.load(role='IE')
-        if users:
-            ies = [user.ie for user in users]
-            print(ies)
-            await States.EXCEPTED_ORDERS_LIST.set()
-            markup = get_list_keyboard(ies)
-            await message.answer('Выберите ИП, по которому хотите посмотреть или изменить список', reply_markup=markup)
-        else:
-            await message.answer('Ни одно ИП не найдено')
-    elif "заказ" in msg:
-        await States.ORDER.set()
-        markup = get_markup('main_order')
-        await message.answer('Файлом или через чат?', reply_markup=markup)
-    if "🌈 admin" in msg:
-        await set_admin(message)
+    if not user:
+        if "⚡ регистрация ⚡" in msg:
+            await States.REGISTER.set()
+            markup = get_markup('main_register')
+            await message.answer("Как вы хотите зарегистрировать:", reply_markup=markup)
+            return
+    elif user.role in "FF":
+        if "🚀 собрать самовыкупы 🚀" in msg:
+            # orders = Orders.load(collected=False)
+            # for order in orders:
+            #     await message.answer(f'Артикулы заказа {order.articles}\n\n'
+            #                          f'Адрес заказа {order.pup_address}\n\n'
+            #                          f'Время заказа {order.start_date}')
+            # await message.answer('⛔ 🚀 Сборка самовыкупов пока не доступна 🚀 ⛔')
+            await message.answer('Сборка началась')
+            res = await Partner().collect_orders()
+            res_msg = ''
+            for r in res:
+                res_msg += r + "\n\n"
+            if 'Не найден заказ' not in res_msg:
+                res_msg = '✅ Все заказы собраны успешно ✅' + '\n\n'
+            await message.answer(res_msg + 'Сборка закончилась')
+            return
+        elif "⛔ собрать реальные заказы 🚚" in msg:
+            await message.answer('⛔ Сборка РЕАЛЬНЫХ заказов ПОКА НЕДОСТУПНА ⛔')
+            # users = Users.load(role='IE')
+            # ies = [user.ie for user in users]
+            # print(ies)
+            # await States.COLLECT_OTHER_ORDERS.set()
+            # markup = get_list_keyboard(ies)
+            # await message.answer('Выберите ИП, по которому хотите собрать заказы', reply_markup=markup)
+            return
+        elif "📑 список исключенных из сборки заказов 📑" in msg:
+            users = Users.load(role='IE')
+            if users:
+                ies = [user.ie for user in users]
+                print(ies)
+                await States.EXCEPTED_ORDERS_LIST.set()
+                markup = get_list_keyboard(ies)
+                await message.answer('Выберите ИП, по которому хотите посмотреть или изменить список', reply_markup=markup)
+                return
+            else:
+                await message.answer('Ни одно ИП не найдено')
+                return
+    elif user.role in "PUP":
+        if "📊 Статистика 📊" in msg:
+            await message.answer('Статистика для ПВЗ')
+            return
+    is_admin = Admin.is_admin(id)
+    if is_admin:
+        if "🌈 admin" in msg:
+            await set_admin(message)
+            return
 
 
 @dp.message_handler(state=States.REGISTER)
@@ -229,14 +258,6 @@ async def admin_handler(message: types.Message):
         await States.TO_WL.set()
         markup = get_markup('admin_add_user')
         await message.answer('Выберите способ', reply_markup=markup)
-    elif "◄ назад" in msg:
-        await States.MAIN.set()
-        is_admin = Admin.is_admin(id)
-        if is_admin:
-            markup = get_markup('main_main', is_admin=is_admin)
-        else:
-            markup = get_markup('main_main', Users.load(id).role)
-        await message.answer('Главное меню', reply_markup=markup)
     elif "🕙 проверить ожидаемое 🕑" in msg:
         await States.CHECK_WAITS.set()
 
@@ -272,7 +293,7 @@ async def bot_search_callback_query_handler(call: types.CallbackQuery):
     if article in ['90086267', '90086484', '90086527']:
         # category = 'Женщинам;Пляжная мода;Купальники'
         search_key = 'купальник женский раздельный с высокой талией'
-    if article in '90085903':
+    if article in ['90085903', '90398226']:
         # category = 'Женщинам;Пляжная мода;Купальники'
         search_key = 'слитный купальник женский утягивающий'
 
@@ -292,7 +313,7 @@ async def bot_search_callback_query_handler(call: types.CallbackQuery):
             data_for_bots = await asyncio.gather(run_bot)
             data_for_bots = data_for_bots[0]
         except:
-            await call.message.answer(f'Поиск артикула {article} упал на анализе карточки')
+            await call.message.answer(f'❌ Поиск артикула {article} упал на анализе карточки ❌')
 
     if DEBUG:
         msgs = await Admin.bot_search(data_for_bots)
@@ -300,14 +321,14 @@ async def bot_search_callback_query_handler(call: types.CallbackQuery):
         try:
             msgs = await Admin.bot_search(data_for_bots)
         except:
-            await call.message.answer(f'Поиск артикула {article} упал')
+            await call.message.answer(f'❌ Поиск артикула {article} упал ❌')
     try:
         for msg in msgs:
             res_msg += msg + "\n"
     except:
         pass
 
-    res_msg += f'Поиск артикула {article} завершен'
+    res_msg += '\n' + f'Поиск артикула {article} завершен'
 
     await call.message.answer(res_msg)
 
@@ -328,7 +349,7 @@ async def bot_search_handler(message: types.Message):
         try:
             msgs = await Admin.bot_search(data_for_bots)
         except:
-            await message.answer('Поиск упал')
+            await message.answer('❌ Поиск упал ❌')
 
     for msg in msgs:
         await message.answer(msg)
@@ -342,11 +363,7 @@ async def inside_handler(message: types.Message):
     id = str(message.chat.id)
     if msg in ADMIN_BTNS:
         await States.ADMIN.set()
-        if msg.lower() == '◄ назад':
-            markup = get_markup('admin_main', id=id)
-            await message.answer('Вы в меню Админа', reply_markup=markup)
-        else:
-            await admin_handler(message)
+        await admin_handler(message)
         return
 
 
@@ -357,7 +374,7 @@ async def run_bot_callback_query_handler(call: types.CallbackQuery):
     bot_name, bot_type = msg.split(' ')
     await States.ADMIN.set()
     markup = get_markup('admin_main', id=id)
-    await call.message.edit_text(msg + " открыт", reply_markup=markup)
+    await call.message.answer(msg + " открыт", reply_markup=markup)
     await Admin.open_bot(bot_name=bot_name)
 
 
@@ -367,11 +384,7 @@ async def run_bot_handler(message: types.Message):
     msg = message.text
     if msg.lower() in ADMIN_BTNS:
         await States.ADMIN.set()
-        if msg.lower() == '◄ назад':
-            markup = get_markup('admin_main', id=id)
-            await message.answer('Вы в меню Админа', reply_markup=markup)
-        else:
-            await admin_handler(message)
+        await admin_handler(message)
 
 
 @dp.callback_query_handler(state=States.CHECK_WAITS)
@@ -380,7 +393,7 @@ async def check_waits_callback_query_handler(call: types.CallbackQuery):
     msg = call.data
     await States.ADMIN.set()
     markup = get_markup('admin_main', id=id)
-    await call.message.edit_text(msg + " открыт", reply_markup=markup)
+    await call.message.answer(msg + " открыт", reply_markup=markup)
     await Admin.check_order(msg, call.message)
 
 
@@ -390,15 +403,11 @@ async def check_waits_handler(message: types.Message):
     msg = message.text
     if msg.lower() in ADMIN_BTNS:
         await States.ADMIN.set()
-        if msg.lower() == '◄ назад':
-            markup = get_markup('admin_main', id=id)
-            await message.answer('Вы в меню Админа', reply_markup=markup)
-        else:
-            await admin_handler(message)
+        await admin_handler(message)
 
 
 @dp.callback_query_handler(state=States.COLLECT_OTHER_ORDERS)
-async def run_bot_callback_query_handler(call: types.CallbackQuery):
+async def collect_other_orders_callback_query_handler(call: types.CallbackQuery):
     id = str(call.message.chat.id)
     ie = call.data
     inn = Users.load(ie=ie).inn
@@ -413,7 +422,7 @@ async def run_bot_callback_query_handler(call: types.CallbackQuery):
 
 
 @dp.callback_query_handler(state=States.EXCEPTED_ORDERS_LIST)
-async def run_bot_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
+async def excepted_orders_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
     id = str(call.message.chat.id)
     ie = call.data
     inn = Users.load(ie=ie).inn
@@ -435,7 +444,7 @@ async def run_bot_callback_query_handler(call: types.CallbackQuery, state: FSMCo
 
 
 @dp.message_handler(state=States.EXCEPTED_ORDERS_LIST_CHANGE)
-async def run_bot_callback_query_handler(message: types.Message, state: FSMContext):
+async def excepted_orders_change_callback_query_handler(message: types.Message, state: FSMContext):
     msg = message.text
     id = str(message.chat.id)
     order_numbers = msg.replace("\n", " ").strip().split(" ")
@@ -510,11 +519,7 @@ async def to_whitelist_handler(message: types.Message):
         await message.answer(f"Пользователь с username {msg} добавлен", reply_markup=markup)
     elif msg in ADMIN_BTNS and Admin.is_admin(id):
         await States.ADMIN.set()
-        if msg.lower() == '◄ назад':
-            markup = get_markup('admin_main', id=id)
-            await message.answer('Вы в меню Админа', reply_markup=markup)
-        else:
-            await admin_handler(message)
+        await admin_handler(message)
         return
 
 
@@ -526,11 +531,7 @@ async def bot_buy_handler(message: types.Message):
         bots_cnt = 1
     elif msg.lower() in ADMIN_BTNS:
         await States.ADMIN.set()
-        if msg.lower() == '◄ назад':
-            markup = get_markup('admin_main', id=id)
-            await message.answer('Вы в меню Админа', reply_markup=markup)
-        else:
-            await admin_handler(message)
+        await admin_handler(message)
         return
     else:
         try:
@@ -543,7 +544,13 @@ async def bot_buy_handler(message: types.Message):
 
     await message.answer('Выкуп начался')
 
-    await Admin.bot_buy(message, bots_cnt)
+    reports = await Admin.bot_buy(message, bots_cnt)
+
+    bot_names = [report['bot_name'] for report in reports]
+
+    res_msg = "Завершен выкуп по ботам:"
+    for name in bot_names:
+        res_msg += f"\n{name}"
 
     await message.answer('Выкуп завершен')
 
@@ -554,11 +561,7 @@ async def address_distribution_handler(message: types.Message):
     id = str(message.chat.id)
     if msg.lower() in ADMIN_BTNS:
         await States.ADMIN.set()
-        if msg.lower() == '◄ назад':
-            markup = get_markup('admin_main', id=id)
-            await message.answer('Вы в меню Админа', reply_markup=markup)
-        else:
-            await admin_handler(message)
+        await admin_handler(message)
         return
 
     bots_data_str = msg.split('\n\n')
@@ -626,11 +629,7 @@ async def address_verification_handler(message: types.Message):
 
     if msg.lower() in ADMIN_BTNS:
         await States.ADMIN.set()
-        if msg.lower() == '◄ назад':
-            markup = get_markup('admin_main', id=id)
-            await message.answer('Вы в меню Админа', reply_markup=markup)
-        else:
-            await admin_handler(message)
+        await admin_handler(message)
         return
 
     new_addresses = msg.split('\n')

@@ -29,24 +29,30 @@ class Partner:
         for order in orders:
             if order.inn not in inns:
                 inns += [order.inn]
-        for inn in inns:
+        res = []
+        for i, inn in enumerate(inns):
             await self.open(inn)
             await self.open_marketplace()
             await sleep(10)
-            for order in orders:
+            for j, order in enumerate(orders):
                 if order.inn == inn:
                     print(order)
-                    await self.choose_task(order)
+                    res += await self.choose_task(order)
                 else:
                     break
             await sleep(5)
-            await self.add_to_assembly()
-            await self.go_to_assembly()
-            await self.create_assembly()
-            await self.open_and_send_shks()
-            await self.pick_all_tasks()
-            await self.print_all_tasks_shk()
-            await self.close_assembly()
+            is_add_to_assembly = await self.add_to_assembly()
+            if is_add_to_assembly:
+                await self.go_to_assembly()
+                await self.create_assembly()
+                await self.open_and_send_shks()
+                await self.pick_all_tasks()
+
+                # order_numbers = [task['order_number'] for task in tasks]
+                # res += await self.choose_task(order)
+                await self.print_all_tasks_shk()
+                await self.close_assembly()
+        return res
 
     async def collect_other_orders(self, inn):
         await self.open(inn)
@@ -69,8 +75,9 @@ class Partner:
         return orders
 
     async def open(self, inn):
+        self.driver.maximize_window()
         self.driver.get('https://seller.wildberries.ru/')
-        cookies = pickle.load(open(f'./bots_sessions/Partner_{inn}.pkl', "rb"))
+        cookies = pickle.load(open(f'../bots_sessions/Partner_{inn}.pkl', "rb"))
         for cookie in cookies:
             self.driver.add_cookie(cookie)
         self.driver.get('https://seller.wildberries.ru/')
@@ -101,6 +108,8 @@ class Partner:
             start_art = cat_i + len('catalog/')
             article = href[start_art:start_art + 8]
 
+            order_number = row.find_element(By.XPATH, "./div[contains(@class,'id')]").text
+
             date = row.find_element(By.XPATH,
                                     "./div[contains(@class,'creationDat')]/div/div/div[contains(@class,'date')]").text
             time = row.find_element(By.XPATH,
@@ -110,7 +119,7 @@ class Partner:
             delivery_address = row.find_element(By.XPATH, "./div[contains(@class,'deliveryAddress')]").text
 
             tasks += [{'date': date, 'time': time, 'datetime': dt, 'article': article, 'row': row,
-                        'delivery_address': delivery_address}]
+                        'delivery_address': delivery_address, 'order_number': order_number}]
 
         return tasks
 
@@ -123,6 +132,7 @@ class Partner:
         и схожему адресу доставки.
         """
         tasks = await self.get_tasks()
+        res = []
         for i in range(len(order.articles)):
             for j, task in enumerate(tasks):
                 if task['article'] == order.articles[i] and task['delivery_address'] == order.pup_address:
@@ -132,10 +142,58 @@ class Partner:
                     if abs(order_time - _task_time).seconds < 120:
                         WebDriverWait(task['row'], 60).until(
                             lambda d: d.find_element(By.XPATH, "./div/div/label")).click()
-                        print(f'picked {order.articles[i]}, {order.pup_address}, {order.start_date}')
+                        msg = f"✅ В сборку добавлен заказ ✅\n" \
+                              f"Артикул: {order.articles[i]}\n" \
+                              f"Адрес: {order.pup_address}\n" \
+                              f"Время выкупа: {order.start_date}"
+                        print(msg)
+                        res += [msg]
                         break
                 if j == len(tasks)-1:
-                    print(f"Артикул {order.articles[i]} не найден")
+                    msg = f"❌ Не найден заказ ❌\n" \
+                          f"Артикул: {order.articles[i]}\n" \
+                          f"Адрес: {order.pup_address}\n" \
+                          f"Время выкупа: {order.start_date}\n" \
+                          f"❗Вероятно уехал с ФБО❗"
+                    print(msg)
+                    res += [msg]
+        return res
+
+    async def choose_task_is_assembly(self, order_numbers):
+        """
+        Выбирает товар на сборку, который по параметрам совпадает с переданныым в него заказом.
+        Сравнивает заказ и товар в списке сборочных заданий
+        по схожести артикула,
+        приблизительно одинаковому времени
+        и схожему адресу доставки.
+        """
+        tasks = await self.get_tasks()
+        res = []
+        for i in range(len(order.articles)):
+            for j, task in enumerate(tasks):
+                if task['article'] == order.articles[i] and task['delivery_address'] == order.pup_address:
+                    _task_time = datetime.fromisoformat(str(task['datetime']))
+                    order_time = datetime.fromisoformat(str(order.start_date))
+                    print('times ', _task_time, order_time)
+                    if abs(order_time - _task_time).seconds < 120:
+                        WebDriverWait(task['row'], 60).until(
+                            lambda d: d.find_element(By.XPATH, "./div/div/label")).click()
+                        msg = f"✅ В сборку добавлен заказ ✅\n" \
+                              f"Артикул: {order.articles[i]}\n" \
+                              f"Адрес: {order.pup_address}\n" \
+                              f"Время выкупа: {order.start_date}"
+                        print(msg)
+                        res += [msg]
+                        break
+                if j == len(tasks)-1:
+                    msg = f"❌ Не найден заказ ❌\n" \
+                          f"Артикул: {order.articles[i]}\n" \
+                          f"Адрес: {order.pup_address}\n" \
+                          f"Время выкупа: {order.start_date}\n" \
+                          f"❗Вероятно уехал с ФБО❗"
+                    print(msg)
+                    res += [msg]
+        return res
 
     async def choose_tasks(self, orders):
         for order in orders:
@@ -166,7 +224,9 @@ class Partner:
                 collect_btn.click()
             except:
                 print("Нет кнопки Добавить в сборку")
+                return False
         await sleep(1)
+        return True
 
     async def go_to_assembly(self):
         on_assembly_tab = self.driver.find_element(By.XPATH, "//a[contains(text(),'На сборке')]")
@@ -241,12 +301,13 @@ class Partner:
             self.driver.find_element(By.XPATH, "//span[text()='Распечатать этикетку']").click()
             await sleep(1)
             self.driver.switch_to.window(self.driver.window_handles[-1])
-
+            await sleep(1)
             # получаем байткод pdf файла и отправляем его на адрес Фулфилмента
-            shk_bytes = self.get_file_content_chrome()
+            shk_bytes = await self.get_file_content_chrome()
+            await sleep(1)
             await bot.send_document("794329884", (f'{article}.pdf', shk_bytes))
-            await bot.send_document("791436094", (f'{article}.pdf', shk_bytes))
-            await bot.send_document("424847668", (f'{article}.pdf', shk_bytes))
+            # await bot.send_document("791436094", (f'{article}.pdf', shk_bytes))
+            # await bot.send_document("424847668", (f'{article}.pdf', shk_bytes))
             await sleep(1)
 
             # закрываем таб с pdf файлом
@@ -294,8 +355,8 @@ class Partner:
         self.driver.switch_to.window(self.driver.window_handles[-1])
         shk_bytes = self.get_file_content_chrome()
         await bot.send_document("794329884", (f'{tasks_shk}.pdf', shk_bytes))
-        await bot.send_document("791436094", (f'{tasks_shk}.pdf', shk_bytes))
-        await bot.send_document("424847668", (f'{tasks_shk}.pdf', shk_bytes))
+        # await bot.send_document("791436094", (f'{tasks_shk}.pdf', shk_bytes))
+        # await bot.send_document("424847668", (f'{tasks_shk}.pdf', shk_bytes))
         await sleep(1)
 
         # возвращаемся на первую вкладку

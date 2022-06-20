@@ -42,8 +42,13 @@ def get_markup(markup_name, role='', is_admin=False, id=''):
         if role == "FF" or is_admin:
             markup.add("🚀 Собрать самовыкупы 🚀")
             markup.add("⛔ Собрать РЕАЛЬНЫЕ заказы 🚚")
-            markup.add("📑 список исключенных из сборки заказов 📑")
-        markup.add("⚡ Регистрация ⚡")
+            markup.add("📑 Список исключенных из сборки заказов 📑")
+        elif role == "PUP" or is_admin:
+            markup.add("📊 Статистика 📊")
+        else:
+            markup.add("⚡ Регистрация ⚡")
+
+        markup.add("◄ Назад")
         # markup.add("Настройки")
 
         return markup
@@ -85,7 +90,8 @@ def get_keyboard(keyboard_name, *args):
         btns += [types.InlineKeyboardButton(text='90086267', callback_data='90086267')]
         btns += [types.InlineKeyboardButton(text='90086484', callback_data='90086484')]
         btns += [types.InlineKeyboardButton(text='90086527', callback_data='90086527')]
-        btns += [types.InlineKeyboardButton(text='90085903', callback_data='90085903')]
+        # btns += [types.InlineKeyboardButton(text='90085903', callback_data='90085903')]
+        btns += [types.InlineKeyboardButton(text='90398226', callback_data='90398226')]
         keyboard.add(*btns)
 
         return keyboard

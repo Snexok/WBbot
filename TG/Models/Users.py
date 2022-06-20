@@ -16,6 +16,33 @@ class User(Model):
         self.inn = inn
         self.ie = ie
 
+    def insert(self):
+        c = [col for col in self.COLUMNS if getattr(self, col) or type(getattr(self, col)) is bool]
+        path = f"INSERT INTO {self.table_name} (" + ", ".join(c) + ") VALUES "
+        path += f"({self.id}, "
+        for k in self.COLUMNS[1:]:
+            v = getattr(self, k)
+            if v or type(v) is bool:
+                if type(v) is int:
+                    path += f"{str(v)}, "
+                elif type(v) is str:
+                    path += f"'{str(v)}', "
+                elif type(v) is bool:
+                    v = "TRUE" if v else "FALSE"
+                    path += f"{v}, "
+                elif type(v) is list:
+                    if type(v[0]) is str:
+                        if "," in str(v):
+                            path += "ARRAY[" + ",".join("'" + a.replace(",", ";") + "'" for a in v) + "]::text[], "
+                        else:
+                            path += f"ARRAY{str(v)}::text[], "
+                    elif type(v[0]) is int:
+                        path += f"ARRAY{str(v)}::integer[], "
+        path = path[:-2]
+        path += ")"
+        print(path)
+        self.execute(path)
+
 class Users(Model):
     single_model = User
     table_name = single_model.table_name
@@ -36,7 +63,8 @@ class Users(Model):
         data = cls.format_data(cls.execute(path, cls.fetchall))
 
         if id or username or inn or ie:
-            return data[0]
+            if data:
+                return data[0]
         return data
 
     @classmethod

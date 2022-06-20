@@ -44,7 +44,7 @@ class Model:
     def insert(self):
         c = [col for col in self.COLUMNS if getattr(self, col) or type(getattr(self, col)) is bool]
         path = f"INSERT INTO {self.table_name} (" + ", ".join(c) + ") VALUES "
-        path += "((SELECT MAX(id)+1 FROM excepted_orders), "
+        path += f"((SELECT MAX(id)+1 FROM {self.table_name}), "
         for k in self.COLUMNS[1:]:
             v = getattr(self, k)
             if v or type(v) is bool:
