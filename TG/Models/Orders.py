@@ -48,7 +48,7 @@ class Orders(Model):
     table_name = single_model.table_name
 
     @classmethod
-    def load(cls, number=None, bot_name=None, articles=None, pup_address=None, active=None, collected=None,
+    def load(cls, number=None, bot_name=None, articles=None, pup_address=None, active=None, inn=None, collected=None,
              pred_end_date=None):
 
         path = f"SELECT * FROM {cls.table_name} WHERE "
@@ -56,6 +56,8 @@ class Orders(Model):
             path += f"number = {str(number)} AND "
         if bot_name:
             path += f"bot_name = '{str(bot_name)}' AND "
+        if inn:
+            path += f"inn = '{str(inn)}' AND "
         if articles:
             path += f"articles = ARRAY{str(articles)}::text[] AND "
         if pup_address:

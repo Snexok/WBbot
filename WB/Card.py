@@ -3,7 +3,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import random
 
-SPEED = 0.5
+SPEED = 1
 
 class Card():
     card_button = lambda self, articul: self.driver.find_element(By.XPATH, f'//div[@id="{articul}"]/div/a/div/button')

@@ -13,7 +13,10 @@ class Browser():
     def open(self, path="./chrome/chromedriver"):
         '''Open Browser by path'''
         path = path+".exe" if sys.platform == "win32" else path
-        self.driver = webdriver.Chrome(path)
+        options = webdriver.ChromeOptions()
+        options.add_argument("--no-sandbox")
+        options.add_argument("--window-size=1920x1080")
+        self.driver = webdriver.Chrome(path, options=options)
 
     def open_site(self, url):
         self.driver.get(url)

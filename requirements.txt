@@ -2,3 +2,4 @@ aiogram
 psycopg2
 selenium
 telethon
+PyMuPDF

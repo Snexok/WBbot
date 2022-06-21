@@ -60,6 +60,7 @@ class States(StatesGroup):
     COLLECT_OTHER_ORDERS = State()
     EXCEPTED_ORDERS_LIST = State()
     EXCEPTED_ORDERS_LIST_CHANGE = State()
+    COLLECT_ORDERS = State()
 
 
 @dp.message_handler(text='◄ Назад', state="*")
@@ -151,14 +152,12 @@ async def main_handler(message: types.Message):
             #                          f'Адрес заказа {order.pup_address}\n\n'
             #                          f'Время заказа {order.start_date}')
             # await message.answer('⛔ 🚀 Сборка самовыкупов пока не доступна 🚀 ⛔')
-            await message.answer('Сборка началась')
-            res = await Partner().collect_orders()
-            res_msg = ''
-            for r in res:
-                res_msg += r + "\n\n"
-            if 'Не найден заказ' not in res_msg:
-                res_msg = '✅ Все заказы собраны успешно ✅' + '\n\n'
-            await message.answer(res_msg + 'Сборка закончилась')
+            users = Users.load(role='IE')
+            ies = [user.ie for user in users]
+            print(ies)
+            await States.COLLECT_ORDERS.set()
+            markup = get_list_keyboard(ies)
+            await message.answer('Выберите ИП, по которому хотите собрать самовыкупы', reply_markup=markup)
             return
         elif "⛔ собрать реальные заказы 🚚" in msg:
             await message.answer('⛔ Сборка РЕАЛЬНЫХ заказов ПОКА НЕДОСТУПНА ⛔')
@@ -373,8 +372,7 @@ async def run_bot_callback_query_handler(call: types.CallbackQuery):
     msg = call.data
     bot_name, bot_type = msg.split(' ')
     await States.ADMIN.set()
-    markup = get_markup('admin_main', id=id)
-    await call.message.answer(msg + " открыт", reply_markup=markup)
+    await call.message.edit_text(msg + " открыт")
     await Admin.open_bot(bot_name=bot_name)
 
 
@@ -392,8 +390,7 @@ async def check_waits_callback_query_handler(call: types.CallbackQuery):
     id = str(call.message.chat.id)
     msg = call.data
     await States.ADMIN.set()
-    markup = get_markup('admin_main', id=id)
-    await call.message.answer(msg + " открыт", reply_markup=markup)
+    await call.message.edit_text(msg + " открыт")
     await Admin.check_order(msg, call.message)
 
 
@@ -412,13 +409,35 @@ async def collect_other_orders_callback_query_handler(call: types.CallbackQuery)
     ie = call.data
     inn = Users.load(ie=ie).inn
     await States.MAIN.set()
-    markup = get_markup('main_main', Users.load(id).role)
 
-    await call.message.reply(f'Началась сборка РЕАЛЬНЫХ заказов {ie}', reply_markup=markup)
+    await call.message.edit_text(f'Началась сборка РЕАЛЬНЫХ заказов по {ie}')
 
     await Partner().collect_other_orders(inn)
 
-    await call.message.reply(f'Закончилась сборка РЕАЛЬНЫХ заказов  {ie}')
+    await call.message.answer(f'Закончилась сборка РЕАЛЬНЫХ заказов по {ie}')
+
+@dp.callback_query_handler(state=States.COLLECT_ORDERS)
+async def collect_orders_callback_query_handler(call: types.CallbackQuery):
+    id = str(call.message.chat.id)
+    ie = call.data
+    inn = Users.load(ie=ie).inn
+    await States.MAIN.set()
+
+    await call.message.edit_text(f'Началась сборка самовыкупов по {ie}')
+    if id != "794329884":
+        await bot.send_message("794329884", f'Началась сборка самовыкупов по {ie}')
+
+    res = await Partner().collect_orders(inn)
+    res_msg = ''
+    for r in res:
+        res_msg += r + "\n\n"
+    if ('Не найден заказ' not in res_msg) and ('Самовыкупов по данному ИП нет' not in res_msg)\
+            and ('Слетела авторизация в аккаунт Партнёров' not in res_msg):
+        res_msg = '✅ Все заказы собраны успешно ✅' + '\n\n'
+
+    await call.message.answer(res_msg + f'Закончилась сборка самовыкупов по {ie}')
+    if id != "794329884":
+        await bot.send_message("794329884", res_msg + f'Закончилась сборка самовыкупов по {ie}')
 
 
 @dp.callback_query_handler(state=States.EXCEPTED_ORDERS_LIST)
@@ -484,11 +503,14 @@ async def excepted_orders_change_callback_query_handler(message: types.Message, 
             res_msg += "\n" + order_number
 
     ie = Users.load(inn=inn).ie
-    res_msg += "\n\n" + f"Для клиента {ie} исключены заказы с номерами:"
     excepted_orders = ExceptedOrders.load(inn=inn)
 
-    for eo in excepted_orders:
-        res_msg += "\n" + eo.order_number
+    if excepted_orders:
+        res_msg += "\n\n" + f"Для клиента {ie} исключены заказы с номерами:"
+        for eo in excepted_orders:
+            res_msg += "\n" + eo.order_number
+    else:
+        res_msg += "\n\n" + f"Для клиента {ie} нет исключеных заказов"
 
     await States.MAIN.set()
     markup = get_markup('main_main', Users.load(id).role)
