@@ -43,7 +43,7 @@ def get_markup(markup_name, role='', is_admin=False, id=''):
             markup.add("🚀 Собрать самовыкупы 🚀")
             markup.add("⛔ Собрать РЕАЛЬНЫЕ заказы 🚚")
             markup.add("📑 Список исключенных из сборки заказов 📑")
-        elif role == "PUP" or is_admin:
+        if role == "PUP" or is_admin:
             markup.add("📊 Статистика 📊")
         else:
             markup.add("⚡ Регистрация ⚡")

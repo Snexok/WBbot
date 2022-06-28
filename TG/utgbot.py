@@ -184,8 +184,13 @@ async def main_handler(message: types.Message):
                 await message.answer('Ни одно ИП не найдено')
                 return
     elif user.role in "PUP":
-        if "📊 Статистика 📊" in msg:
+        if "📊 статистика 📊" in msg:
             await message.answer('Статистика для ПВЗ')
+            orders = Orders.load_stat(pup_tg_id=id)
+            msg += "\nЗа месяц: \n" \
+                   f"Кол-во заказов: {sum([sum(order.quantities) for order in orders])} \n" \
+                   f"Сумма оборота: {sum([order.total_price for order in orders])} \n"
+            await message.answer(msg)
             return
     is_admin = Admin.is_admin(id)
     if is_admin:
@@ -385,6 +390,14 @@ async def run_bot_callback_query_handler(call: types.CallbackQuery):
     await call.message.edit_text(msg + " открыт")
     await Admin.open_bot(bot_name=bot_name)
 
+@dp.message_handler(state=States.RUN_BOT)
+async def run_bot_callback_query_handler(message: types.Message):
+    id = str(message.chat.id)
+    msg = message.text
+    bot_name = msg
+    await States.ADMIN.set()
+    await message.answer(msg + " открыт")
+    await Admin.open_bot(bot_name=bot_name)
 
 @dp.message_handler(state=States.RUN_BOT)
 async def run_bot_handler(message: types.Message):
