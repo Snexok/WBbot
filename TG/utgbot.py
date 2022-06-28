@@ -186,7 +186,7 @@ async def main_handler(message: types.Message):
     elif user.role in "PUP":
         if "📊 статистика 📊" in msg:
             await message.answer('Статистика для ПВЗ')
-            orders = Orders.load_stat(pup_tg_id=id)
+            orders = Orders_Model.load_stat(pup_tg_id=id)
             msg += "\nЗа месяц: \n" \
                    f"Кол-во заказов: {sum([sum(order.quantities) for order in orders])} \n" \
                    f"Сумма оборота: {sum([order.total_price for order in orders])} \n"
