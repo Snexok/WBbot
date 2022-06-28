@@ -9,9 +9,9 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 from aiogram import Bot as TG_Bot
 
-from TG.Models.Bots import Bots as Bots_model
-from TG.Models.Admins import Admins as Admins_model
-from TG.Models.Orders import Order, Orders
+from TG.Models.Bots import Bots_Model as Bots_model
+from TG.Models.Admins import Admins_Model as Admins_model
+from TG.Models.Orders import Order_Model, Orders_Model
 from WB.Pages.Basket import Basket
 from WB.Browser import Browser
 from WB.Pages.Catalog import Catalog
@@ -215,7 +215,8 @@ class Bot:
             print(statuses)
 
             if len(statuses) < len(order.articles):
-                await message.answer(f'Один из артикулов заказа {order.id} не был найден.\n '
+                if message:
+                    await message.answer(f'Один из артикулов заказа {order.id} не был найден.\n '
                                      f'Артикулы {str(order.articles)}')
             else:
                 order.set(statuses=statuses)
@@ -274,7 +275,7 @@ class Bot:
         orders = []
         sleep(2)
         for order_row in self.driver.find_elements(By.XPATH, '//div[@class="delivery-block__content"]'):
-            order = Order()
+            order = Order_Model()
             order.pup_address = order_row.find_element(By.XPATH,
                                                        './div/div/div[contains(@class, "delivery-address__info")]').text
             item_imgs = order_row.find_elements(By.XPATH, './div/ul/li/div/div/img')

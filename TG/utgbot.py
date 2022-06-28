@@ -11,16 +11,18 @@ from aiogram.dispatcher.filters.state import StatesGroup, State
 
 # For telegram api
 from aiogram import Bot, Dispatcher, executor, types
+from aiogram.utils.json import json
 
+from TG.BotsWait import BotsWait
 from TG.Admin import Admin
-from TG.Models.BotsWaits import BotsWait
-from TG.Models.Addresses import Addresses, Address
-from TG.Models.ExceptedOrders import ExceptedOrders, ExceptedOrder
-from TG.Models.Orders import Orders
-from TG.Models.Users import Users, User
-from TG.Models.Bots import Bots as Bots_model
-from TG.Models.Whitelist import Whitelist
-from TG.Models.Admins import Admin as Admin_model
+from TG.Models.BotsWaits import BotsWait_Model, BotWait_Model
+from TG.Models.Addresses import Addresses_Model, Address_Model
+from TG.Models.ExceptedOrders import ExceptedOrders_Model, ExceptedOrder_Model
+from TG.Models.Orders import Orders_Model
+from TG.Models.Users import Users_Model, User_Model
+from TG.Models.Bots import Bots_Model as Bots_model
+from TG.Models.Whitelist import Whitelist_Model
+from TG.Models.Admins import Admin_Model as Admin_model
 from TG.Markups import get_markup, get_keyboard, get_list_keyboard
 from WB.Partner import Partner
 
@@ -35,7 +37,8 @@ ADMIN_BTNS = ['🏡 распределить адреса по ботам 🏡',
 API_TOKEN = config['tokens']['telegram']
 # Initialize bot and dispatcher
 bot = Bot(token=API_TOKEN)
-dp = Dispatcher(bot, storage=MemoryStorage())
+loop = asyncio.get_event_loop()
+dp = Dispatcher(bot, storage=MemoryStorage(), loop=loop)
 
 
 # States
@@ -77,7 +80,7 @@ async def back_handler(message: types.Message, state: FSMContext):
             await message.answer('Вы в меню Админа', reply_markup=markup)
             return
     else:
-        markup = get_markup('main_main', Users.load(id).role)
+        markup = get_markup('main_main', Users_Model.load(id).role)
     await States.MAIN.set()
     await message.answer('Главное меню', reply_markup=markup)
 
@@ -86,21 +89,21 @@ async def start(message: types.Message):
     username = message.chat.username
     id = str(message.chat.id)
     print(username, id, 'is started')
-    whitelisted = Whitelist.check(id)
+    whitelisted = Whitelist_Model.check(id)
     if whitelisted:
         await States.MAIN.set()
         is_admin = Admin.is_admin(id)
         if is_admin:
             markup = get_markup('main_main', is_admin=is_admin)
         else:
-            user = Users.load(id)
+            user = Users_Model.load(id)
             if user:
                 markup = get_markup('main_main', user.role)
             else:
                 markup = get_markup('main_main')
         await message.reply("Привет", reply_markup=markup)
     elif username:
-        wl = Whitelist.set_tg_id(id, username=username)
+        wl = Whitelist_Model.set_tg_id(id, username=username)
         if wl:
             await States.MAIN.set()
             markup = get_markup('main_main')
@@ -113,7 +116,7 @@ async def start(message: types.Message):
 async def whitelist_secret_key_handler(message: types.Message):
     secret_key = message.text
     id = str(message.chat.id)
-    wl = Whitelist.set_tg_id(id, secret_key=secret_key)
+    wl = Whitelist_Model.set_tg_id(id, secret_key=secret_key)
     if wl:
         await States.MAIN.set()
         markup = get_markup('main_main')
@@ -134,7 +137,7 @@ async def set_admin(message: types.Message):
 async def main_handler(message: types.Message):
     msg = message.text.lower()
     id = str(message.chat.id)
-    user = Users.load(id)
+    user = Users_Model.load(id)
 
     print(user)
 
@@ -152,7 +155,7 @@ async def main_handler(message: types.Message):
             #                          f'Адрес заказа {order.pup_address}\n\n'
             #                          f'Время заказа {order.start_date}')
             # await message.answer('⛔ 🚀 Сборка самовыкупов пока не доступна 🚀 ⛔')
-            users = Users.load(role='IE')
+            users = Users_Model.load(role='IE')
             ies = [user.ie for user in users]
             print(ies)
             await States.COLLECT_ORDERS.set()
@@ -169,7 +172,7 @@ async def main_handler(message: types.Message):
             # await message.answer('Выберите ИП, по которому хотите собрать заказы', reply_markup=markup)
             return
         elif "📑 список исключенных из сборки заказов 📑" in msg:
-            users = Users.load(role='IE')
+            users = Users_Model.load(role='IE')
             if users:
                 ies = [user.ie for user in users]
                 print(ies)
@@ -198,17 +201,17 @@ async def register_handler(message: types.Message):
 
     if "как пвз" in msg:
         id = str(message.chat.id)
-        user = Users.load(id)
+        user = Users_Model.load(id)
         if not user:
-            user = User(id, role='PUP')
+            user = User_Model(id, role='PUP')
             user.insert()
 
         await States.PUP_ADDRESSES_START.set()
     elif "как сотрудник фф" in msg:
         id = str(message.chat.id)
-        user = Users.load(id)
+        user = Users_Model.load(id)
         if not user:
-            user = User(id, role='FF')
+            user = User_Model(id, role='FF')
             user.insert()
 
         await States.FF_ADDRESS_START.set()
@@ -242,7 +245,7 @@ async def admin_handler(message: types.Message):
                              'Или выберите артикул и выкупиться 1 товар с таким артикулом', reply_markup=keyboard)
         await States.BOT_SEARCH.set()
     elif "💰 выкуп собраных заказов 💰" in msg:
-        bots_wait = BotsWait.load(event="FOUND")
+        bots_wait = BotsWait_Model.load(event="FOUND")
         if bots_wait:
             await message.answer(f'{len(bots_wait)} ботов ожидают выкупа, скольких вы хотите выкупить?')
             await message.answer(
@@ -260,13 +263,20 @@ async def admin_handler(message: types.Message):
     elif "🕙 проверить ожидаемое 🕑" in msg:
         await States.CHECK_WAITS.set()
 
-        orders = Orders.load(active=True, pred_end_date=datetime.now())
-        bots_name = []
+        orders = Orders_Model.load(active=True)
         for order in orders:
-            if order.bot_name not in bots_name:
-                bots_name += [order.bot_name]
-        keyboard = get_keyboard('admin_bots', bots_name)
-        await message.answer('Выберите бота', reply_markup=keyboard)
+            print(order)
+            is_order_wait_exist = BotsWait_Model.check_exist_order_wait(order.bot_name, order.id)
+            if not is_order_wait_exist:
+                bot_wait = BotWait_Model(bot_name=order.bot_name, event='delivery', start_datetime=datetime.now(),
+                              end_datetime=order.pred_end_date, wait=True, data=json.dumps('{"id": '+str(order.id)+'}'))
+                bot_wait.insert()
+        # bots_name = []
+        # for order in orders:
+        #     if order.bot_name not in bots_name:
+        #         bots_name += [order.bot_name]
+        # keyboard = get_keyboard('admin_bots', bots_name)
+        # await message.answer('Выберите бота', reply_markup=keyboard)
     else:
         if "🤖 открыть бота 🤖" in msg or "🤖 статус ботов 🤖" in msg:
             if id == '794329884' or id == '535533975':
@@ -407,7 +417,7 @@ async def check_waits_handler(message: types.Message):
 async def collect_other_orders_callback_query_handler(call: types.CallbackQuery):
     id = str(call.message.chat.id)
     ie = call.data
-    inn = Users.load(ie=ie).inn
+    inn = Users_Model.load(ie=ie).inn
     await States.MAIN.set()
 
     await call.message.edit_text(f'Началась сборка РЕАЛЬНЫХ заказов по {ie}')
@@ -420,7 +430,7 @@ async def collect_other_orders_callback_query_handler(call: types.CallbackQuery)
 async def collect_orders_callback_query_handler(call: types.CallbackQuery):
     id = str(call.message.chat.id)
     ie = call.data
-    inn = Users.load(ie=ie).inn
+    inn = Users_Model.load(ie=ie).inn
     await States.MAIN.set()
 
     await call.message.edit_text(f'Началась сборка самовыкупов по {ie}')
@@ -444,8 +454,8 @@ async def collect_orders_callback_query_handler(call: types.CallbackQuery):
 async def excepted_orders_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
     id = str(call.message.chat.id)
     ie = call.data
-    inn = Users.load(ie=ie).inn
-    excepted_orders = ExceptedOrders.load(inn=inn)
+    inn = Users_Model.load(ie=ie).inn
+    excepted_orders = ExceptedOrders_Model.load(inn=inn)
     await state.update_data(inn=inn)
 
     if excepted_orders:
@@ -470,7 +480,7 @@ async def excepted_orders_change_callback_query_handler(message: types.Message, 
 
     data = await state.get_data()
     inn = data['inn']
-    excepted_orders = ExceptedOrders.load(inn=inn)
+    excepted_orders = ExceptedOrders_Model.load(inn=inn)
 
     if excepted_orders:
 
@@ -485,7 +495,7 @@ async def excepted_orders_change_callback_query_handler(message: types.Message, 
             excepted_orders[i].delete()
             deleted += [order_number]
         except:
-            eo = ExceptedOrder(inn=inn, order_number=order_number, start_datetime=datetime.now())
+            eo = ExceptedOrder_Model(inn=inn, order_number=order_number, start_datetime=datetime.now())
             eo.insert()
             added += [order_number]
 
@@ -502,8 +512,8 @@ async def excepted_orders_change_callback_query_handler(message: types.Message, 
         for order_number in deleted:
             res_msg += "\n" + order_number
 
-    ie = Users.load(inn=inn).ie
-    excepted_orders = ExceptedOrders.load(inn=inn)
+    ie = Users_Model.load(inn=inn).ie
+    excepted_orders = ExceptedOrders_Model.load(inn=inn)
 
     if excepted_orders:
         res_msg += "\n\n" + f"Для клиента {ie} исключены заказы с номерами:"
@@ -513,7 +523,7 @@ async def excepted_orders_change_callback_query_handler(message: types.Message, 
         res_msg += "\n\n" + f"Для клиента {ie} нет исключеных заказов"
 
     await States.MAIN.set()
-    markup = get_markup('main_main', Users.load(id).role)
+    markup = get_markup('main_main', Users_Model.load(id).role)
     await message.answer(res_msg, reply_markup=markup)
 
 
@@ -526,7 +536,7 @@ async def to_whitelist_handler(message: types.Message):
     elif msg in 'сгененрировать ключ':
         secret_key = Admin.generate_secret_key()
 
-        Whitelist(secret_key=secret_key).insert()
+        Whitelist_Model(secret_key=secret_key).insert()
 
         await States.ADMIN.set()
         markup = get_markup('admin_main', id=id)
@@ -534,7 +544,7 @@ async def to_whitelist_handler(message: types.Message):
         await message.answer(secret_key, reply_markup=markup)
     elif "@" in msg:
         username = msg[1:]
-        Whitelist(username=username).insert()
+        Whitelist_Model(username=username).insert()
 
         await States.ADMIN.set()
         markup = get_markup('admin_main', id=id)
@@ -599,7 +609,7 @@ async def address_distribution_handler(message: types.Message):
         bot.update()
 
         for address in new_addresses:
-            address = Address().load(address=address)
+            address = Address_Model().load(address=address)
             address.set(added_to_bot=True)
             address.update()
 
@@ -613,7 +623,7 @@ async def ff_address_start_handler(message: types.Message):
     id = str(message.chat.id)
     msg = message.text
 
-    user = Users.load(id)
+    user = Users_Model.load(id)
 
     name = msg
     user.set(name=name)
@@ -628,7 +638,7 @@ async def ff_address_end_handler(message: types.Message):
     id = str(message.chat.id)
     msg = message.text
 
-    user = Users.load(id)
+    user = Users_Model.load(id)
 
     address = msg
     user.append(addresses=[address])
@@ -640,7 +650,7 @@ async def ff_address_end_handler(message: types.Message):
     if is_admin:
         markup = get_markup('main_main', is_admin=is_admin)
     else:
-        markup = get_markup('main_main', Users.load(id).role)
+        markup = get_markup('main_main', Users_Model.load(id).role)
     await message.answer('Мы запомнили ваши данные', reply_markup=markup)
 
 
@@ -656,14 +666,14 @@ async def address_verification_handler(message: types.Message):
 
     new_addresses = msg.split('\n')
 
-    all_not_checked_addresses = Addresses.get_all_not_checked()
+    all_not_checked_addresses = Addresses_Model.get_all_not_checked()
 
     for i, old_address_str in enumerate(all_not_checked_addresses):
-        address = Address().load(address=old_address_str)
+        address = Address_Model().load(address=old_address_str)
         address.append(address=new_addresses[i])
         address.update()
 
-        user = Users.load(id=address.tg_id)
+        user = Users_Model.load(id=address.tg_id)
         for j, address in user.addresses:
             if address == old_address_str:
                 user.addresses[j] = new_addresses[i]
@@ -681,7 +691,7 @@ async def pup_addresses_start_handler(message: types.Message):
     id = str(message.chat.id)
     msg = message.text
 
-    user = Users.load(id)
+    user = Users_Model.load(id)
 
     name = msg
     user.set(name=name)
@@ -700,7 +710,7 @@ async def pup_addresses_continue_handler(message: types.Message):
     id = str(message.chat.id)
     msg = message.text
 
-    user = Users.load(id)
+    user = Users_Model.load(id)
 
     if msg.lower() == 'всё':
         await States.MAIN.set()
@@ -709,7 +719,7 @@ async def pup_addresses_continue_handler(message: types.Message):
         if is_admin:
             markup = get_markup('main_main', is_admin=is_admin)
         else:
-            markup = get_markup('main_main', Users.load(id).role)
+            markup = get_markup('main_main', Users_Model.load(id).role)
         await message.answer('Мы запомнили ваши данные', reply_markup=markup)
     else:
         new_addresses = [a for a in msg.splitlines() if a]
@@ -717,7 +727,7 @@ async def pup_addresses_continue_handler(message: types.Message):
         user.append(addresses=new_addresses)
 
         for address in new_addresses:
-            Address(address=address, tg_id=id).insert()
+            Address_Model(address=address, tg_id=id).insert()
 
         addresses_to_print = "".join(map(lambda x: x + '\n', [address for address in user.addresses]))
 
@@ -734,7 +744,7 @@ async def default_handler(message: types.Message):
     username = message.chat.username
     id = str(message.chat.id)
     print(username, id, 'in default')
-    whitelisted = Whitelist.check(id)
+    whitelisted = Whitelist_Model.check(id)
     if whitelisted:
         is_admin = Admin.is_admin(id)
         if is_admin:
@@ -746,4 +756,5 @@ async def default_handler(message: types.Message):
 
 
 if __name__ == '__main__':
+    dp.loop.create_task(BotsWait(bot).main())
     executor.start_polling(dp)

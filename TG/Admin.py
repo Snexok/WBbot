@@ -3,11 +3,11 @@ import random
 
 import ujson as ujson
 
-from TG.Models.Addresses import Addresses
-from TG.Models.Admins import Admins as Admins_model
-from TG.Models.Bots import Bots as Bots_model
-from TG.Models.BotsWaits import BotWait, BotsWait
-from TG.Models.Orders import Order as Order_Model, Orders as Orders_Model
+from TG.Models.Addresses import Addresses_Model
+from TG.Models.Admins import Admins_Model as Admins_model
+from TG.Models.Bots import Bots_Model as Bots_model
+from TG.Models.BotsWaits import BotWait_Model, BotsWait_Model
+from TG.Models.Orders import Order_Model as Order_Model, Orders_Model as Orders_Model
 
 from WB.Bot import Bot
 
@@ -67,8 +67,8 @@ class Admin:
         for i, report in enumerate(reports):
             print(report)
             data = ujson.dumps(report)
-            bot_wait = BotWait(bot_name=bots[i].data.name, event="FOUND", wait=True,
-                                start_datetime=datetime.now(), data=data)
+            bot_wait = BotWait_Model(bot_name=bots[i].data.name, event="FOUND", wait=True,
+                                     start_datetime=datetime.now(), data=data)
             bot_wait.insert()
 
             msgs += [f"✅ Собран заказ бота {report['bot_name']}✅\n"
@@ -87,8 +87,8 @@ class Admin:
         return msgs
 
     @staticmethod
-    async def bot_buy(message, bots_cnt):
-        bots_wait = BotsWait.load(event="FOUND", limit=bots_cnt)
+    async def bot_buy(message=None, bots_cnt=1):
+        bots_wait = BotsWait_Model.load(event="FOUND", limit=bots_cnt)
 
         reports = []
 
@@ -133,9 +133,11 @@ class Admin:
             bot_wait.update()
 
             if "FAIL" in bot_wait.event:
-                await message.answer('❌ Ошибка выкупа ❌')
+                if message:
+                    await message.answer('❌ Ошибка выкупа ❌')
             else:
-                await message.answer_photo(open(report['qr_code'], 'rb'))
+                if message:
+                    await message.answer_photo(open(report['qr_code'], 'rb'))
 
                 if TEST:
                     paid = {'payment': True, 'datetime': datetime.now()}
@@ -147,7 +149,7 @@ class Admin:
                 reports += [report]
                 if paid['payment']:
                     print(paid['datetime'])
-                    pup_address = Addresses.load(address=report['post_place'])
+                    pup_address = Addresses_Model.load(address=report['post_place'])
                     order = Order_Model(number=number, total_price=report['total_price'], services_price=50,
                                         prices=report['prices'],
                                         quantities=report['quantities'], articles=report['articles'],
@@ -159,12 +161,14 @@ class Admin:
                                         statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
                     order.insert()
 
-                    await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"
+                    if message:
+                        await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"
                                          f"Артикулы {report['articles']}\n\n"
                                          f"Адрес доставки {report['post_place']}\n\n"
                                          f"Время оплаты {paid['datetime']}")
                 else:
-                    await message.answer(f"❌ НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
+                    if message:
+                        await message.answer(f"❌ НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
 
                 bot_data.set(status="FREE")
                 bot_data.update()
@@ -211,7 +215,7 @@ class Admin:
 
         return states (ADMIN_ADDRESS_DISTRIBUTION | ADMIN)
         """
-        all_not_added_addresses = Addresses.get_all_not_added()
+        all_not_added_addresses = Addresses_Model.get_all_not_added()
 
         tg_bots = Bots_model.load()
         bots_name = [tg_bots[i].name for i in range(len(tg_bots))]
@@ -247,7 +251,7 @@ class Admin:
 
         return states (ADMIN_ADDRESS_VERIFICATION | ADMIN)
         """
-        all_not_checked_addresses = Addresses.get_all_not_checked()
+        all_not_checked_addresses = Addresses_Model.get_all_not_checked()
 
         if all_not_checked_addresses:
             if len(all_not_checked_addresses) > 0:
@@ -293,7 +297,7 @@ class Admin:
         await bot.check_readiness(articles, address, order_number, message, cls.wait_order_ended)
 
     @classmethod
-    async def check_order(cls, bot_name, message):
+    async def check_order(cls, bot_name, message=None):
         bot = Bot(name=bot_name)
         orders = Orders_Model.load(bot_name=bot_name, active=True, pred_end_date=datetime.now())
         # print(bot.data.name)

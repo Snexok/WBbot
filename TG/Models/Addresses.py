@@ -1,7 +1,7 @@
 from TG.Models.Model import Model
 
 
-class Address(Model):
+class Address_Model(Model):
     COLUMNS = ["id", "address", "tg_id", "added_to_bot", "checked"]
     table_name = 'addresses'
 
@@ -14,8 +14,8 @@ class Address(Model):
         self.checked = checked
 
 
-class Addresses(Model):
-    single_model = Address
+class Addresses_Model(Model):
+    single_model = Address_Model
     table_name = single_model.table_name
 
     @classmethod
@@ -39,12 +39,12 @@ class Addresses(Model):
     @classmethod
     def get_all_not_added(cls):
         path = f"SELECT * FROM {cls.table_name} WHERE added_to_bot=FALSE"
-        return cls.format_data(Addresses.execute(path, cls.fetchall))
+        return cls.format_data(Addresses_Model.execute(path, cls.fetchall))
 
     @classmethod
     def get_all_not_checked(cls):
         path = f"SELECT * FROM {cls.table_name} WHERE checked=FALSE"
-        return cls.format_data(Addresses.execute(path, cls.fetchall))
+        return cls.format_data(Addresses_Model.execute(path, cls.fetchall))
 
     @classmethod
     def compare_addresses(cls, first_addresses: list, second_addresses: list) -> list:

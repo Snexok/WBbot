@@ -1,7 +1,7 @@
 from TG.Models.Model import Model
 
 
-class User(Model):
+class User_Model(Model):
     COLUMNS = ['id', 'name', 'addresses', 'username', 'role', 'cities', 'inn', 'ie']
     table_name = 'users'
 
@@ -43,8 +43,8 @@ class User(Model):
         print(path)
         self.execute(path)
 
-class Users(Model):
-    single_model = User
+class Users_Model(Model):
+    single_model = User_Model
     table_name = single_model.table_name
 
     @classmethod

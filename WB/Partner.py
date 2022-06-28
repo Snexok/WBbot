@@ -9,8 +9,8 @@ from aiogram import Bot as TG_Bot
 
 from selenium.webdriver.support.wait import WebDriverWait
 
-from TG.Models.ExceptedOrders import ExceptedOrders
-from TG.Models.Orders import Orders
+from TG.Models.ExceptedOrders import ExceptedOrders_Model
+from TG.Models.Orders import Orders_Model
 from WB.Browser import Browser
 from configs import config
 
@@ -62,7 +62,7 @@ class Partner:
         await self.open(inn)
         await self.open_marketplace()
         await sleep(10)
-        excepted_orders = ExceptedOrders.load(inn)
+        excepted_orders = ExceptedOrders_Model.load(inn)
         excepted_orders_numbers = [eo.order_number for eo in excepted_orders]
         self.choose_all_tasks_except(excepted_orders_numbers)
         await sleep(5)
@@ -75,7 +75,7 @@ class Partner:
         # await self.close_assembly()
 
     async def get_not_collected_orders(self, inn):
-        orders = Orders.load(collected=False, inn=inn)
+        orders = Orders_Model.load(collected=False, inn=inn)
         return orders
 
     async def open(self, inn):
