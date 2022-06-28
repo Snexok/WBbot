@@ -55,7 +55,7 @@ class Partner:
             # res += await self.choose_task(order)
             await self.print_all_tasks_shk()
             # await self.close_assembly()
-            
+
         return res
 
     async def collect_other_orders(self, inn):

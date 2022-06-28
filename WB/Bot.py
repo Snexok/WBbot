@@ -241,8 +241,10 @@ class Bot:
                         pred_end_date = ''
                         for status in order.statuses:
                             if 'Ожидается' in status:
-                                print(status)
+                                msg = status
+                                admin = Admins_model().get_sentry_admin()
                                 pred_end_date = datetime.fromisoformat(self.get_end_date(status[len('Ожидается '):]))
+                                await bot.send_message(admin.id, msg, parse_mode="HTML")
                         if not pred_end_date:
                             pred_end_date = datetime.fromisoformat(str(date.today() + timedelta(days=1)))
                     print('order ', order)
