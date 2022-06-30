@@ -2,10 +2,11 @@ from TG.Models.Model import Model
 
 
 class Bot(Model):
-    COLUMNS = ['id', 'name', 'addresses', 'number', 'username', 'type', 'inns', 'status', 'author']
+    COLUMNS = ['id', 'name', 'addresses', 'number', 'username', 'type', 'inns', 'status', 'author', 'balance']
     table_name = 'bots'
 
-    def __init__(self, id='0', name='', addresses=[], number='', username='', type='', inns=[], status='', author=''):
+    def __init__(self, id='0', name='', addresses=[], number='', username='', type='', inns=[], status='', author='',
+                 balance=0):
         super().__init__()
         self.id = id
         self.name = name
@@ -16,19 +17,22 @@ class Bot(Model):
         self.inns = inns
         self.status = status
         self.author = author
+        self.balance = balance
 
 class Bots(Model):
     single_model = Bot
     table_name = single_model.table_name
 
     @classmethod
-    def load(cls, name=None, limit=None, _type=None):
+    def load(cls, name=None, limit=None, _type=None, balance=None):
         path = f"SELECT * FROM {cls.table_name} "
 
         if name:
-            path += f"WHERE name='{name}' "
+            path += f"WHERE name = '{name}' "
         if _type:
-            path += f"WHERE type='{_type}' "
+            path += f"WHERE type = '{_type}' "
+        if balance:
+            path += f"WHERE balance > {str(balance)} "
         if limit:
             path += f"LIMIT {str(limit)}"
 
@@ -36,6 +40,14 @@ class Bots(Model):
 
         if name:
             return data[0]
+        return data
+
+    @classmethod
+    def load_with_balance(cls):
+        path = f"SELECT * FROM {cls.table_name} WHERE balance > 0"
+
+        data = cls.format_data(cls.execute(path, cls.fetchall))
+
         return data
 
     @classmethod
@@ -68,6 +80,6 @@ class Bots(Model):
 
 
 if __name__ == '__main__':
-    bots= Bots.load_must_free(6, 'WB')
+    bots = Bots.load_must_free(6, 'WB')
     for bot in bots:
         print(bot)

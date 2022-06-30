@@ -80,3 +80,9 @@ class Utils:
         WebDriverWait(driver, 10).until(
             lambda d: d.find_element(By.CLASS_NAME, 'navbar-pc__icon--basket')).click()
         return 'basket' #page
+
+    @staticmethod
+    def get_basket_cnt(driver):
+        basket = WebDriverWait(driver, 10).until(
+            lambda d: d.find_element(By.CLASS_NAME, 'navbar-pc__icon--basket'))
+        return basket.text

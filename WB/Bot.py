@@ -84,6 +84,15 @@ class Bot:
 
         return report
 
+    def check_basket(self, article):
+        basket_cnt = Utils.get_basket_cnt(self.driver)
+        if basket_cnt:
+            if int(basket_cnt)>0:
+                Utils.go_to_basket(self.driver)
+                return self.basket.check_card(article)
+
+        return False
+
     def buy(self, report, post_place, order_id):
         self.page = Utils.go_to_basket(self.driver)  # basket
         self.driver.refresh()
@@ -111,6 +120,38 @@ class Bot:
 
         report['pred_end_date'] = datetime.fromisoformat(self.get_end_date(shipment_date))
         report['qr_code'] = self.basket.get_qr_code(order_id, self.data.name)
+
+        return report
+
+    def re_buy(self, report, post_place, order_id):
+        self.page = Utils.go_to_basket(self.driver)  # basket
+        self.driver.refresh()
+        sleep(2)
+
+        self.basket.delete_other_cards_in_basket(report['articles'])
+
+        report['prices'] = []
+        for article in report['articles']:
+            price = self.basket.get_price(article)
+            report['prices'] += [price]
+
+        report['total_price'] = sum(report['prices'])
+
+        report['quantities'] = []
+        for article in report['articles']:
+            quantity = self.basket.get_quantity(article)
+            report['quantities'] += [int(quantity)]
+
+        sleep(3)
+        print("in WB\Bot", post_place)
+        self.basket.choose_post_place(post_place)
+        self.basket.choose_payment_method("Оплата балансом")
+        shipment_date = self.basket.get_shipment_date()
+
+        report['pred_end_date'] = datetime.fromisoformat(self.get_end_date(shipment_date))
+        self.basket.pay()
+        report["payment_datetime"] = str(datetime.now())
+        report["payment"] = True
 
         return report
 

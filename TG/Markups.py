@@ -11,6 +11,7 @@ def get_markup(markup_name, role='', is_admin=False, id=''):
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add("🔍 Поиск товаров 🔎")
         markup.add("💰 Выкуп собраных заказов 💰")
+        markup.add("💸 Повторный выкуп 💸")
         markup.add("➕ Добавить пользователя ➕")
         if id:
             if id == '794329884' or id == '535533975':
