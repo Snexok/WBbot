@@ -138,13 +138,14 @@ async def main_handler(message: types.Message):
 
     print(user)
 
+    is_admin = Admin.is_admin(id)
     if not user:
         if "⚡ регистрация ⚡" in msg:
             await States.REGISTER.set()
             markup = get_markup('main_register')
             await message.answer("Как вы хотите зарегистрировать:", reply_markup=markup)
             return
-    elif user.role in "FF":
+    elif user.role in "FF" or is_admin:
         if "🚀 собрать самовыкупы 🚀" in msg:
             # orders = Orders.load(collected=False)
             # for order in orders:
@@ -161,12 +162,12 @@ async def main_handler(message: types.Message):
             return
         elif "⛔ собрать реальные заказы 🚚" in msg:
             await message.answer('⛔ Сборка РЕАЛЬНЫХ заказов ПОКА НЕДОСТУПНА ⛔')
-            # users = Users.load(role='IE')
-            # ies = [user.ie for user in users]
-            # print(ies)
-            # await States.COLLECT_OTHER_ORDERS.set()
-            # markup = get_list_keyboard(ies)
-            # await message.answer('Выберите ИП, по которому хотите собрать заказы', reply_markup=markup)
+            users = Users.load(role='IE')
+            ies = [user.ie for user in users]
+            print(ies)
+            await States.COLLECT_OTHER_ORDERS.set()
+            markup = get_list_keyboard(ies)
+            await message.answer('Выберите ИП, по которому хотите собрать заказы', reply_markup=markup)
             return
         elif "📑 список исключенных из сборки заказов 📑" in msg:
             users = Users.load(role='IE')
@@ -180,7 +181,7 @@ async def main_handler(message: types.Message):
             else:
                 await message.answer('Ни одно ИП не найдено')
                 return
-    elif user.role in "PUP":
+    elif user.role in "PUP" or is_admin:
         if "📊 статистика 📊" in msg:
             await message.answer('Статистика для ПВЗ')
             orders = Orders.load_stat(pup_tg_id=id)
@@ -189,7 +190,6 @@ async def main_handler(message: types.Message):
                    f"Сумма оборота: {sum([order.total_price for order in orders])} \n"
             await message.answer(msg)
             return
-    is_admin = Admin.is_admin(id)
     if is_admin:
         if "🌈 admin" in msg:
             await set_admin(message)

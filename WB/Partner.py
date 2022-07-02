@@ -63,16 +63,24 @@ class Partner:
         await self.open_marketplace()
         await sleep(10)
         excepted_orders = ExceptedOrders.load(inn)
-        excepted_orders_numbers = [eo.order_number for eo in excepted_orders]
-        self.choose_all_tasks_except(excepted_orders_numbers)
+        if excepted_orders:
+            excepted_orders_numbers = [eo.order_number for eo in excepted_orders]
+            print(excepted_orders_numbers)
+        else:
+            excepted_orders_numbers = []
+        await sleep(10)
+        await self.pick_all_tasks()
+        # self.choose_all_tasks_except(excepted_orders_numbers)
         await sleep(5)
-        # await self.add_to_assembly()
-        # await self.go_to_assembly()
-        # await self.create_assembly()
-        # await self.open_and_send_shks()
-        # await self.pick_all_tasks()
-        # await self.print_all_tasks_shk()
-        # await self.close_assembly()
+        await self.add_to_assembly()
+        await self.go_to_assembly()
+        await self.create_assembly()
+
+        await self.get_tasks_on_assembly()
+        await self.open_and_send_shks()
+        await self.pick_all_tasks()
+        await self.print_all_tasks_shk()
+        await self.close_assembly()
 
     async def get_not_collected_orders(self, inn):
         orders = Orders.load(collected=False, inn=inn)
@@ -93,7 +101,7 @@ class Partner:
 
     async def open_marketplace(self):
         try:
-            marketplace_btn = WebDriverWait(self.driver, 15).until(
+            marketplace_btn = WebDriverWait(self.driver, 30).until(
                 lambda d: d.find_element(By.XPATH, "//span[text()='Маркетплейс']/../../a"))
         except:
             return False
@@ -251,10 +259,14 @@ class Partner:
         """
         Выбирает все сборочные задания
         """
-        tasks = self.driver.find_elements(By.XPATH, "//div[contains(@class,'Table-row__')]")
-        for task in tasks:
-            checkbox = task.find_element(By.XPATH, "./div/div/label")
-            checkbox.click()
+
+        checkbox = self.driver.find_element(By.XPATH, '//div[contains(@class,"header-checked-all")]/label')
+        checkbox.click()
+
+        # tasks = self.driver.find_elements(By.XPATH, "//div[contains(@class,'Table-row__')]")
+        # for task in tasks:
+        #     checkbox = task.find_element(By.XPATH, "./div/div/label")
+        #     checkbox.click()
 
     async def open_and_send_shks(self):
         """
