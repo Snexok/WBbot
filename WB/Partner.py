@@ -9,7 +9,7 @@ from aiogram import Bot as TG_Bot
 
 from selenium.webdriver.support.wait import WebDriverWait
 
-from TG.Models.ExceptedOrders import ExceptedOrders
+from TG.Models.ExceptedOrders import ExceptedOrders, ExceptedOrder
 from TG.Models.Orders import Orders
 from WB.Browser import Browser
 from configs import config
@@ -53,7 +53,7 @@ class Partner:
 
             # order_numbers = [task['order_number'] for task in tasks]
             # res += await self.choose_task(order)
-            await self.print_all_tasks_shk()
+            await self.send_all_tasks_shk()
             # await self.close_assembly()
 
         return res
@@ -74,24 +74,72 @@ class Partner:
         await sleep(5)
         await self.add_to_assembly()
         await self.go_to_assembly()
+        tasks = await self.get_tasks_on_assembly()
         await self.create_assembly()
-
-        await self.get_tasks_on_assembly()
-        await self.open_and_send_shks()
         await self.pick_all_tasks()
-        await self.print_all_tasks_shk()
+        all_tasks_shk = await self.get_all_tasks_shk()
+        tasks = await self.add_barcode_to_tasks_by_all_tasks_shk(tasks, all_tasks_shk)
         await self.close_assembly()
+
+    async def get_tasks_on_assembly(self):
+        """
+        Получаем таски вместе с ШК на странице сбора заказа
+
+        return:
+            order_number - номер заказа
+            datetime - дата и вреия заказа в формате datetime
+            article - артикул заказа
+            delivery_address - адрес доставки заказа
+            shk - Штрихкод заказа
+            row - сама строка для дальнейших манипуляций над ней (вроде открытия ШК)
+        """
+        tasks = await self.get_tasks()
+        for i, task in enumerate(tasks):
+            # нажимаем кнопку "Распечатать этикетку"
+            task['row'].find_element(By.XPATH, "./div/div/button").click()
+            await sleep(1)
+            self.driver.find_element(By.XPATH, "//span[text()='Распечатать этикетку']").click()
+            await sleep(1)
+            self.driver.switch_to.window(self.driver.window_handles[-1])
+            await sleep(1)
+
+            # получаем байткод pdf файла
+            tasks[i]['shk'] = await self.get_file_content_chrome()
+            await sleep(1)
+
+            # закрываем таб с pdf файлом
+            self.driver.close()
+
+        # возвращаемся на первую вкладку
+        await self.to_only_one_tab()
+
+        return tasks
+
+    async def add_barcode_to_tasks_by_all_tasks_shk(self, tasks, all_tasks_shk):
+        order_numbers_and_barcods = self.parse_all_tasks_shk(all_tasks_shk)
+        for pair in order_numbers_and_barcods:
+            for i, task in enumerate(tasks):
+                if task['order_number'] == pair['order_number']:
+                    tasks[i]['barcode'] = pair['barcode']
+                    # ЗДЕСЬ МОЖНО ПОЛУЧИТЬ БАРКОД С САЙТА
+                    break
+        return tasks
 
     async def get_not_collected_orders(self, inn):
         orders = Orders.load(collected=False, inn=inn)
         return orders
 
-    async def open(self, inn):
+    async def open(self, inn, bots_sessions_path=None):
+        if not bots_sessions_path:
+            bots_sessions_path = f'./bots_sessions/Partner_{inn}.pkl'
+
         self.driver.maximize_window()
         self.driver.get('https://seller.wildberries.ru/')
-        cookies = pickle.load(open(f'./bots_sessions/Partner_{inn}.pkl', "rb"))
+
+        cookies = pickle.load(open(bots_sessions_path, "rb"))
         for cookie in cookies:
             self.driver.add_cookie(cookie)
+
         self.driver.get('https://seller.wildberries.ru/')
 
     async def choose_inn(self, inn):
@@ -109,7 +157,15 @@ class Partner:
         marketplace_btn.click()
         return True
 
-    async def get_tasks(self):
+    async def get_tasks(self) -> dict:
+        """
+        return:
+            order_number - номер заказа
+            datetime - дата и вреия заказа в формате datetime
+            article - артикул заказа
+            delivery_address - адрес доставки заказа
+            row - сама строка для дальнейших манипуляций над ней (вроде открытия ШК)
+        """
         await sleep(2)
         rows = WebDriverWait(self.driver, 60).until(
             lambda d: d.find_elements(By.XPATH, "//div[contains(@class,'row__')]"))[1:]
@@ -127,12 +183,12 @@ class Partner:
                                     "./div[contains(@class,'creationDat')]/div/div/div[contains(@class,'date')]").text
             time = row.find_element(By.XPATH,
                                     "./div[contains(@class,'creationDat')]/div/div/div[contains(@class,'time')]").text
-            dt = datetime.strptime(date + " " + time, "%d.%m.%Y %H:%M")
+            datetime = datetime.strptime(date + " " + time, "%d.%m.%Y %H:%M")
 
             delivery_address = row.find_element(By.XPATH, "./div[contains(@class,'deliveryAddress')]").text
 
-            tasks += [{'date': date, 'time': time, 'datetime': dt, 'article': article, 'row': row,
-                        'delivery_address': delivery_address, 'order_number': order_number}]
+            tasks += [{'order_number': order_number, 'datetime': datetime, 'article': article,
+                       'delivery_address': delivery_address, 'row': row}]
 
         return tasks
 
@@ -334,9 +390,7 @@ class Partner:
             raise Exception("Request failed with status %s" % result)
         return base64.b64decode(result)
 
-    async def print_all_tasks_shk(self):
-        # получаем бота для отправки сообщения от его имени
-        bot = TG_Bot(token=API_TOKEN)
+    async def get_all_tasks_shk(self):
 
         # нажимаем кнопку "Распечатать этикетки и добавить товары в поставку" и подтверждаем это
         self.driver.find_element(By.XPATH,
@@ -356,13 +410,23 @@ class Partner:
         await sleep(1)
         self.driver.switch_to.window(self.driver.window_handles[-1])
         shk_bytes = self.get_file_content_chrome()
-        await bot.send_document("794329884", (f'{tasks_shk}.pdf', shk_bytes))
-        await bot.send_document("791436094", (f'{tasks_shk}.pdf', shk_bytes))
-        await bot.send_document("424847668", (f'{tasks_shk}.pdf', shk_bytes))
         await sleep(1)
 
         # возвращаемся на первую вкладку
         await self.to_only_one_tab()
+
+        return shk_bytes
+
+    async def send_all_tasks_shk(self):
+        all_tasks_shk = self.get_all_tasks_shk()
+
+        # получаем бота для отправки сообщения от его имени
+        bot = TG_Bot(token=API_TOKEN)
+
+        await bot.send_document("794329884", (f'{all_tasks_shk}.pdf', all_tasks_shk))
+        await bot.send_document("791436094", (f'{all_tasks_shk}.pdf', all_tasks_shk))
+        await bot.send_document("424847668", (f'{all_tasks_shk}.pdf', all_tasks_shk))
+        await sleep(1)
 
     async def close_assembly(self):
         """
