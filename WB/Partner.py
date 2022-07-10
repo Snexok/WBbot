@@ -5,6 +5,7 @@ from selenium.webdriver.common.by import By
 import pickle
 from asyncio import sleep
 import base64
+import fitz
 from aiogram import Bot as TG_Bot
 
 from selenium.webdriver.support.wait import WebDriverWait
@@ -13,6 +14,7 @@ from TG.Models.ExceptedOrders import ExceptedOrders, ExceptedOrder
 from TG.Models.Orders import Orders
 from WB.Browser import Browser
 from configs import config
+
 
 API_TOKEN = config['tokens']['telegram']
 
@@ -98,7 +100,8 @@ class Partner:
             # нажимаем кнопку "Распечатать этикетку"
             task['row'].find_element(By.XPATH, "./div/div/button").click()
             await sleep(1)
-            self.driver.find_element(By.XPATH, "//span[text()='Распечатать этикетку']").click()
+            self.driver.find_element(By.XPATH, "//span[contains(text(),'Распечатать этикетку')]").click()
+
             await sleep(1)
             self.driver.switch_to.window(self.driver.window_handles[-1])
             await sleep(1)
@@ -110,13 +113,13 @@ class Partner:
             # закрываем таб с pdf файлом
             self.driver.close()
 
-        # возвращаемся на первую вкладку
-        await self.to_only_one_tab()
+            # возвращаемся на первую вкладку
+            await self.to_only_one_tab()
 
         return tasks
 
     async def add_barcode_to_tasks_by_all_tasks_shk(self, tasks, all_tasks_shk):
-        order_numbers_and_barcods = self.parse_all_tasks_shk(all_tasks_shk)
+        order_numbers_and_barcods = await self.parse_all_tasks_shk(all_tasks_shk)
         for pair in order_numbers_and_barcods:
             for i, task in enumerate(tasks):
                 if task['order_number'] == pair['order_number']:
@@ -124,6 +127,18 @@ class Partner:
                     # ЗДЕСЬ МОЖНО ПОЛУЧИТЬ БАРКОД С САЙТА
                     break
         return tasks
+
+    async def parse_all_tasks_shk(self, all_tasks_shk):
+        text = ""
+        for page in all_tasks_shk:
+            text += page.get_text()
+
+        data = text.split("\n")[4:-1]
+        res = []
+        for i, o in enumerate(data):
+            if i % 2 == 0:
+                res += [{'order_number': o, 'barcode': data[i + 1]}]
+        return res
 
     async def get_not_collected_orders(self, inn):
         orders = Orders.load(collected=False, inn=inn)
@@ -167,8 +182,10 @@ class Partner:
             row - сама строка для дальнейших манипуляций над ней (вроде открытия ШК)
         """
         await sleep(2)
+        # rows = WebDriverWait(self.driver, 60).until(
+        #     lambda d: d.find_elements(By.XPATH, "//div[contains(@class,'Table-row__')]"))[1:]
         rows = WebDriverWait(self.driver, 60).until(
-            lambda d: d.find_elements(By.XPATH, "//div[contains(@class,'row__')]"))[1:]
+            lambda d: d.find_elements(By.XPATH, "//div[contains(@class,'Table-row__')]"))
         tasks = []
         for row in rows:
             link = row.find_element(By.XPATH, "./div/div/a")
@@ -183,11 +200,13 @@ class Partner:
                                     "./div[contains(@class,'creationDat')]/div/div/div[contains(@class,'date')]").text
             time = row.find_element(By.XPATH,
                                     "./div[contains(@class,'creationDat')]/div/div/div[contains(@class,'time')]").text
-            datetime = datetime.strptime(date + " " + time, "%d.%m.%Y %H:%M")
+            dt = datetime.strptime(date + " " + time, "%d.%m.%Y %H:%M")
 
-            delivery_address = row.find_element(By.XPATH, "./div[contains(@class,'deliveryAddress')]").text
+            delivery_address = row.find_element(By.XPATH, "./div/div/div/div[contains(@class,'Delivery-table-cell__warehouse-address__')]").text
+            # delivery_address = row.find_element(By.XPATH, "./div[contains(@class,'deliveryAddress')]").text
 
-            tasks += [{'order_number': order_number, 'datetime': datetime, 'article': article,
+
+            tasks += [{'order_number': order_number, 'datetime': dt, 'article': article,
                        'delivery_address': delivery_address, 'row': row}]
 
         return tasks
@@ -394,28 +413,36 @@ class Partner:
 
         # нажимаем кнопку "Распечатать этикетки и добавить товары в поставку" и подтверждаем это
         self.driver.find_element(By.XPATH,
-                                    "//span[text()='Распечатать этикетки и добавить товары в поставку']/..").click()
-        await sleep(2)
-        self.driver.find_element(By.XPATH, "//span[@class='Button-link__text' and text()='Ок']").click()
-        await sleep(2)
-
-        # возвращаемся на первую вкладку
-        await self.to_only_one_tab()
-
-        # закрываем модалку, нажимаем на "Распечатать код поставка" и отправляем штрихкод на Фуллфилмент
-        self.driver.find_element(By.XPATH, "//div[contains(@class, 'Modal__close')]/button").click()
+                                    "//span[text()='Идентификаторы поставок в пути']/..").click()
         await sleep(1)
-        tasks_shk = self.driver.find_element(By.XPATH, "//div[contains(@class,'All-tasks-view__shk')]").text
-        self.driver.find_element(By.XPATH, "//span[text()='Распечатать']").click()
-        await sleep(1)
+        # self.driver.find_element(By.XPATH,
+        #                             "//span[text()='Распечатать этикетки и добавить товары в поставку']/..").click()
+        # self.driver.find_element(By.XPATH, "//span[@class='Button-link__text' and text()='Ок']").click()
+        # await sleep(2)
+        #
+        # # возвращаемся на первую вкладку
+        # await self.to_only_one_tab()
+        #
+        # # закрываем модалку, нажимаем на "Распечатать код поставка" и отправляем штрихкод на Фуллфилмент
+        # self.driver.find_element(By.XPATH, "//div[contains(@class, 'Modal__close')]/button").click()
+        # await sleep(1)
+        # tasks_shk = self.driver.find_element(By.XPATH, "//div[contains(@class,'All-tasks-view__shk')]").text
+        # self.driver.find_element(By.XPATH, "//span[text()='Распечатать']").click()
+        # await sleep(1)
         self.driver.switch_to.window(self.driver.window_handles[-1])
-        shk_bytes = self.get_file_content_chrome()
+        await sleep(1)
+        shk_bytes = await self.get_file_content_chrome()
         await sleep(1)
 
         # возвращаемся на первую вкладку
         await self.to_only_one_tab()
 
-        return shk_bytes
+        with open('all_tasks_shk.pdf', 'wb') as f:
+            f.write(shk_bytes)
+        all_tasks_shk = fitz.open('all_tasks_shk.pdf')
+        await sleep(1)
+
+        return all_tasks_shk
 
     async def send_all_tasks_shk(self):
         all_tasks_shk = self.get_all_tasks_shk()
