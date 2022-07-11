@@ -45,6 +45,7 @@ def get_markup(markup_name, role='', is_admin=False, id=''):
             markup.add("📑 Список исключенных из сборки заказов 📑")
         if role == "PUP" or is_admin:
             markup.add("📊 Статистика 📊")
+            markup.add("📓 Проверить ПВЗ 📓")
         else:
             markup.add("⚡ Регистрация ⚡")
 

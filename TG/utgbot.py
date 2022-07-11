@@ -182,12 +182,113 @@ async def main_handler(message: types.Message):
                 return
     elif user.role in "PUP":
         if "📊 статистика 📊" in msg:
-            await message.answer('Статистика для ПВЗ')
+            # orders = Orders.load_stat(pup_tg_id="791436094")
             orders = Orders.load_stat(pup_tg_id=id)
-            msg += "\nЗа месяц: \n" \
-                   f"Кол-во заказов: {sum([sum(order.quantities) for order in orders])} \n" \
-                   f"Сумма оборота: {sum([order.total_price for order in orders])} \n"
-            await message.answer(msg)
+            if orders:
+                msg = "📊 <b>Статистика за месяц:</b> 📅\n\n"
+
+                total_price_str = str(sum([order.total_price for order in orders]))
+                total_price = ''.join([p + ' ' if (len(total_price_str) - i) % 3 == 1 else p for i, p in enumerate(total_price_str)])
+                msg += f"<b>Оборот:</b> {total_price}₽\n" \
+                       f"<b>Заказы:</b> {sum([sum(order.quantities) for order in orders])} 📦\n"
+
+                addresses_list = list(set(order.pup_address for order in orders))
+                cities_list = list(set(order.pup_address.split(",")[0] for order in orders))
+
+                stat = []
+                for i, address in enumerate(addresses_list):
+                    stat += [{}]
+                    stat[i]['cnt'] = 0
+                    stat[i]['total_price'] = 0
+                    stat[i]['fbo_cnt'] = 0
+
+                    for order in orders:
+                        if order.pup_address == address:
+                            stat[i]['address'] = address
+                            stat[i]['total_price'] += order.total_price
+                            stat[i]['cnt'] += 1
+                            print(order.statuses)
+                            if "FBO" in order.statuses:
+                                stat[i]['fbo_cnt'] += sum(1 if status == "FBO" else 0 for status in order.statuses)
+
+                stat = sorted(stat, key=lambda o: o['total_price'], reverse=True)
+
+                # msg += "\n📫 <b>На каждый адрес</b> 📫\n"
+                for city in cities_list:
+                    msg += f"\n🏬 <u><b>{city.title()}:</b></u>\n"
+                    for s in stat:
+                        if city in s['address']:
+                            total_price_str = str(s['total_price'])
+                            total_price = ''.join([p+' ' if (len(total_price_str)-i) % 3 == 1 else p for i, p in enumerate(total_price_str)])
+
+                            msg += f"\n📫 <b>{','.join(s['address'].split(',')[1:]).title()}:</b>\n" \
+                                   f"<b>Оборот:</b> {total_price}₽\n" \
+                                   f"<b>Заказы:</b> {s['cnt']} 📦\n"
+            else:
+                msg = "<b>На ваши ПВЗ еще не было заказов в этом месяце</b>"
+
+            await message.answer(msg, parse_mode="HTML")
+            return
+        elif "📓 проверить пвз 📓" in msg:
+            # orders = Orders.load_check_state(pup_tg_id="791436094")
+            orders = Orders.load_check_state(pup_tg_id=id)
+            if orders:
+                msg = "📓 <b>Состояния ПВЗ</b> 📓\n\n"
+
+                addresses_list = list(set(order.pup_address for order in orders))
+                cities_list = list(set(order.pup_address.split(",")[0] for order in orders))
+
+                is_fbos_cnt = 0
+
+                stat = []
+                for i, address in enumerate(addresses_list):
+                    stat += [{}]
+                    stat[i]['cnt'] = 0
+                    stat[i]['fbo_cnt'] = 0
+                    stat[i]['articles'] = []
+                    for order in orders:
+                        if order.pup_address == address:
+                            stat[i]['address'] = address
+                            stat[i]['cnt'] += 1
+                            print("FBO" in order.statuses, order.statuses)
+                            if "FBO" in order.statuses:
+                                is_fbos_cnt += 1
+                                is_fbos = [1 if status == "FBO" else 0 for status in order.statuses]
+                                stat[i]['fbo_cnt'] += sum(is_fbos)
+                                for j, is_fbo in enumerate(is_fbos):
+                                    if is_fbo:
+                                        in_articles = [order.articles[j] in article for article in stat[i]['articles']]
+                                        if any(in_articles):
+                                            index = in_articles.index(True)
+                                            splited = stat[i]['articles'][index].split(' ')
+                                            stat[i]['articles'][index] = splited[0] + " " + str(int(splited[1])+1)
+                                        else:
+                                            stat[i]['articles'] += [order.articles[j] + " 1"]
+                if is_fbos_cnt:
+                    stat = sorted(stat, key=lambda o: o['fbo_cnt'], reverse=True)
+
+                    # msg += "\n📫 <b>Товары физически на ПВЗ</b> 📫\n"
+                    for city in cities_list:
+                        _msg = f"\n🏬 <u><b>{city.title()}:</b></u>\n"
+
+                        is_have_fbo_cnt = False
+                        for s in stat:
+                            if city in s['address']:
+                                if s['fbo_cnt']:
+                                    is_have_fbo_cnt = True
+                                    _msg += f"\n📫 <b>{','.join(s['address'].split(',')[1:]).title()}:</b>\n" \
+                                            f"<b>Товары физически на ПВЗ:</b> {s['fbo_cnt']} 📦\n"
+                                    _msg += f"<b>Артикул     кол-во</b>\n"
+                                    for article in s['articles']:
+                                        _msg += f"{'   '.join(article.split(' '))} шт.\n"
+                        if is_have_fbo_cnt:
+                            msg += _msg
+                else:
+                    msg = "<b>Для ваших ПВЗ еще не рассчитаны показатели</b>"
+            else:
+                msg = "<b>Для ваших ПВЗ еще не рассчитаны показатели</b>"
+
+            await message.answer(msg, parse_mode="HTML")
             return
     is_admin = Admin.is_admin(id)
     if is_admin:
@@ -263,15 +364,20 @@ async def admin_handler(message: types.Message):
         markup = get_markup('admin_add_user')
         await message.answer('Выберите способ', reply_markup=markup)
     elif "🕙 проверить ожидаемое 🕑" in msg:
-        await States.CHECK_WAITS.set()
 
         orders = Orders.load(active=True, pred_end_date=datetime.now())
-        bots_name = []
-        for order in orders:
-            if order.bot_name not in bots_name:
-                bots_name += [order.bot_name]
-        keyboard = get_keyboard('admin_bots', bots_name)
-        await message.answer('Выберите бота', reply_markup=keyboard)
+        if orders:
+            await States.CHECK_WAITS.set()
+            bots_name = []
+            for order in orders:
+                if order.bot_name not in bots_name:
+                    bots_name += [order.bot_name]
+            keyboard = get_keyboard('admin_bots', bots_name)
+            await message.answer('Выберите бота', reply_markup=keyboard)
+        else:
+            await States.ADMIN.set()
+            await message.answer('Все товары доставлены')
+        return
     else:
         if "🤖 открыть бота 🤖" in msg or "🤖 статус ботов 🤖" in msg:
             if id == '794329884' or id == '535533975':
