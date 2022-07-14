@@ -61,6 +61,7 @@ class States(StatesGroup):
     EXCEPTED_ORDERS_LIST = State()
     EXCEPTED_ORDERS_LIST_CHANGE = State()
     COLLECT_ORDERS = State()
+    CREATE_ORDER = State()
 
 
 @dp.message_handler(text='◄ Назад', state="*")
@@ -236,6 +237,17 @@ async def admin_handler(message: types.Message):
         markup = get_markup('admin_main', id=id)
         await message.answer(res_message, reply_markup=markup)
         await getattr(States, state).set()
+    elif '💰 создать заказ 💰' in msg:
+        await States.CREATE_ORDER.set()
+        await message.answer("Введите:\n"
+                             "ИНН\n"
+                             "Артикулы\n"
+                             "Сколько нужно сделать выкупов каждого артикула\n"
+                             "Ключевые слова по каждому артикулу\n"
+                             "Сколько комментариев нужно оставить на каждый артикул\n"
+                             "Сами комментарии для каждого артикула\n"
+                             "Сколько делать выкупов в день\n"
+                             "Какой бюджет")
     elif '✉ проверить адреса ✉' in msg:
         res_message, state = Admin.check_not_checked_pup_addresses()
         markup = get_markup('admin_main', id=id)
@@ -707,6 +719,14 @@ async def pup_addresses_start_handler(message: types.Message):
                          'г Москва, Чистопрудная улица 32к2\n'
                          'г Москва, Вавиловская улица 22к8')
 
+
+
+@dp.message_handler(state=States.CREATE_ORDER)
+async def create_order_handler(message: types.Message):
+    id = str(message.chat.id)
+    msg = message.text
+
+    
 
 @dp.message_handler(state=States.PUP_ADDRESSES_CONTINUE)
 async def pup_addresses_continue_handler(message: types.Message):

@@ -9,6 +9,7 @@ def get_markup(markup_name, role='', is_admin=False, id=''):
         return markup
     elif 'admin_main' == markup_name:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
+        markup.add("💰 Создать заказ 💰")
         markup.add("🔍 Поиск товаров 🔎")
         markup.add("💰 Выкуп собраных заказов 💰")
         markup.add("➕ Добавить пользователя ➕")
