@@ -722,11 +722,32 @@ async def pup_addresses_start_handler(message: types.Message):
 
 
 @dp.message_handler(state=States.CREATE_ORDER)
-async def create_order_handler(message: types.Message):
+async def create_order_handler(message: types.Message, state: FSMContext):
     id = str(message.chat.id)
     msg = message.text
 
-    
+
+    data = await state.get_data()
+
+    if not data['inn']:
+        try:
+            inn = str(int(msg))
+
+            await state.set_data({inn: inn})
+
+            await message.answer('Введите артикулы')
+        except:
+            await message.answer('ИНН должно состоять только из цыфр')
+    elif not data['articles']:
+        
+        await message.answer('Введите артикулы')
+
+
+    data = await state.get_data()
+    # article = data['article']
+    # search_key = data['search_key']
+    # category = data['category']
+    data['chat_id'] = id
 
 @dp.message_handler(state=States.PUP_ADDRESSES_CONTINUE)
 async def pup_addresses_continue_handler(message: types.Message):
