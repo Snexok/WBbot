@@ -638,11 +638,11 @@ async def excepted_orders_change_callback_query_handler(message: types.Message, 
 
 @dp.message_handler(state=States.TO_WL)
 async def to_whitelist_handler(message: types.Message):
-    msg = message.text.lower()
+    msg = message.text
     id = str(message.chat.id)
-    if msg in 'по username':
+    if msg.lower() in 'по username':
         await message.answer("Введите username пользователя")
-    elif msg in 'сгененрировать ключ':
+    elif msg.lower() in 'сгененрировать ключ':
         secret_key = Admin.generate_secret_key()
 
         Whitelist(secret_key=secret_key).insert()
@@ -658,7 +658,7 @@ async def to_whitelist_handler(message: types.Message):
         await States.ADMIN.set()
         markup = get_markup('admin_main', id=id)
         await message.answer(f"Пользователь с username {msg} добавлен", reply_markup=markup)
-    elif msg in ADMIN_BTNS and Admin.is_admin(id):
+    elif msg.lower() in ADMIN_BTNS and Admin.is_admin(id):
         await States.ADMIN.set()
         await admin_handler(message)
         return
@@ -718,7 +718,7 @@ async def address_distribution_handler(message: types.Message):
         bot.update()
 
         for address in new_addresses:
-            address = Address().load(address=address)
+            address = Addresses.load(address=address)
             address.set(added_to_bot=True)
             address.update()
 
@@ -777,18 +777,18 @@ async def address_verification_handler(message: types.Message):
 
     all_not_checked_addresses = Addresses.get_all_not_checked()
 
-    for i, old_address_str in enumerate(all_not_checked_addresses):
-        address = Address().load(address=old_address_str)
-        address.append(address=new_addresses[i])
+    for i, address in enumerate(all_not_checked_addresses):
+        user = Users.load(id=address.tg_id)
+        for j, user_address in enumerate(user.addresses):
+            if user_address == address.address:
+                user.addresses[j] = new_addresses[i]
+                user.update()
+                break
+
+        address.address = new_addresses[i]
+        address.checked = True
         address.update()
 
-        user = Users.load(id=address.tg_id)
-        for j, address in user.addresses:
-            if address == old_address_str:
-                user.addresses[j] = new_addresses[i]
-                user.set(addresses=user.addresses)
-                address.update()
-                break
 
     await States.ADMIN.set()
     markup = get_markup('admin_main', Admin.is_admin(id), id)

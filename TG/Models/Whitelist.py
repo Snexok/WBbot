@@ -5,7 +5,7 @@ class Whitelist(Model):
     COLUMNS = ["id", "tg_id", "username", "secret_key"]
     table_name = 'whitelist'
 
-    def __init__(self, id=0, tg_id='', username='', secret_key=''):
+    def __init__(self, id=1, tg_id='', username='', secret_key=''):
         super().__init__()
         self.id = id
         self.tg_id = tg_id
