@@ -10,6 +10,8 @@ def get_markup(markup_name, role='', is_admin=False, id=''):
     elif 'admin_main' == markup_name:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add("💰 Создать заказ 💰")
+        markup.add("👀 Посмотреть заказы 👀")
+        markup.add("✏️ редактировать заказы ✏️")
         markup.add("🔍 Поиск товаров 🔎")
         markup.add("💰 Выкуп собраных заказов 💰")
         markup.add("➕ Добавить пользователя ➕")
@@ -96,3 +98,13 @@ def get_keyboard(keyboard_name, *args):
         keyboard.add(*btns)
 
         return keyboard
+
+    elif 'admin_watch_orders_group' == keyboard_name:
+        keyboard = types.InlineKeyboardMarkup()
+        btns = []
+        btns += [types.InlineKeyboardButton(text='Активные', callback_data='Активные')]
+        btns += [types.InlineKeyboardButton(text='По ИНН', callback_data='По ИНН')]
+        keyboard.add(*btns)
+
+        return keyboard
+
