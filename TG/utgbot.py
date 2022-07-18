@@ -876,9 +876,8 @@ async def create_order_handler(message: types.Message, state: FSMContext):
     del data['order_name']
     data['remaining_budget'] = data['budget']
     data['start_datetime'] = datetime.now()
-    OrderOfOrders(**data).insert()
-    await message.answer('Заказ создан')
     try:
+        await States.ADMIN.set()
         OrderOfOrders(**data).insert()
         await message.answer('Заказ создан')
     except:
@@ -905,7 +904,7 @@ async def watch_orders_callback_query_handler(call: types.CallbackQuery, state: 
                            f"Кол-во уже выкуполеных: {order.quantities_bought[i]}\n" \
                            f"Ключевые слова: {order.search_keys[i]}\n" \
                            f"Оставлено комментариев: {len(order.left_comments[i]) if order.left_comments else 0}\n" \
-                           f"Осталось комментариев: {len(order.unused_comments[i])}\n"
+                           f"Осталось комментариев: {len(order.unused_comments[i])}\n\n"
 
             await call.message.answer(res_msg)
     elif msg == 'По ИНН':

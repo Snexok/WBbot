@@ -72,7 +72,7 @@ class Model:
                     elif type(v[0]) is list:
                         if type(v[0][0]) is str:
                             if "," in str(v):
-                                path += "ARRAY[" + ",".join("'" + a.replace(",", ";") + "'" for a in v) + "]::text[][], "
+                                path += "'" + str([[",".join(['"' + a.replace(",", ";") + '"' for a in _v])] for _v in v]).replace("'", "").replace('[', '{').replace(']', '}') + "', "
                             else:
                                 path += f"ARRAY{str(v)}::text[][], "
                         elif type(v[0][0]) is int:
