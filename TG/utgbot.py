@@ -874,6 +874,10 @@ async def create_order_handler(message: types.Message, state: FSMContext):
 
     data['id'] = data['order_name']
     del data['order_name']
+    data['remaining_budget'] = data['budget']
+    data['start_datetime'] = datetime.now()
+    OrderOfOrders(**data).insert()
+    await message.answer('Заказ создан')
     try:
         OrderOfOrders(**data).insert()
         await message.answer('Заказ создан')
@@ -889,20 +893,21 @@ async def watch_orders_callback_query_handler(call: types.CallbackQuery, state: 
     if msg == 'Активные':
         orders = OrdersOfOrders.load()
         for order in orders:
-            res_msg = f"Заказ {order.id}\n\n" \
-                      f"ИНН: \n" \
-                      f"Бюджет: \n" \
-                      f"Оставшийся бюджет: \n" \
-                      f"Необходимо выкупать каждый день: \n\n"
+            res_msg = f"Заказ {order.id}\n" \
+                      f"От: {order.start_datetime}\n\n" \
+                      f"ИНН: {order.inn}\n" \
+                      f"Бюджет: {order.budget}\n" \
+                      f"Оставшийся бюджет: {order.remaining_budget}\n" \
+                      f"Необходимо выкупать каждый день: {order.bought_per_day}\n\n"
             for i, article in enumerate(order.articles):
-                res_msg += f"Артикул {article}" \
+                res_msg += f"Артикул {article}\n" \
                            f"Кол-во необходимых выкупов: {order.quantities_to_bought[i]}\n" \
                            f"Кол-во уже выкуполеных: {order.quantities_bought[i]}\n" \
                            f"Ключевые слова: {order.search_keys[i]}\n" \
-                           f"Ключевые слова: {order.search_keys[i]}\n" \
-                           f"Ключевые слова: {order.search_keys[i]}\n" \
-                           f"Ключевые слова: {order.search_keys[i]}\n" \
-                           f"Ключевые слова: {order.search_keys[i]}\n"
+                           f"Оставлено комментариев: {len(order.left_comments[i]) if order.left_comments else 0}\n" \
+                           f"Осталось комментариев: {len(order.unused_comments[i])}\n"
+
+            await call.message.answer(res_msg)
     elif msg == 'По ИНН':
         orders = OrdersOfOrders.load()
 

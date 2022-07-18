@@ -66,12 +66,15 @@ class Model:
                             path += f"ARRAY{str(v)}::text[], "
                     elif type(v[0]) is int:
                         path += f"ARRAY{str(v)}::integer[], "
+                    elif type(v[0]) is bool:
+                        v = ["TRUE" if _v else "FALSE" for _v in v]
+                        path += f"ARRAY{v}::boolean[], "
                     elif type(v[0]) is list:
                         if type(v[0][0]) is str:
                             if "," in str(v):
-                                path += "ARRAY[" + ",".join("'" + a.replace(",", ";") + "'" for a in v) + "]::text[], "
+                                path += "ARRAY[" + ",".join("'" + a.replace(",", ";") + "'" for a in v) + "]::text[][], "
                             else:
-                                path += f"ARRAY{str(v)}::text[], "
+                                path += f"ARRAY{str(v)}::text[][], "
                         elif type(v[0][0]) is int:
                             path += f"ARRAY{str(v)}::integer[][], "
         path = path[:-2]

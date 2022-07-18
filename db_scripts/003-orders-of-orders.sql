@@ -5,7 +5,7 @@ create table orders_of_orders
             primary key,
     inn                  text,
     articles             text[],
-    active               integer[],
+    active               bool[],
     quantities_to_bought integer[],
     quantities_bought    integer[],
     search_keys          text[],

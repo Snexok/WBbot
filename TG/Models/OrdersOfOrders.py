@@ -22,7 +22,7 @@ class OrderOfOrders(Model):
         self.numbers_of_comments = numbers_of_comments
         self.comments = comments
         self.unused_comments = unused_comments if unused_comments else comments
-        self.left_comments = left_comments if left_comments else [[[] for _ in range(len(article_comments))] for article_comments in range(len(comments))]
+        self.left_comments = left_comments
         self.bought_per_day = bought_per_day
         self.budget = budget
         self.remaining_budget = remaining_budget
@@ -35,7 +35,7 @@ class OrdersOfOrders(Model):
 
     @classmethod
     def load(cls, inn=None):
-        path = f"SELECT * FROM {cls.table_name} WHERE end_datetime IS NULL"
+        path = f"SELECT * FROM {cls.table_name} WHERE end_datetime is null AND "
         if inn:
             path += f" inn='{inn}' AND "
 
