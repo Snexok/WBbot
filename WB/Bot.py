@@ -199,6 +199,7 @@ class Bot:
             print("local_orders", _order)
         sleep(1)
 
+        admin = Admins_model().get_sentry_admin()
         for order in orders:
             # фильтруем заказы бота адресу
             local_orders_by_address = [_order for _order in local_orders if _order.pup_address == order.pup_address]
@@ -215,9 +216,12 @@ class Bot:
             print(statuses)
 
             if len(statuses) < len(order.articles):
+                msg = f'Один из артикулов заказа {order.id} не был найден.\n' \
+                      f'Артикулы {str(order.articles)}'
                 if message:
-                    await message.answer(f'Один из артикулов заказа {order.id} не был найден.\n '
-                                     f'Артикулы {str(order.articles)}')
+                    await message.answer(msg)
+                else:
+                    await bot.send_message(admin.id, msg)
             else:
                 order.set(statuses=statuses)
                 order.set(code_for_approve=_order.code_for_approve)
@@ -230,12 +234,12 @@ class Bot:
                                   f'Артикул: {order.articles[i]}'
                         msg_admin = msg_pup + '\n' + \
                                     f'Номер заказа: {order.number}\n' + \
-                                    f'Id заказа: {order.id}\n'
+                                    f'Id заказа: {order.id}\n' \
+                                    f'Имя бота: {self.data.name}\n'
 
                         order.set(end_date=date.today())
                         order.set(active=False)
 
-                        admin = Admins_model().get_sentry_admin()
                         await bot.send_message(admin.id, msg_admin, parse_mode="HTML")
                         await bot.send_message(order.pup_tg_id, msg_pup, parse_mode="HTML")
                     else:

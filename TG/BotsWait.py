@@ -1,6 +1,7 @@
 import asyncio
 from asyncio import sleep
 from aiogram import Bot
+from Bot import bot_search
 
 from TG.Admin import Admin
 from TG.Models.BotsWaits import BotWait_Model, BotsWait_Model
@@ -24,8 +25,12 @@ class BotsWait:
                 self.bot_name = bots_wait.bot_name
                 self.event = bots_wait.event
                 self.sub_event = bots_wait.sub_event
-                self.exec_event()
-                bots_wait.delete()
+                # Сбрасываем индикатор ожидания
+                bots_wait.wait = False
+                bots_wait.update()
+                # Запускаем обработку события, все параметры передаются в self
+                await self.exec_event()
+                # bots_wait.delete()
 
     async def exec_event(self):
         if self.sub_event:
@@ -39,10 +44,15 @@ class BotsWait:
                 pass
         else:
             if self.event == 'SEARCH':
-                await Admin.bot_search(self.data)
-            elif self.event == 'BUY':
-                await Admin.bot_buy()
+                # Запуск процесса поиска
+                data = self.data
+                await bot_search(self.bot, data['chat_id'], data['article'], data['search_key'], data['category'])
+            elif self.event == 'FOUND':
+                # Уведомление о возможности выкупа
+                data = self.data
+                await Admin.send_notify_for_buy(self.bot, data['chat_id'], self.bot_name)
             elif self.event == 'CHECK_DELIVERY':
+                # Проверка готовности товара
                 await Admin.check_order(self.data.bot_name)
             elif self.event == 'ADD_COMMENT':
                 pass

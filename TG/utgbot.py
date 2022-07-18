@@ -1,5 +1,5 @@
 # Python Modules
-from datetime import datetime
+from datetime import datetime, timedelta
 import io
 from random import random
 
@@ -7,12 +7,13 @@ import asyncio
 import ujson
 from aiogram.contrib.fsm_storage.memory import MemoryStorage
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import StatesGroup, State
 
 # For telegram api
-from aiogram import Bot, Dispatcher, executor, types
+from aiogram import Bot as TG_Bot
+from aiogram import Dispatcher, executor, types
 from aiogram.utils.json import json
 
+from TG.Bot import bot_buy
 from TG.BotsWait import BotsWait
 from TG.Admin import Admin
 from TG.Models.BotsWaits import BotsWait_Model, BotWait_Model
@@ -24,6 +25,7 @@ from TG.Models.Bots import Bots_Model as Bots_model
 from TG.Models.Whitelist import Whitelist_Model
 from TG.Models.Admins import Admin_Model as Admin_model
 from TG.Markups import get_markup, get_keyboard, get_list_keyboard
+from TG.States import States
 from WB.Partner import Partner
 
 from configs import config
@@ -36,35 +38,9 @@ ADMIN_BTNS = ['🏡 распределить адреса по ботам 🏡',
 
 API_TOKEN = config['tokens']['telegram']
 # Initialize bot and dispatcher
-bot = Bot(token=API_TOKEN)
+bot = TG_Bot(token=API_TOKEN)
 loop = asyncio.get_event_loop()
 dp = Dispatcher(bot, storage=MemoryStorage(), loop=loop)
-
-
-# States
-class States(StatesGroup):
-    ADMIN = State()
-    MAIN = State()
-    WL_SECRET_KEY = State()
-    INSIDE = State()
-    ADMIN_ADDRESS_DISTRIBUTION = State()
-    FF_ADDRESS_START = State()
-    FF_ADDRESS_END = State()
-    PUP_ADDRESSES_START = State()
-    PUP_ADDRESSES_CONTINUE = State()
-    ADMIN_ADDRESS_VERIFICATION = State()
-    ORDER = State()
-    TO_WL = State()
-    REGISTER = State()
-    RUN_BOT = State()
-    CHECK_WAITS = State()
-    BOT_SEARCH = State()
-    BOT_BUY = State()
-    COLLECT_OTHER_ORDERS = State()
-    EXCEPTED_ORDERS_LIST = State()
-    EXCEPTED_ORDERS_LIST_CHANGE = State()
-    COLLECT_ORDERS = State()
-
 
 @dp.message_handler(text='◄ Назад', state="*")
 async def back_handler(message: types.Message, state: FSMContext):
@@ -249,6 +225,11 @@ async def admin_handler(message: types.Message):
         await message.answer('Пришлите Excel файл заказа\n'
                              'Или выберите артикул и выкупиться 1 товар с таким артикулом', reply_markup=keyboard)
         await States.BOT_SEARCH.set()
+    elif "👨‍💻 запланировать поиск товаров 👨‍💻" in msg:
+        keyboard = get_keyboard('admin_bot_search')
+        await message.answer('Пришлите Excel файл заказа\n'
+                             'Или выберите артикул и выкупиться 1 товар с таким артикулом', reply_markup=keyboard)
+        await States.PLAN_BOT_SEARCH.set()
     elif "💰 выкуп собраных заказов 💰" in msg:
         bots_wait = BotsWait_Model.load(event="FOUND")
         if bots_wait:
@@ -380,6 +361,72 @@ async def inside_handler(message: types.Message):
         await admin_handler(message)
         return
 
+@dp.callback_query_handler(state=States.PLAN_BOT_SEARCH)
+async def plan_bot_search_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
+    id = str(call.message.chat.id)
+    msg = call.data
+    article = msg
+    category = ''
+    search_key = ''
+    if article in ['90086267', '90086484', '90086527']:
+        # category = 'Женщинам;Пляжная мода;Купальники'
+        search_key = 'купальник женский раздельный с высокой талией'
+    if article in ['90085903', '90398226']:
+        # category = 'Женщинам;Пляжная мода;Купальники'
+        search_key = 'слитный купальник женский утягивающий'
+
+
+    await state.set_data({'article': article, 'search_key': search_key, 'category': category})
+
+    await call.message.answer('Введите через сколько часов нужно отработать поиск')
+
+@dp.message_handler(state=States.PLAN_BOT_SEARCH, content_types=['document'])
+async def plan_bot_search_document_handler(message: types.Message):
+    await States.ADMIN.set()
+    await message.answer('Планирование по документу пока не готово')
+
+    document = io.BytesIO()
+    await message.document.download(destination_file=document)
+    df = pd.read_excel(document)
+    orders = [row.tolist() for i, row in df.iterrows()]
+    data_for_bots = Admin.pre_run(orders)
+    await message.answer('Поиск начался')
+    if DEBUG:
+        msgs = await Admin.bot_search(data_for_bots)
+    else:
+        try:
+            msgs = await Admin.bot_search(data_for_bots)
+        except:
+            await message.answer('❌ Поиск упал ❌')
+
+    for msg in msgs:
+        await message.answer(msg)
+
+    await message.answer('Поиск завершен')
+
+@dp.message_handler(state=States.PLAN_BOT_SEARCH, content_types=['text'])
+async def plan_bot_search_message_handler(message: types.Message, state: FSMContext):
+    msg = message.text
+    id = str(message.chat.id)
+    try:
+        await States.ADMIN.set()
+
+        hours = int(msg)
+        data = await state.get_data()
+        # article = data['article']
+        # search_key = data['search_key']
+        # category = data['category']
+        data['chat_id'] = id
+
+        end_datetime = datetime.now() + timedelta(hours=hours)
+        data = ujson.dumps(data)
+        print(f'data {data}')
+        bot_wait = BotWait_Model(event='SEARCH', end_datetime=end_datetime, wait=True, data=data)
+        bot_wait.insert()
+    except:
+        await message.answer('Введите цифру')
+
+
 
 @dp.callback_query_handler(state=States.RUN_BOT)
 async def run_bot_callback_query_handler(call: types.CallbackQuery):
@@ -486,7 +533,7 @@ async def excepted_orders_callback_query_handler(call: types.CallbackQuery, stat
 
 
 @dp.message_handler(state=States.EXCEPTED_ORDERS_LIST_CHANGE)
-async def excepted_orders_change_callback_query_handler(message: types.Message, state: FSMContext):
+async def excepted_orders_change_handler(message: types.Message, state: FSMContext):
     msg = message.text
     id = str(message.chat.id)
     order_numbers = msg.replace("\n", " ").strip().split(" ")
@@ -766,6 +813,20 @@ async def default_handler(message: types.Message):
         else:
             await States.MAIN.set()
             await main_handler(message)
+
+@dp.callback_query_handler(text_contains='_bw_', state="*")
+async def others_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
+    id = str(call.message.chat.id)
+    msg = call.data
+    bot_name = msg.split(" ")[1]
+
+    bot_wait = BotsWait_Model.load(event="FOUND", bot_name=bot_name)
+
+    await call.message.edit_text("Yfx")
+
+    await bot_buy(call.message, bot_wait)
+
+    await call.message.edit_text("123")
 
 
 if __name__ == '__main__':

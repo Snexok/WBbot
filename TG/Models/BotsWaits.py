@@ -3,14 +3,15 @@ from datetime import datetime
 from TG.Models.Model import Model
 
 class BotWait_Model(Model):
-    COLUMNS = ['id', 'bot_name', 'event', 'start_datetime', 'end_datetime', 'wait', 'data']
+    COLUMNS = ['id', 'bot_name', 'event', 'sub_event', 'start_datetime', 'end_datetime', 'wait', 'data']
     table_name = 'bots_wait'
 
-    def __init__(self, id=1, bot_name='', event='', start_datetime='', end_datetime='', wait=False, data=''):
+    def __init__(self, id=1, bot_name='', event='', sub_event='', start_datetime='', end_datetime='', wait=False, data=''):
         super().__init__()
         self.id = id
         self.bot_name = bot_name
         self.event = event
+        self.sub_event = sub_event
         self.start_datetime = start_datetime
         self.end_datetime = end_datetime
         self.wait = wait
@@ -38,7 +39,13 @@ class BotsWait_Model(Model):
         if limit:
             path += f" LIMIT {str(limit)}"
 
-        return cls.format_data(cls.execute(path, cls.fetchall))@classmethod
+        data = cls.format_data(cls.execute(path, cls.fetchall))
+
+        if bot_name:
+            return data[0]
+
+        return data
+
 
     @classmethod
     def load_last(cls):

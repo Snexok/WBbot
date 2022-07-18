@@ -10,6 +10,7 @@ def get_markup(markup_name, role='', is_admin=False, id=''):
     elif 'admin_main' == markup_name:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
         markup.add("🔍 Поиск товаров 🔎")
+        markup.add("👨‍💻 Запланировать поиск товаров 👨‍💻")
         markup.add("💰 Выкуп собраных заказов 💰")
         markup.add("➕ Добавить пользователя ➕")
         if id:
@@ -92,6 +93,13 @@ def get_keyboard(keyboard_name, *args):
         btns += [types.InlineKeyboardButton(text='90086527', callback_data='90086527')]
         # btns += [types.InlineKeyboardButton(text='90085903', callback_data='90085903')]
         btns += [types.InlineKeyboardButton(text='90398226', callback_data='90398226')]
+        keyboard.add(*btns)
+
+        return keyboard
+    elif 'admin_notify_for_buy' == keyboard_name:
+        bot_name = args[0]
+        keyboard = types.InlineKeyboardMarkup()
+        btns = [types.InlineKeyboardButton(text="Выкупить", callback_data="_bw_buy "+bot_name)]
         keyboard.add(*btns)
 
         return keyboard

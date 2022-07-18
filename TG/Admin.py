@@ -3,11 +3,15 @@ import random
 
 import ujson as ujson
 
+from aiogram import Bot as TG_Bot
+
+from TG.Markups import get_markup, get_keyboard
 from TG.Models.Addresses import Addresses_Model
-from TG.Models.Admins import Admins_Model as Admins_model
-from TG.Models.Bots import Bots_Model as Bots_model
+from TG.Models.Admins import Admins_Model as Admins_Model
+from TG.Models.Bots import Bots_Model as Bots_Model
 from TG.Models.BotsWaits import BotWait_Model, BotsWait_Model
 from TG.Models.Orders import Order_Model as Order_Model, Orders_Model as Orders_Model
+from TG.States import States
 
 from WB.Bot import Bot
 
@@ -22,7 +26,7 @@ TEST = False
 class Admin:
     @staticmethod
     def is_admin(id):
-        if id in Admins_model.get_ids():
+        if id in Admins_Model.get_ids():
             return True
         else:
             return False
@@ -49,7 +53,7 @@ class Admin:
     async def bot_search(cls, data):
         print("bot_search started")
 
-        bots_data = Bots_model.load_must_free(limit=len(data), _type="WB")
+        bots_data = Bots_Model.load_must_free(limit=len(data), _type="WB")
 
         for bot_data in bots_data:
             bot_data.set(status="SEARCH")
@@ -67,9 +71,22 @@ class Admin:
         for i, report in enumerate(reports):
             print(report)
             data = ujson.dumps(report)
-            bot_wait = BotWait_Model(bot_name=bots[i].data.name, event="FOUND", wait=True,
-                                     start_datetime=datetime.now(), data=data)
-            bot_wait.insert()
+            end_datetime = cls.get_work_time()
+
+            bot_wait = BotsWait_Model.load(bots[i].data.name, "SEARCH")
+            if bot_wait:
+                bot_wait.event = "FOUND"
+                bot_wait.wait = True
+                bot_wait.start_datetime = datetime.now()
+                bot_wait.end_datetime = end_datetime
+                # добавляем данные из поиска
+                for key, value in data.items():
+                    bot_wait.data[key] = value
+                bot_wait.update()
+            else:
+                bot_wait = BotWait_Model(bot_name=bots[i].data.name, event="FOUND", wait=True,
+                                         start_datetime=datetime.now(), end_datetime=end_datetime, data=data)
+                bot_wait.insert()
 
             msgs += [f"✅ Собран заказ бота {report['bot_name']}✅\n"
                      f"Артикулы {report['articles']}"]
@@ -99,7 +116,7 @@ class Admin:
 
             bot_name = bot_wait.bot_name
             print("Bot Name _ ", bot_name)
-            bot_data = Bots_model.load(bot_name)
+            bot_data = Bots_Model.load(bot_name)
 
             bot_data.set(status="BUYS")
             bot_data.update()
@@ -217,7 +234,7 @@ class Admin:
         """
         all_not_added_addresses = Addresses_Model.get_all_not_added()
 
-        tg_bots = Bots_model.load()
+        tg_bots = Bots_Model.load()
         bots_name = [tg_bots[i].name for i in range(len(tg_bots))]
         if all_not_added_addresses:
             if len(all_not_added_addresses) > 0:
@@ -300,13 +317,37 @@ class Admin:
     async def check_order(cls, bot_name, message=None):
         bot = Bot(name=bot_name)
         orders = Orders_Model.load(bot_name=bot_name, active=True, pred_end_date=datetime.now())
-        # print(bot.data.name)
-        # async def check_order(bot):
-        #     bot.open_bot(manual=False)
-        #     bot.open_delivery()
         bot.open_bot(manual=False)
-        # order = orders[0]
-        # await bot.check_readiness(order.articles, order.pup_address, order.number, message, cls.wait_order_ended)
         await bot.check_readiness(orders, message, cls.wait_order_ended)
 
         # await asyncio.gather(asyncio.to_thread(check_order(bot)))
+
+    @classmethod
+    def get_work_time(cls):
+        now_datetime = datetime.now()
+        now_hour = now_datetime.time().hour
+
+        res_datetime = 0
+        hours = random.randint(1, 48)
+        minutes = random.randint(1, 59)
+        seconds = random.randint(1, 59)
+
+        while abs(hours+now_hour)%24 < 8:
+            hours = random.randint(1, 48)
+
+        res_datetime = now_datetime + timedelta(hours=hours, minutes=minutes, seconds=seconds)
+
+        return res_datetime
+
+    @classmethod
+    async def send_notify_for_buy(cls, bot : TG_Bot, chat_id, bot_name):
+        keyboard = get_keyboard('admin_notify_for_buy', bot_name)
+        await bot.send_message(chat_id, 'Готов выкуп', reply_markup=keyboard)
+
+if __name__ == '__main__':
+    a = {"w": 2, "r": 3}
+    b = {"t": 1}
+    print(a, b)
+    for key, value in a.items():
+        b[key] = value
+    print(b)
