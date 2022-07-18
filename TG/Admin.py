@@ -49,7 +49,7 @@ class Admin:
     async def bot_search(cls, data):
         print("bot_search started")
 
-        bots_data = Bots_model.load_must_free(limit=len(data), _type="WB")
+        bots_data = Bots_model.load_must_free(limit=len(data), _type="WB", inn=data[0][0]['inn'])
 
         for bot_data in bots_data:
             bot_data.set(status="SEARCH")
@@ -121,16 +121,9 @@ class Admin:
                 reports = await asyncio.gather(run_bot)
                 report = reports[0]
 
-                bot_wait.event = "PAID"
             except Exception as e:
                 print(e)
                 bot_wait.event += " FAIL"
-
-
-            bot_wait.end_datetime = datetime.now()
-            bot_wait.wait = False
-            bot_wait.data = []
-            bot_wait.update()
 
             if "FAIL" in bot_wait.event:
                 await message.answer('❌ Ошибка выкупа ❌')
@@ -146,6 +139,7 @@ class Admin:
 
                 reports += [report]
                 if paid['payment']:
+                    bot_wait.event = "PAID"
                     print(paid['datetime'])
                     pup_address = Addresses.load(address=report['post_place'])
                     order = Order_Model(number=number, total_price=report['total_price'], services_price=50,
@@ -164,7 +158,13 @@ class Admin:
                                          f"Адрес доставки {report['post_place']}\n\n"
                                          f"Время оплаты {paid['datetime']}")
                 else:
+                    bot_wait.event = "PAID_LOSE"
                     await message.answer(f"❌ НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
+
+                bot_wait.end_datetime = datetime.now()
+                bot_wait.wait = False
+                bot_wait.data = []
+                bot_wait.update()
 
                 bot_data.set(status="FREE")
                 bot_data.update()

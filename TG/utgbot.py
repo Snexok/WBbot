@@ -400,16 +400,23 @@ async def bot_search_callback_query_handler(call: types.CallbackQuery):
     article = msg
     category = ''
     search_key = ''
-    if article in ['90086267', '90086484', '90086527']:
+    inn = ''
+    if article in ['90852969']:
         # category = 'Женщинам;Пляжная мода;Купальники'
-        search_key = 'купальник женский раздельный с высокой талией'
-    if article in ['90085903', '90398226']:
+        search_key = 'Купальник слитный женский белый'
+        inn = '381108544328'
+    if article in ['90086484']:
         # category = 'Женщинам;Пляжная мода;Купальники'
-        search_key = 'слитный купальник женский утягивающий'
+        search_key = 'Купальник раздельный'
+        inn = '381108544328'
+    if article in ['90633439']:
+        # category = 'Женщинам;Пляжная мода;Купальники'
+        search_key = 'Женский раздельный купальник без пуш ап'
+        inn = '381108544328'
 
     await States.ADMIN.set()
 
-    orders = [[article, search_key, category, "1", "1", "381108544328"]]
+    orders = [[article, search_key, category, "1", "1", inn]]
     await call.message.edit_text(f'Начался поиск артикула {article}')
 
     res_msg = ''

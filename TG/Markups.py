@@ -88,11 +88,9 @@ def get_keyboard(keyboard_name, *args):
     elif 'admin_bot_search' == keyboard_name:
         keyboard = types.InlineKeyboardMarkup()
         btns = []
-        btns += [types.InlineKeyboardButton(text='90086267', callback_data='90086267')]
+        btns += [types.InlineKeyboardButton(text='90852969', callback_data='90852969')]
         btns += [types.InlineKeyboardButton(text='90086484', callback_data='90086484')]
-        btns += [types.InlineKeyboardButton(text='90086527', callback_data='90086527')]
-        # btns += [types.InlineKeyboardButton(text='90085903', callback_data='90085903')]
-        btns += [types.InlineKeyboardButton(text='90398226', callback_data='90398226')]
+        btns += [types.InlineKeyboardButton(text='90633439', callback_data='90633439')]
         keyboard.add(*btns)
 
         return keyboard

@@ -40,13 +40,15 @@ class Bots(Model):
         return data
 
     @classmethod
-    def load_must_free(cls, limit=None, _type=None):
+    def load_must_free(cls, limit=None, _type=None, inn=None):
         path = f"SELECT b.*, coalesce (o.active_cnt, 0) as active_cnt FROM  " \
-               f"(SELECT * FROM bots WHERE type = '{_type}' AND status = 'FREE') b " \
+               f"(SELECT * FROM bots WHERE type = '{_type}' AND status = 'FREE' AND "+(f"'{inn}' = ANY(inns)" if inn else "inns is null")+") b " \
                f"LEFT JOIN " \
                f"(SELECT bot_name,COUNT(active) active_cnt FROM orders WHERE active=TRUE GROUP BY bot_name, active ) o " \
                f"ON b.name=o.bot_name " \
                f"ORDER BY active_cnt LIMIT {limit}"
+
+        print(path)
 
         data = cls.execute(path, cls.fetchall)
         data = [d[:-1] for d in data]
@@ -69,6 +71,6 @@ class Bots(Model):
 
 
 if __name__ == '__main__':
-    bots= Bots.load_must_free(6, 'WB')
+    bots= Bots.load_must_free(31, 'WB', '381108544328')
     for bot in bots:
         print(bot)
