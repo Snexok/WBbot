@@ -44,7 +44,10 @@ class Model:
     def insert(self):
         c = [col for col in self.COLUMNS if getattr(self, col) or type(getattr(self, col)) is bool]
         path = f"INSERT INTO {self.table_name} (" + ", ".join(c) + ") VALUES "
-        path += f"((SELECT MAX(id)+1 FROM {self.table_name}), "
+        if type(getattr(self, "id")) is int:
+            path += f"((SELECT MAX(id)+1 FROM {self.table_name}), "
+        elif type(getattr(self, "id")) is str:
+            path += f"('{getattr(self, 'id')}', "
         for k in self.COLUMNS[1:]:
             v = getattr(self, k)
             if v or type(v) is bool:
@@ -63,6 +66,17 @@ class Model:
                             path += f"ARRAY{str(v)}::text[], "
                     elif type(v[0]) is int:
                         path += f"ARRAY{str(v)}::integer[], "
+                    elif type(v[0]) is bool:
+                        v = ["TRUE" if _v else "FALSE" for _v in v]
+                        path += f"ARRAY{v}::boolean[], "
+                    elif type(v[0]) is list:
+                        if type(v[0][0]) is str:
+                            if "," in str(v):
+                                path += "'" + str([[",".join(['"' + a.replace(",", ";") + '"' for a in _v])] for _v in v]).replace("'", "").replace('[', '{').replace(']', '}') + "', "
+                            else:
+                                path += f"ARRAY{str(v)}::text[][], "
+                        elif type(v[0][0]) is int:
+                            path += f"ARRAY{str(v)}::integer[][], "
         path = path[:-2]
         path += ")"
         print(path)

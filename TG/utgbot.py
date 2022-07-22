@@ -60,6 +60,7 @@ async def back_handler(message: types.Message, state: FSMContext):
     await States.MAIN.set()
     await message.answer('Главное меню', reply_markup=markup)
 
+
 @dp.message_handler(commands=['start'])
 async def start(message: types.Message):
     username = message.chat.username
@@ -154,7 +155,8 @@ async def main_handler(message: types.Message):
                 print(ies)
                 await States.EXCEPTED_ORDERS_LIST.set()
                 markup = get_list_keyboard(ies)
-                await message.answer('Выберите ИП, по которому хотите посмотреть или изменить список', reply_markup=markup)
+                await message.answer('Выберите ИП, по которому хотите посмотреть или изменить список',
+                                     reply_markup=markup)
                 return
             else:
                 await message.answer('Ни одно ИП не найдено')
@@ -206,20 +208,20 @@ async def register_handler(message: types.Message):
 
 @dp.message_handler(state=States.ADMIN)
 async def admin_handler(message: types.Message):
-    print(message)
     id = str(message.chat.id)
     msg = message.text.lower()
     print(msg)
-    if '🏡 распределить адреса по ботам 🏡' in msg:
-        res_message, state = Admin.check_not_added_pup_addresses()
-        markup = get_markup('admin_main', id=id)
-        await message.answer(res_message, reply_markup=markup)
-        await getattr(States, state).set()
-    elif '✉ проверить адреса ✉' in msg:
-        res_message, state = Admin.check_not_checked_pup_addresses()
-        markup = get_markup('admin_main', id=id)
-        await message.answer(res_message, reply_markup=markup)
-        await getattr(States, state).set()
+
+    if "💰 создать заказ 💰" in msg:
+        await States.CREATE_ORDER.set()
+        await message.answer("Введите: Название для заказа")
+    elif "👀 посмотреть заказы 👀" in msg:
+        await States.WATCH_ORDER.set()
+        keyboard = get_keyboard('admin_watch_orders_group')
+        await message.answer("Введите: Название для заказа", reply_markup=keyboard)
+    elif "✏️ редактировать заказы ✏️" in msg:
+        await States.EDIT_ORDER.set()
+        await message.answer("Введите: Название для заказа")
     elif "🔍 поиск товаров 🔎" in msg:
         keyboard = get_keyboard('admin_bot_search')
         await message.answer('Пришлите Excel файл заказа\n'
@@ -257,12 +259,21 @@ async def admin_handler(message: types.Message):
                 bot_wait = BotWait_Model(bot_name=order.bot_name, event='delivery', start_datetime=datetime.now(),
                               end_datetime=order.pred_end_date, wait=True, data=json.dumps('{"id": '+str(order.id)+'}'))
                 bot_wait.insert()
-        # bots_name = []
-        # for order in orders:
-        #     if order.bot_name not in bots_name:
-        #         bots_name += [order.bot_name]
-        # keyboard = get_keyboard('admin_bots', bots_name)
-        # await message.answer('Выберите бота', reply_markup=keyboard)
+            bots_name = []
+            if order.bot_name not in bots_name:
+                bots_name += [order.bot_name]
+        keyboard = get_keyboard('admin_bots', bots_name)
+        await message.answer('Выберите бота', reply_markup=keyboard)
+    elif '✉ проверить адреса ✉' in msg:
+        res_message, state = Admin.check_not_checked_pup_addresses()
+        markup = get_markup('admin_main', id=id)
+        await message.answer(res_message, reply_markup=markup)
+        await getattr(States, state).set()
+    elif '🏡 распределить адреса по ботам 🏡' in msg:
+        res_message, state = Admin.check_not_added_pup_addresses()
+        markup = get_markup('admin_main', id=id)
+        await message.answer(res_message, reply_markup=markup)
+        await getattr(States, state).set()
     else:
         if "🤖 открыть бота 🤖" in msg or "🤖 статус ботов 🤖" in msg:
             if id == '794329884' or id == '535533975':
@@ -437,6 +448,7 @@ async def run_bot_callback_query_handler(call: types.CallbackQuery):
     await call.message.edit_text(msg + " открыт")
     await Admin.open_bot(bot_name=bot_name)
 
+
 @dp.message_handler(state=States.RUN_BOT)
 async def run_bot_callback_query_handler(message: types.Message):
     id = str(message.chat.id)
@@ -445,6 +457,7 @@ async def run_bot_callback_query_handler(message: types.Message):
     await States.ADMIN.set()
     await message.answer(msg + " открыт")
     await Admin.open_bot(bot_name=bot_name)
+
 
 @dp.message_handler(state=States.RUN_BOT)
 async def run_bot_handler(message: types.Message):
@@ -486,6 +499,7 @@ async def collect_other_orders_callback_query_handler(call: types.CallbackQuery)
 
     await call.message.answer(f'Закончилась сборка РЕАЛЬНЫХ заказов по {ie}')
 
+
 @dp.callback_query_handler(state=States.COLLECT_ORDERS)
 async def collect_orders_callback_query_handler(call: types.CallbackQuery):
     id = str(call.message.chat.id)
@@ -501,7 +515,7 @@ async def collect_orders_callback_query_handler(call: types.CallbackQuery):
     res_msg = ''
     for r in res:
         res_msg += r + "\n\n"
-    if ('Не найден заказ' not in res_msg) and ('Самовыкупов по данному ИП нет' not in res_msg)\
+    if ('Не найден заказ' not in res_msg) and ('Самовыкупов по данному ИП нет' not in res_msg) \
             and ('Слетела авторизация в аккаунт Партнёров' not in res_msg):
         res_msg = '✅ Все заказы собраны успешно ✅' + '\n\n'
 
@@ -531,7 +545,6 @@ async def excepted_orders_callback_query_handler(call: types.CallbackQuery, stat
     await call.message.edit_text(res_msg)
 
 
-
 @dp.message_handler(state=States.EXCEPTED_ORDERS_LIST_CHANGE)
 async def excepted_orders_change_handler(message: types.Message, state: FSMContext):
     msg = message.text
@@ -543,7 +556,6 @@ async def excepted_orders_change_handler(message: types.Message, state: FSMConte
     excepted_orders = ExceptedOrders_Model.load(inn=inn)
 
     if excepted_orders:
-
         local_order_numbers = [eo.order_number for eo in excepted_orders]
 
     added = []
@@ -764,6 +776,191 @@ async def pup_addresses_start_handler(message: types.Message):
                          'г Москва, Чистопрудная улица 32к2\n'
                          'г Москва, Вавиловская улица 22к8')
 
+
+@dp.message_handler(state=States.CREATE_ORDER)
+async def create_order_handler(message: types.Message, state: FSMContext):
+    id = str(message.chat.id)
+    msg = message.text
+
+    data = await state.get_data()
+
+    if 'order_name' not in data.keys():
+        order_name = msg
+
+        await state.set_data({"order_name": order_name})
+
+        await message.answer('Введите ИИН клиента')
+        return
+    elif 'inn' not in data.keys():
+        try:
+            inn = str(int(msg))
+
+            data['inn'] = inn
+
+            await state.set_data(data)
+
+            await message.answer('Введите артикулы')
+        except:
+            await message.answer('ИНН должно состоять только из цифр')
+        return
+    elif 'articles' not in data.keys():
+        articles = msg.replace("\n", " ").strip().split(" ")
+
+        try:
+            # проверяем артикулы
+            [int(article) for article in articles]
+
+            data["articles"] = articles
+            await state.set_data(data)
+
+            await message.answer('Сколько нужно сделать выкупов каждого артикула')
+        except:
+            await message.answer('Артикулы должно состоять только из цифр')
+        return
+    elif 'quantities_to_bought' not in data.keys():
+        quantities_to_bought = msg.replace("\n", " ").strip().split(" ")
+
+        print(quantities_to_bought)
+
+        try:
+            if len(quantities_to_bought) == 1:
+                quantities_to_bought = [int(quantities_to_bought[0]) for _ in range(len(data['articles']))]
+            else:
+                quantities_to_bought = [int(quantity_to_bought) for quantity_to_bought in quantities_to_bought]
+
+            data["quantities_to_bought"] = quantities_to_bought
+            await state.set_data(data)
+
+            await message.answer(f'Ключевые слова для артикула\n\n'
+                                 f'{data["articles"][0]}', parse_mode="HTML")
+        except:
+            await message.answer('Кол-во выкупов каждого артикула должно быть цифрами')
+        return
+    elif 'search_keys' not in data.keys():
+        search_keys = msg
+
+        data['search_keys'] = [search_keys]
+        await state.set_data(data)
+        if len(data['articles']) > 1:
+            await message.answer(f'Ключевые слова для артикула\n\n'
+                                 f'{data["articles"][1]}', parse_mode="HTML")
+        else:
+            await message.answer('Сколько комментариев нужно оставить на каждый артикул')
+        return
+    elif len(data['search_keys']) < len(data['articles']):
+        search_keys = msg
+
+        data['search_keys'] += [search_keys]
+        await state.set_data(data)
+        print(len(data['search_keys']), len(data['articles']))
+        if len(data['search_keys']) == len(data['articles']):
+            await message.answer('Сколько комментариев нужно оставить на каждый артикул')
+        else:
+            await message.answer(f'Ключевые слова для артикула\n\n'
+                                 f'{data["articles"][len(data["search_keys"])]}', parse_mode="HTML")
+        return
+    elif 'numbers_of_comments' not in data.keys():
+        numbers_of_comments = msg.replace("\n", " ").strip().split(" ")
+
+        try:
+            if len(numbers_of_comments) == 1:
+                numbers_of_comments = [int(numbers_of_comments[0]) for _ in range(len(data['articles']))]
+            else:
+                numbers_of_comments = [int(number_of_comments) for number_of_comments in numbers_of_comments]
+
+            data['numbers_of_comments'] = numbers_of_comments
+            await state.set_data(data)
+
+            await message.answer(f'<i>Каждый с новой строчки</i>\n\n'
+                                 f'Комментарии для артикула\n\n'
+                                 f'{data["articles"][0]} <b>{data["search_keys"][0]}</b>', parse_mode="HTML")
+        except:
+            await message.answer('Кол-во комментариев должно быть цифрами')
+        return
+    elif 'comments' not in data.keys():
+        comments = msg.strip().split("\n")
+
+        data['comments'] = [comments]
+        await state.set_data(data)
+
+        if len(data['articles']) > 1:
+            await message.answer(f'<i>Каждый с новой строчки</i>\n\n'
+                                 f'Комментарии для артикула\n\n'
+                                 f'{data["articles"][1]} <b>{data["search_keys"][1]}</b>', parse_mode="HTML")
+        else:
+            await message.answer(f'Сколько делать выкупов в день?')
+        return
+    elif len(data['comments']) < len(data['articles']):
+        comments = msg.strip().split("\n")
+
+        data['comments'] += [comments]
+        await state.set_data(data)
+
+        if len(data['comments']) == len(data['articles']):
+            await message.answer(f'Сколько делать выкупов в день?')
+        else:
+            await message.answer(f'<i>Каждый с новой строчки</i>\n\n'
+                                 f'Комментарии для артикула\n\n'
+                                 f'{data["articles"][len(data["comments"])]} <b>{data["search_keys"][len(data["comments"])]}</b>',
+                                 parse_mode="HTML")
+        return
+    elif 'bought_per_day' not in data.keys():
+        try:
+            bought_per_day = int(msg)
+
+            data['bought_per_day'] = bought_per_day
+            await state.set_data(data)
+
+            await message.answer(f'Какой бюджет?')
+        except:
+            await message.answer(f'Количество выкупов должно быть цифрой')
+        return
+    elif 'budget' not in data.keys():
+        try:
+            budget = int(msg)
+
+            data['budget'] = budget
+            await state.set_data(data)
+        except:
+            await message.answer(f'Бюджет должен быть цифрой')
+
+    data['id'] = data['order_name']
+    del data['order_name']
+    data['remaining_budget'] = data['budget']
+    data['start_datetime'] = datetime.now()
+    try:
+        await States.ADMIN.set()
+        OrderOfOrders(**data).insert()
+        await message.answer('Заказ создан')
+    except:
+        await message.answer('Не удалось создать заказ')
+
+
+@dp.callback_query_handler(state=States.WATCH_ORDER)
+async def watch_orders_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
+    id = str(call.message.chat.id)
+    msg = call.data
+
+    if msg == 'Активные':
+        orders = OrdersOfOrders.load()
+        for order in orders:
+            res_msg = f"Заказ {order.id}\n" \
+                      f"От: {order.start_datetime}\n\n" \
+                      f"ИНН: {order.inn}\n" \
+                      f"Бюджет: {order.budget}\n" \
+                      f"Оставшийся бюджет: {order.remaining_budget}\n" \
+                      f"Необходимо выкупать каждый день: {order.bought_per_day}\n\n"
+            for i, article in enumerate(order.articles):
+                res_msg += f"Артикул {article}\n" \
+                           f"Кол-во необходимых выкупов: {order.quantities_to_bought[i]}\n" \
+                           f"Кол-во уже выкуполеных: {order.quantities_bought[i]}\n" \
+                           f"Ключевые слова: {order.search_keys[i]}\n" \
+                           f"Оставлено комментариев: {len(order.left_comments[i]) if order.left_comments else 0}\n" \
+                           f"Осталось комментариев: {len(order.unused_comments[i])}\n\n"
+
+            await call.message.answer(res_msg)
+    elif msg == 'По ИНН':
+        orders = OrdersOfOrders.load()
 
 @dp.message_handler(state=States.PUP_ADDRESSES_CONTINUE)
 async def pup_addresses_continue_handler(message: types.Message):
