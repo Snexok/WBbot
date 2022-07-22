@@ -1,4 +1,5 @@
 # Python Modules
+from asyncio import sleep
 from datetime import datetime
 import io
 from random import random
@@ -34,8 +35,8 @@ ADMIN_BTNS = ['🏡 распределить адреса по ботам 🏡',
 
 API_TOKEN = config['tokens']['telegram']
 # Initialize bot and dispatcher
-bot = Bot(token=API_TOKEN)
-dp = Dispatcher(bot, storage=MemoryStorage())
+tg_bot = Bot(token=API_TOKEN)
+dp = Dispatcher(tg_bot, storage=MemoryStorage())
 
 
 # States
@@ -61,6 +62,7 @@ class States(StatesGroup):
     EXCEPTED_ORDERS_LIST = State()
     EXCEPTED_ORDERS_LIST_CHANGE = State()
     COLLECT_ORDERS = State()
+    AUTH_PARTNER = State()
 
 
 @dp.message_handler(text='◄ Назад', state="*")
@@ -363,6 +365,11 @@ async def admin_handler(message: types.Message):
         await States.TO_WL.set()
         markup = get_markup('admin_add_user')
         await message.answer('Выберите способ', reply_markup=markup)
+    elif "💼 авторизоваться в партнёрку 💼" in msg:
+        await States.AUTH_PARTNER.set()
+        markup = get_markup('only_back')
+        await message.answer('Введите номер телефона в формате 9XXXXXXX\n'
+                             'Сообщение на повторную отправку придёт автоматически', reply_markup=markup)
     elif "🕙 проверить ожидаемое 🕑" in msg:
 
         orders = Orders.load(active=True, pred_end_date=datetime.now())
@@ -483,6 +490,38 @@ async def inside_handler(message: types.Message):
         await admin_handler(message)
         return
 
+@dp.message_handler(state=States.AUTH_PARTNER, content_types=['text'])
+async def inside_handler(message: types.Message, state: FSMContext):
+    msg = message.text
+    id = str(message.chat.id)
+    state_data = await state.get_data()
+    print(state_data)
+    print('number: ', state_data.get('number'))
+    if state_data.get('number') == None:
+        number = str(int(msg))
+        state_data['number'] = number
+        await state.set_data(state_data)
+    else:
+        number = state_data['number']
+
+    try:
+        # проверяем код
+        code = str(int(msg))
+    except:
+        await message.answer('Суда нужно вводить код\n'
+                             'Код должен быть цифрами')
+        return
+    if state_data.get("driver") == None:
+        bot = Partner()
+        await bot.auth(number)
+        await message.answer('Ожидайте код')
+        state_data['driver'] = bot.driver
+        await state.set_data(state_data)
+
+
+
+
+
 
 @dp.callback_query_handler(state=States.RUN_BOT)
 async def run_bot_callback_query_handler(call: types.CallbackQuery):
@@ -551,7 +590,7 @@ async def collect_orders_callback_query_handler(call: types.CallbackQuery):
 
     await call.message.edit_text(f'Началась сборка самовыкупов по {ie}')
     if id != "794329884":
-        await bot.send_message("794329884", f'Началась сборка самовыкупов по {ie}')
+        await tg_bot.send_message("794329884", f'Началась сборка самовыкупов по {ie}')
 
     res = await Partner().collect_orders(inn)
     res_msg = ''
@@ -563,7 +602,7 @@ async def collect_orders_callback_query_handler(call: types.CallbackQuery):
 
     await call.message.answer(res_msg + f'Закончилась сборка самовыкупов по {ie}')
     if id != "794329884":
-        await bot.send_message("794329884", res_msg + f'Закончилась сборка самовыкупов по {ie}')
+        await tg_bot.send_message("794329884", res_msg + f'Закончилась сборка самовыкупов по {ie}')
 
 
 @dp.callback_query_handler(state=States.EXCEPTED_ORDERS_LIST)
@@ -720,9 +759,9 @@ async def address_distribution_handler(message: types.Message):
         name = bot_data[0]
         new_addresses = bot_data[1:]
 
-        bot = Bots_model.load(name=name)
-        bot.append(addresses=new_addresses)
-        bot.update()
+        wb_bot = Bots_model.load(name=name)
+        wb_bot.append(addresses=new_addresses)
+        wb_bot.update()
 
         for address in new_addresses:
             address = Addresses.load(address=address)
