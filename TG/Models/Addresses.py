@@ -5,7 +5,7 @@ class Address_Model(Model):
     COLUMNS = ["id", "address", "tg_id", "added_to_bot", "checked"]
     table_name = 'addresses'
 
-    def __init__(self, id=0, address='', tg_id='', added_to_bot=False, checked=False):
+    def __init__(self, id=1, address='', tg_id='', added_to_bot=False, checked=False):
         super().__init__()
         self.id = id
         self.address = address

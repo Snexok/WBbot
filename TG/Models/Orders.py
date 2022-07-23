@@ -111,3 +111,24 @@ class Orders_Model(Model):
         res = cls.execute(path, cls.fetchall)
         res = res[0][0]
         return res
+
+    @classmethod
+    def load_check_state(cls, pup_tg_id):
+        path = f"SELECT pup_address, statuses, articles FROM {cls.table_name} WHERE pup_tg_id = '{str(pup_tg_id)}'"
+
+        print(path)
+        orders = cls.format_check_state(cls.execute(path, cls.fetchall))
+
+        return orders
+
+    @classmethod
+    def format_check_state(cls, data):
+        res = []
+        for d in data:
+            obj = cls.single_model(pup_address=d[0], statuses=d[1], articles=d[2])
+            res += [obj]
+
+        if res:
+            return res
+        else:
+            return False

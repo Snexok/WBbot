@@ -1,6 +1,6 @@
 from datetime import date, datetime, timedelta
 
-from selenium.webdriver import ActionChains
+from selenium.webdriver import ActionChains, Keys
 from selenium.webdriver.common.by import By
 import pickle
 from asyncio import sleep
@@ -368,3 +368,11 @@ class Partner:
             await sleep(1)
             self.driver.close()
         self.driver.switch_to.window(self.driver.window_handles[0])
+
+    async def auth(self, number):
+        self.browser.open_site('https://seller.wildberries.ru/')
+        number_input = WebDriverWait(self.driver, 60).until(
+            lambda d: d.find_element(By.XPATH, "//input[contains(@class, 'Login-phone')]"))
+        number_input.send_keys(number)
+        await sleep(1)
+        number_input.send_keys(Keys.ENTER)

@@ -1,5 +1,6 @@
 # Python Modules
 from datetime import datetime, timedelta
+from asyncio import sleep
 import io
 from random import random
 
@@ -163,12 +164,113 @@ async def main_handler(message: types.Message):
                 return
     elif user.role in "PUP":
         if "📊 статистика 📊" in msg:
-            await message.answer('Статистика для ПВЗ')
-            orders = Orders_Model.load_stat(pup_tg_id=id)
-            msg += "\nЗа месяц: \n" \
-                   f"Кол-во заказов: {sum([sum(order.quantities) for order in orders])} \n" \
-                   f"Сумма оборота: {sum([order.total_price for order in orders])} \n"
-            await message.answer(msg)
+            # orders = Orders.load_stat(pup_tg_id="791436094")
+            orders = Orders.load_stat(pup_tg_id=id)
+            if orders:
+                msg = "📊 <b>Статистика за месяц:</b> 📅\n\n"
+
+                total_price_str = str(sum([order.total_price for order in orders]))
+                total_price = ''.join([p + ' ' if (len(total_price_str) - i) % 3 == 1 else p for i, p in enumerate(total_price_str)])
+                msg += f"<b>Оборот:</b> {total_price}₽\n" \
+                       f"<b>Заказы:</b> {sum([sum(order.quantities) for order in orders])} 📦\n"
+
+                addresses_list = list(set(order.pup_address for order in orders))
+                cities_list = list(set(order.pup_address.split(",")[0] for order in orders))
+
+                stat = []
+                for i, address in enumerate(addresses_list):
+                    stat += [{}]
+                    stat[i]['cnt'] = 0
+                    stat[i]['total_price'] = 0
+                    stat[i]['fbo_cnt'] = 0
+
+                    for order in orders:
+                        if order.pup_address == address:
+                            stat[i]['address'] = address
+                            stat[i]['total_price'] += order.total_price
+                            stat[i]['cnt'] += 1
+                            print(order.statuses)
+                            if "FBO" in order.statuses:
+                                stat[i]['fbo_cnt'] += sum(1 if status == "FBO" else 0 for status in order.statuses)
+
+                stat = sorted(stat, key=lambda o: o['total_price'], reverse=True)
+
+                # msg += "\n📫 <b>На каждый адрес</b> 📫\n"
+                for city in cities_list:
+                    msg += f"\n🏬 <u><b>{city.title()}:</b></u>\n"
+                    for s in stat:
+                        if city in s['address']:
+                            total_price_str = str(s['total_price'])
+                            total_price = ''.join([p+' ' if (len(total_price_str)-i) % 3 == 1 else p for i, p in enumerate(total_price_str)])
+
+                            msg += f"\n📫 <b>{','.join(s['address'].split(',')[1:]).title()}:</b>\n" \
+                                   f"<b>Оборот:</b> {total_price}₽\n" \
+                                   f"<b>Заказы:</b> {s['cnt']} 📦\n"
+            else:
+                msg = "<b>На ваши ПВЗ еще не было заказов в этом месяце</b>"
+
+            await message.answer(msg, parse_mode="HTML")
+            return
+        elif "📓 проверить пвз 📓" in msg:
+            # orders = Orders.load_check_state(pup_tg_id="791436094")
+            orders = Orders.load_check_state(pup_tg_id=id)
+            if orders:
+                msg = "📓 <b>Состояния ПВЗ</b> 📓\n\n"
+
+                addresses_list = list(set(order.pup_address for order in orders))
+                cities_list = list(set(order.pup_address.split(",")[0] for order in orders))
+
+                is_fbos_cnt = 0
+
+                stat = []
+                for i, address in enumerate(addresses_list):
+                    stat += [{}]
+                    stat[i]['cnt'] = 0
+                    stat[i]['fbo_cnt'] = 0
+                    stat[i]['articles'] = []
+                    for order in orders:
+                        if order.pup_address == address:
+                            stat[i]['address'] = address
+                            stat[i]['cnt'] += 1
+                            print("FBO" in order.statuses, order.statuses)
+                            if "FBO" in order.statuses:
+                                is_fbos_cnt += 1
+                                is_fbos = [1 if status == "FBO" else 0 for status in order.statuses]
+                                stat[i]['fbo_cnt'] += sum(is_fbos)
+                                for j, is_fbo in enumerate(is_fbos):
+                                    if is_fbo:
+                                        in_articles = [order.articles[j] in article for article in stat[i]['articles']]
+                                        if any(in_articles):
+                                            index = in_articles.index(True)
+                                            splited = stat[i]['articles'][index].split(' ')
+                                            stat[i]['articles'][index] = splited[0] + " " + str(int(splited[1])+1)
+                                        else:
+                                            stat[i]['articles'] += [order.articles[j] + " 1"]
+                if is_fbos_cnt:
+                    stat = sorted(stat, key=lambda o: o['fbo_cnt'], reverse=True)
+
+                    # msg += "\n📫 <b>Товары физически на ПВЗ</b> 📫\n"
+                    for city in cities_list:
+                        _msg = f"\n🏬 <u><b>{city.title()}:</b></u>\n"
+
+                        is_have_fbo_cnt = False
+                        for s in stat:
+                            if city in s['address']:
+                                if s['fbo_cnt']:
+                                    is_have_fbo_cnt = True
+                                    _msg += f"\n📫 <b>{','.join(s['address'].split(',')[1:]).title()}:</b>\n" \
+                                            f"<b>Товары физически на ПВЗ:</b> {s['fbo_cnt']} 📦\n"
+                                    _msg += f"<b>Артикул     кол-во</b>\n"
+                                    for article in s['articles']:
+                                        _msg += f"{'   '.join(article.split(' '))} шт.\n"
+                        if is_have_fbo_cnt:
+                            msg += _msg
+                else:
+                    msg = "<b>Для ваших ПВЗ еще не рассчитаны показатели</b>"
+            else:
+                msg = "<b>Для ваших ПВЗ еще не рассчитаны показатели</b>"
+
+            await message.answer(msg, parse_mode="HTML")
             return
     is_admin = Admin.is_admin(id)
     if is_admin:
@@ -248,22 +350,31 @@ async def admin_handler(message: types.Message):
         await States.TO_WL.set()
         markup = get_markup('admin_add_user')
         await message.answer('Выберите способ', reply_markup=markup)
+    elif "💼 авторизоваться в партнёрку 💼" in msg:
+        await States.AUTH_PARTNER.set()
+        markup = get_markup('only_back')
+        await message.answer('Введите номер телефона в формате 9XXXXXXX\n'
+                             'Сообщение на повторную отправку придёт автоматически', reply_markup=markup)
     elif "🕙 проверить ожидаемое 🕑" in msg:
-        await States.CHECK_WAITS.set()
-
         orders = Orders_Model.load(active=True)
-        for order in orders:
-            print(order)
-            is_order_wait_exist = BotsWait_Model.check_exist_order_wait(order.bot_name, order.id)
-            if not is_order_wait_exist:
-                bot_wait = BotWait_Model(bot_name=order.bot_name, event='delivery', start_datetime=datetime.now(),
-                              end_datetime=order.pred_end_date, wait=True, data=json.dumps('{"id": '+str(order.id)+'}'))
-                bot_wait.insert()
+        if orders:
+            await States.CHECK_WAITS.set()
             bots_name = []
-            if order.bot_name not in bots_name:
-                bots_name += [order.bot_name]
-        keyboard = get_keyboard('admin_bots', bots_name)
-        await message.answer('Выберите бота', reply_markup=keyboard)
+            for order in orders:
+                print(order)
+                is_order_wait_exist = BotsWait_Model.check_exist_order_wait(order.bot_name, order.id)
+                if not is_order_wait_exist:
+                    bot_wait = BotWait_Model(bot_name=order.bot_name, event='delivery', start_datetime=datetime.now(),
+                                end_datetime=order.pred_end_date, wait=True, data=json.dumps('{"id": '+str(order.id)+'}'))
+                    bot_wait.insert()
+                if order.bot_name not in bots_name:
+                    bots_name += [order.bot_name]
+            keyboard = get_keyboard('admin_bots', bots_name)
+            await message.answer('Выберите бота', reply_markup=keyboard)
+        else:
+            await States.ADMIN.set()
+            await message.answer('Все товары доставлены')
+        return
     elif '✉ проверить адреса ✉' in msg:
         res_message, state = Admin.check_not_checked_pup_addresses()
         markup = get_markup('admin_main', id=id)
@@ -296,16 +407,23 @@ async def bot_search_callback_query_handler(call: types.CallbackQuery):
     article = msg
     category = ''
     search_key = ''
-    if article in ['90086267', '90086484', '90086527']:
+    inn = ''
+    if article in ['90852969']:
         # category = 'Женщинам;Пляжная мода;Купальники'
-        search_key = 'купальник женский раздельный с высокой талией'
-    if article in ['90085903', '90398226']:
+        search_key = 'Купальник слитный женский белый'
+        inn = '381108544328'
+    if article in ['90086484']:
         # category = 'Женщинам;Пляжная мода;Купальники'
-        search_key = 'слитный купальник женский утягивающий'
+        search_key = 'Купальник раздельный'
+        inn = '381108544328'
+    if article in ['90633439']:
+        # category = 'Женщинам;Пляжная мода;Купальники'
+        search_key = 'Женский раздельный купальник без пуш ап'
+        inn = '381108544328'
 
     await States.ADMIN.set()
 
-    orders = [[article, search_key, category, "1", "1", "381108544328"]]
+    orders = [[article, search_key, category, "1", "1", inn]]
     await call.message.edit_text(f'Начался поиск артикула {article}')
 
     res_msg = ''
@@ -436,6 +554,36 @@ async def plan_bot_search_message_handler(message: types.Message, state: FSMCont
         bot_wait.insert()
     except:
         await message.answer('Введите цифру')
+@dp.message_handler(state=States.AUTH_PARTNER, content_types=['text'])
+async def inside_handler(message: types.Message, state: FSMContext):
+    msg = message.text
+    id = str(message.chat.id)
+    state_data = await state.get_data()
+    print(state_data)
+    print('number: ', state_data.get('number'))
+    if state_data.get('number') == None:
+        number = str(int(msg))
+        state_data['number'] = number
+        await state.set_data(state_data)
+    else:
+        number = state_data['number']
+
+    try:
+        # проверяем код
+        code = str(int(msg))
+    except:
+        await message.answer('Суда нужно вводить код\n'
+                             'Код должен быть цифрами')
+        return
+    if state_data.get("driver") == None:
+        bot = Partner()
+        await bot.auth(number)
+        await message.answer('Ожидайте код')
+        state_data['driver'] = bot.driver
+        await state.set_data(state_data)
+
+
+
 
 
 
@@ -509,7 +657,7 @@ async def collect_orders_callback_query_handler(call: types.CallbackQuery):
 
     await call.message.edit_text(f'Началась сборка самовыкупов по {ie}')
     if id != "794329884":
-        await bot.send_message("794329884", f'Началась сборка самовыкупов по {ie}')
+        await tg_bot.send_message("794329884", f'Началась сборка самовыкупов по {ie}')
 
     res = await Partner().collect_orders(inn)
     res_msg = ''
@@ -521,7 +669,7 @@ async def collect_orders_callback_query_handler(call: types.CallbackQuery):
 
     await call.message.answer(res_msg + f'Закончилась сборка самовыкупов по {ie}')
     if id != "794329884":
-        await bot.send_message("794329884", res_msg + f'Закончилась сборка самовыкупов по {ie}')
+        await tg_bot.send_message("794329884", res_msg + f'Закончилась сборка самовыкупов по {ie}')
 
 
 @dp.callback_query_handler(state=States.EXCEPTED_ORDERS_LIST)
@@ -601,11 +749,11 @@ async def excepted_orders_change_handler(message: types.Message, state: FSMConte
 
 @dp.message_handler(state=States.TO_WL)
 async def to_whitelist_handler(message: types.Message):
-    msg = message.text.lower()
+    msg = message.text
     id = str(message.chat.id)
-    if msg in 'по username':
+    if msg.lower() in 'по username':
         await message.answer("Введите username пользователя")
-    elif msg in 'сгененрировать ключ':
+    elif msg.lower() in 'сгененрировать ключ':
         secret_key = Admin.generate_secret_key()
 
         Whitelist_Model(secret_key=secret_key).insert()
@@ -621,7 +769,7 @@ async def to_whitelist_handler(message: types.Message):
         await States.ADMIN.set()
         markup = get_markup('admin_main', id=id)
         await message.answer(f"Пользователь с username {msg} добавлен", reply_markup=markup)
-    elif msg in ADMIN_BTNS and Admin.is_admin(id):
+    elif msg.lower() in ADMIN_BTNS and Admin.is_admin(id):
         await States.ADMIN.set()
         await admin_handler(message)
         return
@@ -676,9 +824,9 @@ async def address_distribution_handler(message: types.Message):
         name = bot_data[0]
         new_addresses = bot_data[1:]
 
-        bot = Bots_model.load(name=name)
-        bot.append(addresses=new_addresses)
-        bot.update()
+        wb_bot = Bots_model.load(name=name)
+        wb_bot.append(addresses=new_addresses)
+        wb_bot.update()
 
         for address in new_addresses:
             address = Address_Model().load(address=address)

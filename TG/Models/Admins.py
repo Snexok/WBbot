@@ -5,7 +5,7 @@ class Admin_Model(Model):
     COLUMNS = ['id', 'name', 'sentry']
     table_name = 'admins'
 
-    def __init__(self, id=0, name='', sentry=False):
+    def __init__(self, id=1, name='', sentry=False):
         super().__init__()
         self.id = id
         self.name = name

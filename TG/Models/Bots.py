@@ -1,11 +1,11 @@
 from TG.Models.Model import Model
 
 
-class Bot_Model(Model):
-    COLUMNS = ['id', 'name', 'addresses', 'number', 'username', 'type', 'inns', 'status', 'author']
+class Bot(Model):
+    COLUMNS = ['id', 'name', 'addresses', 'number', 'username', 'type', 'inns', 'status', 'author', 'balance']
     table_name = 'bots'
 
-    def __init__(self, id='0', name='', addresses=[], number='', username='', type='', inns=[], status='', author=''):
+    def __init__(self, id='0', name='', addresses=[], number='', username='', type='', inns=[], status='', author='', balance=''):
         super().__init__()
         self.id = id
         self.name = name
@@ -16,6 +16,7 @@ class Bot_Model(Model):
         self.inns = inns
         self.status = status
         self.author = author
+        self.balance = balance
 
 class Bots_Model(Model):
     single_model = Bot_Model
@@ -39,14 +40,16 @@ class Bots_Model(Model):
         return data
 
     @classmethod
-    def load_must_free(cls, limit=None, _type=None):
+    def load_must_free(cls, limit=None, _type=None, inn=None):
         path = f"SELECT b.*, coalesce (o.active_cnt, 0) as active_cnt FROM  " \
-               f"(SELECT * FROM bots WHERE type = '{_type}' AND status = 'FREE') b " \
+               f"(SELECT * FROM bots WHERE type = '{_type}' AND status = 'FREE' AND "+(f"'{inn}' = ANY(inns)" if inn else "inns is null")+") b " \
                f"LEFT JOIN " \
                f"(SELECT bot_name,COUNT(active) active_cnt FROM orders WHERE active=TRUE GROUP BY bot_name, active ) o " \
                f"ON b.name=o.bot_name " \
                f"ORDER BY active_cnt " \
                f"LIMIT {limit}"
+
+        print(path)
 
         data = cls.execute(path, cls.fetchall)
         data = [d[:-1] for d in data]
@@ -69,6 +72,6 @@ class Bots_Model(Model):
 
 
 if __name__ == '__main__':
-    bots= Bots_Model.load_must_free(6, 'WB')
+    bots= Bots.load_must_free(31, 'WB', '381108544328')
     for bot in bots:
         print(bot)
