@@ -23,8 +23,8 @@ class ExceptedOrders(Model):
     def load(cls, inn=None):
         path = f"SELECT * FROM {cls.table_name}"
         if inn:
-            path += f" WHERE inn='{inn}', "
+            path += f" WHERE inn='{inn}' AND "
 
-            path = path[:-2]
+            path = path[:-5]
 
         return cls.format_data(cls.execute(path, cls.fetchall))

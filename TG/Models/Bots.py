@@ -23,13 +23,15 @@ class Bots(Model):
     table_name = single_model.table_name
 
     @classmethod
-    def load(cls, name=None, limit=None, _type=None):
+    def load(cls, name=None, limit=None, _type=None, balance=None):
         path = f"SELECT * FROM {cls.table_name} "
 
         if name:
-            path += f"WHERE name='{name}' "
+            path += f"WHERE name = '{name}' "
         if _type:
-            path += f"WHERE type='{_type}' "
+            path += f"WHERE type = '{_type}' "
+        if balance:
+            path += f"WHERE balance > {str(balance)} "
         if limit:
             path += f"LIMIT {str(limit)}"
 
@@ -40,7 +42,15 @@ class Bots(Model):
         return data
 
     @classmethod
-    def load_must_free(cls, limit=None, _type=None, inn=None):
+    def load_with_balance(cls):
+        path = f"SELECT * FROM {cls.table_name} WHERE balance > 0"
+
+        data = cls.format_data(cls.execute(path, cls.fetchall))
+
+        return data
+
+    @classmethod
+    def load_must_free(cls, limit=None, _type=None inn=None):
         path = f"SELECT b.*, coalesce (o.active_cnt, 0) as active_cnt FROM  " \
                f"(SELECT * FROM bots WHERE type = '{_type}' AND status = 'FREE' AND "+(f"'{inn}' = ANY(inns)" if inn else "inns is null")+") b " \
                f"LEFT JOIN " \

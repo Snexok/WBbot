@@ -4,6 +4,8 @@ from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
 import random
 
+from selenium.webdriver.support.wait import WebDriverWait
+
 from WB.Card import Card
 
 
@@ -12,8 +14,13 @@ class Basket():
         self.driver = browser.driver
         self.card = Card(self.driver)
 
-    def check_card(self, card):
-        card.click()
+    def check_card(self, article):
+        try:
+            WebDriverWait(self.driver, 5).until(
+                lambda d: d.find_elements(By.XPATH, f'//a[contains(@href, "{article}")]'))
+            return True
+        except:
+            return False
 
     # Рефакторинг под множество артикулов
     def delete_other_cards_in_basket(self, articles):
@@ -94,16 +101,16 @@ class Basket():
             self.driver.find_element(By.XPATH,
                                      '//h2[text()="Способ оплаты"]/../../div[text()="Выбрать способ оплаты"]').click()
             sleep(1)
-            self.driver.find_element(By.XPATH, f'//span[text()="{payment_method}"]').click()
+            self.driver.find_element(By.XPATH, f'//span[contains(text(),"{payment_method}")]').click()
             sleep(2)
             self.driver.find_element(By.XPATH, '//button[contains(@class,"popup__btn-main")]').click()
             sleep(2)
         except:
-            if self.driver.find_element(By.XPATH, '//span[@class="pay__text"]').text == 'Оплата по QR-коду':
+            if self.driver.find_element(By.XPATH, '//span[@class="pay__text"]').text == payment_method:
                 return
             self.driver.find_element(By.XPATH, '//h2[text()="Способ оплаты"]/../button/span[text()="Изменить"]').click()
             sleep(1)
-            self.driver.find_element(By.XPATH, f'//span[text()="{payment_method}"]').click()
+            self.driver.find_element(By.XPATH, f'//span[contains(text(),"{payment_method}")]').click()
             sleep(2)
             self.driver.find_element(By.XPATH, '//button[contains(@class,"popup__btn-main")]').click()
             sleep(2)
@@ -118,6 +125,9 @@ class Basket():
         self.save_qr_code(svg, file_name)
 
         return file_name
+
+    def pay(self):
+        self.driver.find_element(By.XPATH, '//button[text()="                Оплатить заказ                "]').click()
 
     def save_qr_code(self, svg, file_name):
         svg.screenshot(file_name)

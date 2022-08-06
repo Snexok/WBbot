@@ -21,19 +21,29 @@ class BotsWait(Model):
     table_name = single_model.table_name
 
     @classmethod
-    def load(cls, bot_name=None, event=None, limit=None):
-        path = f"SELECT * FROM {cls.table_name} WHERE"
+    def load(cls, bot_name=None, event=None, limit=None, wait=None):
+        path = f"SELECT * FROM {cls.table_name} WHERE "
         if bot_name:
-            path += f" bot_name='{bot_name}', "
-        elif event:
-            path += f" event='{event}', "
+            path += f"bot_name='{bot_name}' AND "
+        if event:
+            path += f"event='{event}' AND "
+        if type(wait) == bool:
+            wait = "TRUE" if wait else "FALSE"
+            path += f"wait={wait} AND "
 
-        path = path[:-2]
+        path = path[:-5]
 
         if limit:
             path += f" LIMIT {str(limit)}"
 
-        return cls.format_data(cls.execute(path, cls.fetchall))
+        print(path)
+
+        data = cls.format_data(cls.execute(path, cls.fetchall))
+
+        if bot_name:
+            if data:
+                return data[0]
+        return data
 
     @classmethod
     def delete(cls, bot_name, event):

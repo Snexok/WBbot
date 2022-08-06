@@ -63,6 +63,7 @@ class States(StatesGroup):
     EXCEPTED_ORDERS_LIST_CHANGE = State()
     COLLECT_ORDERS = State()
     AUTH_PARTNER = State()
+    RE_BUY = State()
 
 
 @dp.message_handler(text='◄ Назад', state="*")
@@ -361,6 +362,12 @@ async def admin_handler(message: types.Message):
             markup = get_markup('admin_main', id=id)
             await message.answer('----------🎉Поздравляю!🎉--------\n'
                                  '💲Вы выкупили все заказы!💲', reply_markup=markup)
+    elif "💸 повторный выкуп 💸" in msg:
+        await States.RE_BUY.set()
+        tg_bots = Bots_model.load_with_balance()
+        bots_name = [f"{tg_bots[i].name} {tg_bots[i].balance} ₽" for i in range(len(tg_bots))]
+        markup = get_keyboard('admin_bots', bots_name)
+        await message.answer('Выберите бота', reply_markup=markup)
     elif "➕ добавить пользователя ➕" in msg:
         await States.TO_WL.set()
         markup = get_markup('admin_add_user')
@@ -745,6 +752,107 @@ async def bot_buy_handler(message: types.Message):
 
     await message.answer('Выкуп завершен')
 
+@dp.message_handler(state=States.RE_BUY)
+async def re_bot_buy_handler(message: types.Message, state: FSMContext):
+    id = str(message.chat.id)
+    msg = message.text
+
+    # Первым был введён артикул, всё последующее - это ключевое слово
+    article = msg.split(' ')[0]
+    search_key = msg[len(article)+1:]
+
+    # Получаем имя бота, которые было указано в предыдущем шаге обработки операции
+    data = await state.get_data()
+    bot_name = data['bot_name']
+
+    print(bot_name, article, search_key)
+
+    # Возвращаем состояние на обработку команд для Адимина,
+    # чтобы всё введенное после, снова обрабатывалось обработчиком админа
+    await States.ADMIN.set()
+
+    # Получаем текуще активное событие
+    bot_wait = BotsWait.load(bot_name=bot_name, wait=True)
+    print(bot_wait)
+
+    # Определяем необходимость поиска или только выкуп
+    is_go_search = True
+    is_go_buy = True
+    if bot_wait:
+        if bot_wait.event == "RE_FOUND":
+            is_go_search = False
+            is_go_buy = True
+        try:
+            int(article)
+        except:
+            is_go_search = False
+            is_go_buy = False
+
+    print("is_go_search = ", is_go_search, "\nis_go_buy = ", is_go_buy)
+
+    # Поиск
+    if is_go_search:
+        # формируем данные о заказе
+        orders = [[article, search_key, '', "1", "1", "381108544328"]]
+        await message.answer(f'Начался поиск артикула {article}')
+
+        # собираем все данные о конкретных товарах
+        res_msg = ''
+        if DEBUG:
+            run_bot = asyncio.to_thread(Admin.pre_run, orders)
+            data_for_bots = await asyncio.gather(run_bot)
+            data_for_bots = data_for_bots[0]
+        else:
+            try:
+                run_bot = asyncio.to_thread(Admin.pre_run, orders)
+                data_for_bots = await asyncio.gather(run_bot)
+                data_for_bots = data_for_bots[0]
+            except:
+                await message.answer(f'❌ Поиск артикула {article} упал на анализе карточки ❌')
+
+        # Запускаем поиск заказа
+        if DEBUG:
+            msgs = await Admin.bot_re_search(bot_name, data_for_bots)
+        else:
+            try:
+                msgs = await Admin.bot_re_search(bot_name, data_for_bots)
+            except:
+                await message.answer(f'❌ Поиск артикула {article} упал ❌')
+        try:
+            for msg in msgs:
+                res_msg += msg + "\n"
+        except:
+            pass
+
+        res_msg += '\n' + f'Поиск артикула {article} завершен'
+
+        await message.answer(res_msg)
+
+    # Выкуп
+    if is_go_buy:
+        await message.answer('Выкуп начался')
+
+        # Если до этого не существовало активного события, получаем текуще активное событие по боту
+        if not bot_wait:
+            bot_wait = BotsWait.load(bot_name=bot_name, wait=True)
+
+        # запускаем выкуп
+        await Admin.bot_re_buy(message, bot_wait)
+
+        res_msg = f"Завершен выкуп по боту: {bot_name}"
+
+        await message.answer(res_msg)
+
+@dp.callback_query_handler(state=States.RE_BUY)
+async def excepted_orders_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
+    id = str(call.message.chat.id)
+    msg = call.data
+    print(msg)
+
+    bot_name, balance, _ = msg.split(" ")
+    await state.set_data({'bot_name': bot_name})
+
+    await call.message.answer('Укажите артикул и ключевую фразу для бота')
 
 @dp.message_handler(state=States.ADMIN_ADDRESS_DISTRIBUTION)
 async def address_distribution_handler(message: types.Message):

@@ -1,5 +1,6 @@
 import asyncio
 import random
+from asyncio import sleep
 
 import ujson as ujson
 
@@ -68,7 +69,7 @@ class Admin:
             print(report)
             data = ujson.dumps(report)
             bot_wait = BotWait(bot_name=bots[i].data.name, event="FOUND", wait=True,
-                                start_datetime=datetime.now(), data=data)
+                               start_datetime=datetime.now(), data=data)
             bot_wait.insert()
 
             msgs += [f"✅ Собран заказ бота {report['bot_name']}✅\n"
@@ -83,6 +84,43 @@ class Admin:
         for bot_data in bots_data:
             bot_data.set(status="FOUND")
             bot_data.update()
+
+        return msgs
+
+    @classmethod
+    async def bot_re_search(cls, bot_name, data):
+        print("bot_search started")
+
+        bot_data = Bots_model.load(name=bot_name)
+
+        bot_data.set(status="SEARCH")
+        bot_data.update()
+
+        bot = Bot(data=bot_data)
+
+        bot.open_bot(manual=False)
+
+        run_bots = asyncio.to_thread(bot.search, data[0])
+        reports = await asyncio.gather(run_bots)
+
+        msgs = []
+        for i, report in enumerate(reports):
+            print(report)
+            data = ujson.dumps(report)
+            bot_wait = BotWait(bot_name=bot.data.name, event="RE_FOUND", wait=True,
+                               start_datetime=datetime.now(), data=data)
+            bot_wait.insert()
+
+            msgs += [f"✅ Собран заказ бота {report['bot_name']}✅\n"
+                     f"Артикулы {report['articles']}"]
+
+        print("bot_search ended")
+
+
+        del bot
+
+        bot_data.set(status="RE_FOUND")
+        bot_data.update()
 
         return msgs
 
@@ -160,7 +198,6 @@ class Admin:
                 else:
                     bot_wait.event = "PAID_LOSE"
                     await message.answer(f"❌ НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
-
                 bot_wait.end_datetime = datetime.now()
                 bot_wait.wait = False
                 bot_wait.data = []
@@ -169,7 +206,76 @@ class Admin:
                 bot_data.set(status="FREE")
                 bot_data.update()
 
+        return reports\
+
+    @staticmethod
+    async def bot_re_buy(message, bot_wait):
+        reports = []
+
+        report = bot_wait.data
+        # report = ujson.loads(bot_wait.data)
+
+        bot_name = bot_wait.bot_name
+        print("Bot Name _ ", bot_name)
+        bot_data = Bots_model.load(bot_name)
+
+        bot_data.set(status="BUYS")
+        bot_data.update()
+        bot = Bot(data=bot_data)
+
+        bot.open_bot(manual=False)
+        bot_wait.event = "CHOOSE_ADDRESS"
+
+        addresses = bot.data.addresses
+        post_place = random.choice(addresses if type(addresses) is list else [addresses])
+        report['post_place'] = post_place
+
+        number = Orders_Model.get_number()
+
+        bot_wait.event = "BUYS"
+
+        run_bot = asyncio.to_thread(bot.re_buy, report, post_place, number)
+        reports = await asyncio.gather(run_bot)
+        report = reports[0]
+
+        bot_wait.event = "PAID"
+
+        bot_wait.end_datetime = datetime.now()
+        bot_wait.wait = False
+        bot_wait.data = []
+        bot_wait.update()
+
+        if "FAIL" in bot_wait.event:
+            await message.answer('❌ Ошибка выкупа ❌')
+        else:
+            reports += [report]
+            if report['payment']:
+                print(report['payment_datetime'])
+                pup_address = Addresses.load(address=report['post_place'])
+                order = Order_Model(number=number, total_price=report['total_price'], services_price=50,
+                                    prices=report['prices'],
+                                    quantities=report['quantities'], articles=report['articles'],
+                                    pup_address=report['post_place'],
+                                    pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
+                                    bot_surname=report['bot_username'],
+                                    start_date=report['payment_datetime'], pred_end_date=report['pred_end_date'],
+                                    active=report['payment'] or TEST,
+                                    statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
+                order.insert()
+
+                await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"
+                                     f"Артикулы {report['articles']}\n\n"
+                                     f"Адрес доставки {report['post_place']}\n\n"
+                                     f"Время оплаты {report['payment_datetime']}")
+            else:
+                await message.answer(
+                    f"❌ НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
+
+            bot_data.set(status="FREE")
+            bot_data.update()
+
         return reports
+
     @classmethod
     def pre_run(cls, orders):
         additional_data = cls.get_additional_data(orders)
@@ -182,8 +288,9 @@ class Admin:
 
         for j, order in enumerate(orders):
             article, search_key, category, quantity, pvz_cnt, inn, additional_data = order
-            data_for_bots[j] += [{'article': article, 'search_key': search_key, 'category': category, 'quantity': quantity, 'inn': inn,
-                                  'additional_data': additional_data}]
+            data_for_bots[j] += [
+                {'article': article, 'search_key': search_key, 'category': category, 'quantity': quantity, 'inn': inn,
+                 'additional_data': additional_data}]
 
             # for i in range(max_bots):
             #     if pvz_cnt > 0:
