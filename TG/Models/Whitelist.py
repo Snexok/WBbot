@@ -1,7 +1,7 @@
 from TG.Models.Model import Model
 
 
-class Whitelist(Model):
+class Whitelist_Model(Model):
     COLUMNS = ["id", "tg_id", "username", "secret_key"]
     table_name = 'whitelist'
 

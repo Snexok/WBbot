@@ -1,7 +1,7 @@
 from TG.Models.Model import Model
 
 
-class Admin(Model):
+class Admin_Model(Model):
     COLUMNS = ['id', 'name', 'sentry']
     table_name = 'admins'
 
@@ -12,8 +12,8 @@ class Admin(Model):
         self.sentry = sentry
 
 
-class Admins(Model):
-    single_model = Admin
+class Admins_Model(Model):
+    single_model = Admin_Model
     table_name = single_model.table_name
 
     @classmethod

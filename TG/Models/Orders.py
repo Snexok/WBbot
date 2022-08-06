@@ -3,15 +3,16 @@ from datetime import datetime
 from TG.Models.Model import Model
 
 
-class Order(Model):
+class Order_Model(Model):
     COLUMNS = ['id', 'number', 'total_price', 'services_price', 'prices', 'quantities', 'articles',
                'pup_address', 'pup_tg_id', 'bot_name', 'bot_surname', 'start_date', 'pred_end_date', 'end_date',
-               'code_for_approve', 'active', 'statuses', 'inn', 'collected', 'commented']
+               'code_for_approve', 'active', 'statuses', 'inn', 'collected', 'commented', 'order_id']
     table_name = 'orders'
 
     def __init__(self, id=1, number=0, total_price=0, services_price=0, prices=[], quantities=[], articles=[],
                  pup_address='', pup_tg_id='', bot_name='', bot_surname='', start_date='', pred_end_date='',
-                 end_date='', code_for_approve='', active=True, statuses=[], inn=[], collected=False, commented=False):
+                 end_date='', code_for_approve='', active=True, statuses=[], inn=[], collected=False, commented=False,
+                 order_id=''):
         super().__init__()
         self.id = id
         self.number = number
@@ -33,6 +34,7 @@ class Order(Model):
         self.inn = inn
         self.collected = collected
         self.commented = commented
+        self.order_id = order_id
 
     def __dict__(self):
         return {'id': self.id, 'number': self.number, 'total_price': self.total_price,
@@ -41,11 +43,12 @@ class Order(Model):
                 'pup_address': self.pup_address, 'pup_tg_id': self.pup_tg_id, 'bot_name': self.bot_name,
                 'bot_surname': self.bot_surname, 'start_date': self.start_date, 'pred_end_date': self.pred_end_date,
                 'end_date': self.end_date, 'code_for_approve': self.code_for_approve, 'active': self.active,
-                'statuses': self.statuses, 'inn': self.inn, 'collected': self.collected, 'commented': self.commented}
+                'statuses': self.statuses, 'inn': self.inn, 'collected': self.collected, 'commented': self.commented,
+                'order_id': self.order_id}
 
 
-class Orders(Model):
-    single_model = Order
+class Orders_Model(Model):
+    single_model = Order_Model
     table_name = single_model.table_name
 
     @classmethod

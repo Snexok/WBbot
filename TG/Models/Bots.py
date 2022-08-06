@@ -1,7 +1,7 @@
 from TG.Models.Model import Model
 
 
-class Bot(Model):
+class Bot_Model(Model):
     COLUMNS = ['id', 'name', 'addresses', 'number', 'username', 'type', 'inns', 'status', 'author', 'balance']
     table_name = 'bots'
 
@@ -18,8 +18,8 @@ class Bot(Model):
         self.author = author
         self.balance = balance
 
-class Bots(Model):
-    single_model = Bot
+class Bots_Model(Model):
+    single_model = Bot_Model
     table_name = single_model.table_name
 
     @classmethod
@@ -56,11 +56,13 @@ class Bots(Model):
                f"LEFT JOIN " \
                f"(SELECT bot_name,COUNT(active) active_cnt FROM orders WHERE active=TRUE GROUP BY bot_name, active ) o " \
                f"ON b.name=o.bot_name " \
-               f"ORDER BY active_cnt LIMIT {limit}"
+               f"ORDER BY active_cnt " \
+               f"LIMIT {limit}"
 
         print(path)
 
         data = cls.execute(path, cls.fetchall)
+        print(data)
         data = [d[:-1] for d in data]
         data = cls.format_data(data)
 
@@ -70,7 +72,7 @@ class Bots(Model):
     def format_data(cls, data):
         bots = []
         for d in data:
-            bot = Bot(*d)
+            bot = Bot_Model(*d)
             bot.addresses = [address.replace(';', ',') for address in bot.addresses] if bot.addresses else []
             bots += [bot]
 
@@ -81,6 +83,6 @@ class Bots(Model):
 
 
 if __name__ == '__main__':
-    bots= Bots.load_must_free(31, 'WB', '381108544328')
+    bots= Bots_Model.load_must_free(31, 'WB', '381108544328')
     for bot in bots:
         print(bot)

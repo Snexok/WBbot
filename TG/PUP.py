@@ -2,8 +2,8 @@ from telegram import Update, ReplyKeyboardMarkup
 from telegram.ext import CallbackContext
 
 from TG.CONSTS import STATES, PUP_STATES
-from TG.Models.Addresses import Addresses, Address
-from TG.Models.Users import Users
+from TG.Models.Addresses import Addresses_Model, Address_Model
+from TG.Models.Users import Users_Model
 
 
 class PUP:
@@ -16,7 +16,7 @@ class PUP:
         id = str(update.effective_user.id)
         msg = update.message.text
 
-        user = Users.load(id)
+        user = Users_Model.load(id)
         pup_state = user.pup_state
 
         if msg.lower() == 'всё':
@@ -36,7 +36,7 @@ class PUP:
             user.append(addresses=new_addresses)
 
             for address in new_addresses:
-                Addresses.insert(Address(address=address, tg_id=id))
+                Addresses_Model.insert(Address_Model(address=address, tg_id=id))
 
             reply_keyboard = [
                 ['Всё']

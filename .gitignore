@@ -13,3 +13,4 @@ configs/*
 *.session
 bots_sessions/*
 configs/config.yaml
+chrome/*

@@ -9,9 +9,9 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 from aiogram import Bot as TG_Bot
 
-from TG.Models.Bots import Bots as Bots_model
-from TG.Models.Admins import Admins as Admins_model
-from TG.Models.Orders import Order, Orders
+from TG.Models.Bots import Bots_Model as Bots_model
+from TG.Models.Admins import Admins_Model as Admins_model
+from TG.Models.Orders import Order_Model, Orders_Model
 from WB.Pages.Basket import Basket
 from WB.Browser import Browser
 from WB.Pages.Catalog import Catalog
@@ -235,7 +235,7 @@ class Bot:
         else:
             return data
 
-    async def check_readiness(self, orders, message, wait_order_ended):
+    async def check_readiness(self, orders, message):
         bot = TG_Bot(token=API_TOKEN)
         sleep(1)
         # открываем страницу с заказами бота
@@ -247,6 +247,7 @@ class Bot:
             print("local_orders", _order)
         sleep(1)
 
+        admin = Admins_model().get_sentry_admin()
         for order in orders:
             print("local_orders[0].pup_address", local_orders[0].pup_address)
             print("order.pup_address", order.pup_address)
@@ -270,11 +271,15 @@ class Bot:
             print(statuses)
 
             if len(statuses) < len(order.articles):
-                await message.answer(f'Один из артикулов заказа {order.id} не был найден.\n '
-                                     f'Артикулы {str(order.articles)}')
+                msg = f'Один из артикулов заказа {order.id} не был найден.\n' \
+                      f'Артикулы {str(order.articles)}'
+                if message:
+                    await message.answer(msg)
+                else:
+                    await bot.send_message(admin.id, msg)
             else:
-                order.set(statuses=statuses)
-                order.set(code_for_approve=_order.code_for_approve)
+                order.statuses = statuses
+                order.code_for_approve = _order.code_for_approve
                 for i, status in enumerate(statuses):
                     if status in ["Готов к получению", "Отгружено по данным Продавца", 'Готов к выдаче', 'Прибыл на пункт выдачи']:
                         msg_pup = 'Заказ готов\n' + \
@@ -284,13 +289,11 @@ class Bot:
                                   f'Артикул: {order.articles[i]}'
                         msg_admin = msg_pup + '\n' + \
                                     f'Номер заказа: {order.number}\n' + \
-                                    f'Id заказа: {order.id}\n'
+                                    f'Id заказа: {order.id}\n' \
+                                    f'Имя бота: {self.data.name}\n'
 
-                        order.set(end_date=date.today())
-                        order.set(active=False)
-
-                        admin = Admins_model().get_sentry_admin()
-                        print(admin.id)
+                        order.end_date = date.today()
+                        order.active = False
                         await bot.send_message(admin.id, msg_admin, parse_mode="HTML")
                         if order.pup_tg_id:
                             await bot.send_message(order.pup_tg_id, msg_pup, parse_mode="HTML")
@@ -333,7 +336,7 @@ class Bot:
         orders = []
         sleep(2)
         for order_row in self.driver.find_elements(By.XPATH, '//div[@class="delivery-block__content"]'):
-            order = Order()
+            order = Order_Model()
             order.pup_address = order_row.find_element(By.XPATH,
                                                        './div/div/div[contains(@class, "delivery-address__info")]').text
             item_imgs = order_row.find_elements(By.XPATH, './div/ul/li/div/div/img')

@@ -5,6 +5,7 @@ create table bots_wait
 			primary key,
 	bot_name text,
 	event text,
+	sub_event text,
 	start_datetime timestamp,
 	end_datetime timestamp
 );

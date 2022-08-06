@@ -3,7 +3,7 @@ from datetime import datetime
 from TG.Models.Model import Model
 
 
-class ExceptedOrder(Model):
+class ExceptedOrder_Model(Model):
     COLUMNS = ['id', 'inn', 'order_number', 'start_datetime']
     table_name = 'excepted_orders'
 
@@ -15,8 +15,8 @@ class ExceptedOrder(Model):
         self.start_datetime = start_datetime
 
 
-class ExceptedOrders(Model):
-    single_model = ExceptedOrder
+class ExceptedOrders_Model(Model):
+    single_model = ExceptedOrder_Model
     table_name = single_model.table_name
 
     @classmethod

@@ -4,7 +4,7 @@ create table IF NOT EXISTS bots
 	name text,
 	addresses text[],
 	number text,
-	surname text
+	username text
 );
 
 alter table bots owner to postgres;

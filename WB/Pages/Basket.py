@@ -28,6 +28,8 @@ class Basket():
         while True:
             card_names = self.driver.find_elements(By.XPATH,
                                                    '//a[contains(@href, "catalog") and @class="good-info__title j-product-popup"]')
+
+
             card = card_names[random.choice(list(range(len(card_names))))]
             # if random.randint(0, 5) == 3:
             #     self.check_card(card)
@@ -42,8 +44,11 @@ class Basket():
             if len(card_names) <= len(articles):
                 card_names = [card.get_attribute('href')[catalog_url_len:catalog_url_len + 8]
                               for card in card_names]
+                # Могут встречаться артикулы с длинной 7, а не 8. Их вырезаем не корректно
+                card_names = [card_name.replace('/', '') for card_name in card_names]
                 card_names.sort()
                 articles.sort()
+                print(card_names, card_names != articles, articles)
                 if card_names != articles:
                     for card_name in card_names:
                         if card_name in articles:
@@ -70,11 +75,13 @@ class Basket():
             except:
                 self.driver.find_element(By.XPATH, '//button[text()="Выбрать другой адрес"]').click()
         sleep(2)
-        self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(Keys.CONTROL + "a")
-        self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(Keys.DELETE)
+        address_input = WebDriverWait(self.driver, 5).until(
+            lambda d: d.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]'))
+        address_input.send_keys(Keys.CONTROL + "a")
+        address_input.send_keys(Keys.DELETE)
         print(address)
-        self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(address)
-        self.driver.find_element(By.XPATH, '//input[@placeholder="Введите адрес"]').send_keys(Keys.ENTER)
+        address_input.send_keys(address)
+        address_input.send_keys(Keys.ENTER)
         sleep(2)
         self.driver.find_element(By.XPATH, '//ymaps[text()="Найти"]').click()
         sleep(2)

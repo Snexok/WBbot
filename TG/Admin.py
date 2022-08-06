@@ -2,13 +2,17 @@ import asyncio
 import random
 from asyncio import sleep
 
-import ujson as ujson
+import ujson
 
-from TG.Models.Addresses import Addresses
-from TG.Models.Admins import Admins as Admins_model
-from TG.Models.Bots import Bots as Bots_model
-from TG.Models.BotsWaits import BotWait, BotsWait
-from TG.Models.Orders import Order as Order_Model, Orders as Orders_Model
+from aiogram import Bot as TG_Bot
+
+from TG.Markups import get_markup, get_keyboard
+from TG.Models.Addresses import Addresses_Model
+from TG.Models.Admins import Admins_Model as Admins_Model
+from TG.Models.Bots import Bots_Model as Bots_Model
+from TG.Models.BotsWaits import BotWait_Model, BotsWait_Model
+from TG.Models.Orders import Order_Model as Order_Model, Orders_Model as Orders_Model
+from TG.States import States
 
 from WB.Bot import Bot
 
@@ -23,7 +27,7 @@ TEST = False
 class Admin:
     @staticmethod
     def is_admin(id):
-        if id in Admins_model.get_ids():
+        if id in Admins_Model.get_ids():
             return True
         else:
             return False
@@ -47,16 +51,14 @@ class Admin:
     #     #     loop.create_task(cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], pup_address.address, number, message))
 
     @classmethod
-    async def bot_search(cls, data):
+    async def bot_search(cls, bots_data, data):
         print("bot_search started")
-
-        bots_data = Bots_model.load_must_free(limit=len(data), _type="WB", inn=data[0][0]['inn'])
 
         for bot_data in bots_data:
             bot_data.set(status="SEARCH")
             bot_data.update()
 
-        bots = [Bot(data=tg_bot_data) for tg_bot_data in bots_data]
+        bots = [Bot(data=bot_data) for bot_data in bots_data]
 
         for bot in bots:
             bot.open_bot(manual=False)
@@ -68,9 +70,22 @@ class Admin:
         for i, report in enumerate(reports):
             print(report)
             data = ujson.dumps(report)
-            bot_wait = BotWait(bot_name=bots[i].data.name, event="FOUND", wait=True,
-                               start_datetime=datetime.now(), data=data)
-            bot_wait.insert()
+            end_datetime = cls.get_work_time()
+
+            bot_wait = BotsWait_Model.load(bots[i].data.name, "SEARCH")
+            if bot_wait:
+                bot_wait.event = "FOUND"
+                bot_wait.wait = True
+                bot_wait.start_datetime = datetime.now()
+                bot_wait.end_datetime = end_datetime
+                # добавляем данные из поиска
+                for key, value in data.items():
+                    bot_wait.data[key] = value
+                bot_wait.update()
+            else:
+                bot_wait = BotWait_Model(bot_name=bots[i].data.name, event="FOUND", wait=True,
+                                         start_datetime=datetime.now(), end_datetime=end_datetime, data=data)
+                bot_wait.insert()
 
             msgs += [f"✅ Собран заказ бота {report['bot_name']}✅\n"
                      f"Артикулы {report['articles']}"]
@@ -82,7 +97,7 @@ class Admin:
         del bots
 
         for bot_data in bots_data:
-            bot_data.set(status="FOUND")
+            bot_data.status = "FOUND"
             bot_data.update()
 
         return msgs
@@ -125,8 +140,8 @@ class Admin:
         return msgs
 
     @staticmethod
-    async def bot_buy(message, bots_cnt):
-        bots_wait = BotsWait.load(event="FOUND", limit=bots_cnt)
+    async def bot_buy(message=None, bots_cnt=1):
+        bots_wait = BotsWait_Model.load(event="FOUND", limit=bots_cnt)
 
         reports = []
 
@@ -137,7 +152,7 @@ class Admin:
 
             bot_name = bot_wait.bot_name
             print("Bot Name _ ", bot_name)
-            bot_data = Bots_model.load(bot_name)
+            bot_data = Bots_Model.load(bot_name)
 
             bot_data.set(status="BUYS")
             bot_data.update()
@@ -164,9 +179,11 @@ class Admin:
                 bot_wait.event += " FAIL"
 
             if "FAIL" in bot_wait.event:
-                await message.answer('❌ Ошибка выкупа ❌')
+                if message:
+                    await message.answer('❌ Ошибка выкупа ❌')
             else:
-                await message.answer_photo(open(report['qr_code'], 'rb'))
+                if message:
+                    await message.answer_photo(open(report['qr_code'], 'rb'))
 
                 if TEST:
                     paid = {'payment': True, 'datetime': datetime.now()}
@@ -179,7 +196,7 @@ class Admin:
                 if paid['payment']:
                     bot_wait.event = "PAID"
                     print(paid['datetime'])
-                    pup_address = Addresses.load(address=report['post_place'])
+                    pup_address = Addresses_Model.load(address=report['post_place'])
                     order = Order_Model(number=number, total_price=report['total_price'], services_price=50,
                                         prices=report['prices'],
                                         quantities=report['quantities'], articles=report['articles'],
@@ -191,7 +208,8 @@ class Admin:
                                         statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
                     order.insert()
 
-                    await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"
+                    if message:
+                        await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"
                                          f"Артикулы {report['articles']}\n\n"
                                          f"Адрес доставки {report['post_place']}\n\n"
                                          f"Время оплаты {paid['datetime']}")
@@ -318,9 +336,9 @@ class Admin:
 
         return states (ADMIN_ADDRESS_DISTRIBUTION | ADMIN)
         """
-        all_not_added_addresses = Addresses.get_all_not_added()
+        all_not_added_addresses = Addresses_Model.get_all_not_added()
 
-        tg_bots = Bots_model.load()
+        tg_bots = Bots_Model.load()
         bots_name = [tg_bots[i].name for i in range(len(tg_bots))]
         if all_not_added_addresses:
             if len(all_not_added_addresses) > 0:
@@ -354,7 +372,7 @@ class Admin:
 
         return states (ADMIN_ADDRESS_VERIFICATION | ADMIN)
         """
-        all_not_checked_addresses = Addresses.get_all_not_checked()
+        all_not_checked_addresses = Addresses_Model.get_all_not_checked()
 
         if all_not_checked_addresses:
             if len(all_not_checked_addresses) > 0:
@@ -386,30 +404,52 @@ class Admin:
         secret_key = secrets.token_urlsafe(64)
 
         return secret_key
+    #
+    # @classmethod
+    # async def wait_order_ended(cls, bot: Bot, pred_end_date, articles, address, order_number, message):
+    #     start_datetime = datetime.now()
+    #     rnd_time = timedelta(hours=random.randint(7, 14), minutes=random.randint(0, 60), seconds=random.randint(0, 60))
+    #     end_datetime = pred_end_date + rnd_time
+    #
+    #     time_to_end = (end_datetime - start_datetime).total_seconds()
+    #
+    #     await asyncio.sleep(time_to_end)
+    #
+    #     await bot.check_readiness(articles, address, order_number, message, cls.wait_order_ended)
 
     @classmethod
-    async def wait_order_ended(cls, bot: Bot, pred_end_date, articles, address, order_number, message):
-        start_datetime = datetime.now()
-        rnd_time = timedelta(hours=random.randint(7, 14), minutes=random.randint(0, 60), seconds=random.randint(0, 60))
-        end_datetime = pred_end_date + rnd_time
-
-        time_to_end = (end_datetime - start_datetime).total_seconds()
-
-        await asyncio.sleep(time_to_end)
-
-        await bot.check_readiness(articles, address, order_number, message, cls.wait_order_ended)
-
-    @classmethod
-    async def check_order(cls, bot_name, message):
+    async def check_order(cls, bot_name, message=None) -> bool:
         bot = Bot(name=bot_name)
         orders = Orders_Model.load(bot_name=bot_name, active=True, pred_end_date=datetime.now())
-        # print(bot.data.name)
-        # async def check_order(bot):
-        #     bot.open_bot(manual=False)
-        #     bot.open_delivery()
         bot.open_bot(manual=False)
-        # order = orders[0]
-        # await bot.check_readiness(order.articles, order.pup_address, order.number, message, cls.wait_order_ended)
-        await bot.check_readiness(orders, message, cls.wait_order_ended)
+        status: bool = await bot.check_readiness(orders, message)
+
+        return status
+
 
         # await asyncio.gather(asyncio.to_thread(check_order(bot)))
+
+    @classmethod
+    def get_work_time(cls):
+        now_datetime = datetime.now()
+        now_hour = now_datetime.time().hour
+
+        res_datetime = 0
+        hours = random.randint(1, 48)
+        minutes = random.randint(1, 59)
+        seconds = random.randint(1, 59)
+
+        while abs(hours+now_hour)%24 < 8:
+            hours = random.randint(1, 48)
+
+        res_datetime = now_datetime + timedelta(hours=hours, minutes=minutes, seconds=seconds)
+
+        return res_datetime
+
+if __name__ == '__main__':
+    a = {"w": 2, "r": 3}
+    b = {"t": 1}
+    print(a, b)
+    for key, value in a.items():
+        b[key] = value
+    print(b)
