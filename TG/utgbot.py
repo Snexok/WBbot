@@ -41,9 +41,10 @@ ADMIN_BTNS = ['🏡 распределить адреса по ботам 🏡',
 API_TOKEN = config['tokens']['telegram']
 
 # Initialize bot and dispatcher
-tg_bot = Bot(token=API_TOKEN)
+tg_bot = TG_Bot(token=API_TOKEN)
 loop = asyncio.get_event_loop()
 dp = Dispatcher(tg_bot, storage=MemoryStorage(), loop=loop)
+
 
 @dp.message_handler(text='◄ Назад', state="*")
 async def back_handler(message: types.Message, state: FSMContext):
@@ -172,7 +173,8 @@ async def main_handler(message: types.Message):
                 msg = "📊 <b>Статистика за месяц:</b> 📅\n\n"
 
                 total_price_str = str(sum([order.total_price for order in orders]))
-                total_price = ''.join([p + ' ' if (len(total_price_str) - i) % 3 == 1 else p for i, p in enumerate(total_price_str)])
+                total_price = ''.join(
+                    [p + ' ' if (len(total_price_str) - i) % 3 == 1 else p for i, p in enumerate(total_price_str)])
                 msg += f"<b>Оборот:</b> {total_price}₽\n" \
                        f"<b>Заказы:</b> {sum([sum(order.quantities) for order in orders])} 📦\n"
 
@@ -203,7 +205,8 @@ async def main_handler(message: types.Message):
                     for s in stat:
                         if city in s['address']:
                             total_price_str = str(s['total_price'])
-                            total_price = ''.join([p+' ' if (len(total_price_str)-i) % 3 == 1 else p for i, p in enumerate(total_price_str)])
+                            total_price = ''.join([p + ' ' if (len(total_price_str) - i) % 3 == 1 else p for i, p in
+                                                   enumerate(total_price_str)])
 
                             msg += f"\n📫 <b>{','.join(s['address'].split(',')[1:]).title()}:</b>\n" \
                                    f"<b>Оборот:</b> {total_price}₽\n" \
@@ -245,7 +248,7 @@ async def main_handler(message: types.Message):
                                         if any(in_articles):
                                             index = in_articles.index(True)
                                             splited = stat[i]['articles'][index].split(' ')
-                                            stat[i]['articles'][index] = splited[0] + " " + str(int(splited[1])+1)
+                                            stat[i]['articles'][index] = splited[0] + " " + str(int(splited[1]) + 1)
                                         else:
                                             stat[i]['articles'] += [order.articles[j] + " 1"]
                 if is_fbos_cnt:
@@ -373,7 +376,8 @@ async def admin_handler(message: types.Message):
                 is_order_wait_exist = BotsWait_Model.check_exist_order_wait(order.bot_name, order.id)
                 if not is_order_wait_exist:
                     bot_wait = BotWait_Model(bot_name=order.bot_name, event='delivery', start_datetime=datetime.now(),
-                                end_datetime=order.pred_end_date, wait=True, data=json.dumps('{"id": '+str(order.id)+'}'))
+                                             end_datetime=order.pred_end_date, wait=True,
+                                             data=json.dumps('{"id": ' + str(order.id) + '}'))
                     bot_wait.insert()
                 if order.bot_name not in bots_name:
                     bots_name += [order.bot_name]
@@ -502,6 +506,7 @@ async def inside_handler(message: types.Message):
         await admin_handler(message)
         return
 
+
 @dp.callback_query_handler(state=States.PLAN_BOT_SEARCH)
 async def plan_bot_search_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
     id = str(call.message.chat.id)
@@ -516,10 +521,10 @@ async def plan_bot_search_callback_query_handler(call: types.CallbackQuery, stat
         # category = 'Женщинам;Пляжная мода;Купальники'
         search_key = 'слитный купальник женский утягивающий'
 
-
     await state.set_data({'article': article, 'search_key': search_key, 'category': category})
 
     await call.message.answer('Введите через сколько часов нужно отработать поиск')
+
 
 @dp.message_handler(state=States.PLAN_BOT_SEARCH, content_types=['document'])
 async def plan_bot_search_document_handler(message: types.Message):
@@ -545,6 +550,7 @@ async def plan_bot_search_document_handler(message: types.Message):
 
     await message.answer('Поиск завершен')
 
+
 @dp.message_handler(state=States.PLAN_BOT_SEARCH, content_types=['text'])
 async def plan_bot_search_message_handler(message: types.Message, state: FSMContext):
     msg = message.text
@@ -566,6 +572,7 @@ async def plan_bot_search_message_handler(message: types.Message, state: FSMCont
         bot_wait.insert()
     except:
         await message.answer('Введите цифру')
+
 
 @dp.message_handler(state=States.AUTH_PARTNER, content_types=['text'])
 async def inside_handler(message: types.Message, state: FSMContext):
@@ -594,10 +601,6 @@ async def inside_handler(message: types.Message, state: FSMContext):
         await message.answer('Ожидайте код')
         state_data['driver'] = partner_bot.driver
         await state.set_data(state_data)
-
-
-
-
 
 
 @dp.callback_query_handler(state=States.RUN_BOT)
@@ -819,6 +822,7 @@ async def bot_buy_handler(message: types.Message):
 
     await message.answer('Выкуп завершен')
 
+
 @dp.message_handler(state=States.RE_BUY)
 async def re_bot_buy_handler(message: types.Message, state: FSMContext):
     id = str(message.chat.id)
@@ -826,7 +830,7 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
 
     # Первым был введён артикул, всё последующее - это ключевое слово
     article = msg.split(' ')[0]
-    search_key = msg[len(article)+1:]
+    search_key = msg[len(article) + 1:]
 
     # Получаем имя бота, которые было указано в предыдущем шаге обработки операции
     data = await state.get_data()
@@ -910,6 +914,7 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
 
         await message.answer(res_msg)
 
+
 @dp.callback_query_handler(state=States.RE_BUY)
 async def excepted_orders_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
     id = str(call.message.chat.id)
@@ -920,6 +925,7 @@ async def excepted_orders_callback_query_handler(call: types.CallbackQuery, stat
     await state.set_data({'bot_name': bot_name})
 
     await call.message.answer('Укажите артикул и ключевую фразу для бота')
+
 
 @dp.message_handler(state=States.ADMIN_ADDRESS_DISTRIBUTION)
 async def address_distribution_handler(message: types.Message):
@@ -1228,6 +1234,7 @@ async def watch_orders_callback_query_handler(call: types.CallbackQuery, state: 
     elif msg == 'По ИНН':
         orders = OrdersOfOrders_Model.load()
 
+
 @dp.message_handler(state=States.PUP_ADDRESSES_CONTINUE)
 async def pup_addresses_continue_handler(message: types.Message):
     id = str(message.chat.id)
@@ -1276,6 +1283,7 @@ async def default_handler(message: types.Message):
         else:
             await States.MAIN.set()
             await main_handler(message)
+
 
 @dp.callback_query_handler(text_contains='_bw_', state="*")
 async def others_callback_query_handler(call: types.CallbackQuery, state: FSMContext):

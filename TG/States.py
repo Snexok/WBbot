@@ -27,3 +27,4 @@ class States(StatesGroup):
     AUTH_PARTNER = State()
     CREATE_ORDER = State()
     WATCH_ORDER = State()
+    RE_BUY = State()
