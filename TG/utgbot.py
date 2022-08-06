@@ -1301,5 +1301,5 @@ async def others_callback_query_handler(call: types.CallbackQuery, state: FSMCon
 
 
 if __name__ == '__main__':
-    dp.loop.create_task(BotsWait(tg_bot).main())
+    # dp.loop.create_task(BotsWait(tg_bot).main())
     executor.start_polling(dp)
