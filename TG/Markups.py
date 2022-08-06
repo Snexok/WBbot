@@ -89,8 +89,9 @@ def get_keyboard(keyboard_name, *args):
         keyboard = types.InlineKeyboardMarkup()
         btns = []
         btns += [types.InlineKeyboardButton(text='90852969', callback_data='90852969')]
-        btns += [types.InlineKeyboardButton(text='90086484', callback_data='90086484')]
-        btns += [types.InlineKeyboardButton(text='90633439', callback_data='90633439')]
+        btns += [types.InlineKeyboardButton(text='Школьный портфель 94577084', callback_data='94577084')]
+        # btns += [types.InlineKeyboardButton(text='90086484', callback_data='90086484')]
+        # btns += [types.InlineKeyboardButton(text='90633439', callback_data='90633439')]
         keyboard.add(*btns)
 
         return keyboard

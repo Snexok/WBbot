@@ -85,7 +85,13 @@ class Bot:
         return report
 
     def buy(self, report, post_place, order_id):
-        self.page = Utils.go_to_basket(self.driver)  # basket
+        sleep(1)
+        try:
+            self.page = Utils.go_to_basket(self.driver)  # basket
+        except:
+            sleep(3)
+            self.page = Utils.go_to_basket(self.driver)  # basket
+
         self.driver.refresh()
         sleep(2)
 
@@ -193,6 +199,7 @@ class Bot:
         sleep(1)
         # открываем страницу с заказами бота
         self.open_delivery()
+        sleep(2)
         # полуыаем все заказы бота
         local_orders = self.get_all_orders()
         for _order in local_orders:
@@ -200,18 +207,25 @@ class Bot:
         sleep(1)
 
         for order in orders:
+            print("local_orders[0].pup_address", local_orders[0].pup_address)
+            print("order.pup_address", order.pup_address)
             # фильтруем заказы бота адресу
             local_orders_by_address = [_order for _order in local_orders if _order.pup_address == order.pup_address]
+            print(local_orders_by_address)
             # берем единственное совпадение по адресу
             _order = local_orders_by_address[0]
 
             statuses = []
             for article in order.articles:
                 for i in range(len(_order.articles)):
-                    _article, _status = _order.articles[i], _order.statuses[i]
-                    print("_status", _status)
+                    _article = _order.articles[i]
+                    print("article: ", article)
+                    print("_article: ", _article)
                     if article == _article:
-                        statuses += [_status]
+                        for _status in _order.statuses:
+                            print("_status: ", _status)
+                            if _status != "Платный отказ":
+                                statuses += [_status]
             print(statuses)
 
             if len(statuses) < len(order.articles):
@@ -221,7 +235,7 @@ class Bot:
                 order.set(statuses=statuses)
                 order.set(code_for_approve=_order.code_for_approve)
                 for i, status in enumerate(statuses):
-                    if status in ["Готов к получению", "Отгружено по данным Продавца"]:
+                    if status in ["Готов к получению", "Отгружено по данным Продавца", 'Готов к выдаче', 'Прибыл на пункт выдачи']:
                         msg_pup = 'Заказ готов\n' + \
                                   f'Код: {order.code_for_approve}\n' + \
                                   f'Фио: {order.bot_surname}\n' + \
@@ -235,8 +249,10 @@ class Bot:
                         order.set(active=False)
 
                         admin = Admins_model().get_sentry_admin()
+                        print(admin.id)
                         await bot.send_message(admin.id, msg_admin, parse_mode="HTML")
-                        await bot.send_message(order.pup_tg_id, msg_pup, parse_mode="HTML")
+                        if order.pup_tg_id:
+                            await bot.send_message(order.pup_tg_id, msg_pup, parse_mode="HTML")
                     else:
                         pred_end_date = ''
                         for status in order.statuses:
@@ -280,12 +296,11 @@ class Bot:
             order.pup_address = order_row.find_element(By.XPATH,
                                                        './div/div/div[contains(@class, "delivery-address__info")]').text
             item_imgs = order_row.find_elements(By.XPATH, './div/ul/li/div/div/img')
-            img_ext_len = len('-1.avif') - 1
+            img_ext_len = len('/images/c516x688/1.jpg')
             order.articles = [img.get_attribute('src')[-img_ext_len - ARTICLE_LEN:-img_ext_len] for img in item_imgs]
             statuses = order_row.find_elements(By.XPATH,
                                                './div/ul/li/div/div/div[@class="goods-list-delivery__price-status"]')
-            order.statuses = [status.text for status in
-                              statuses]  # Ожидается 19-21 мая, Отсортирован в сортировочном центре, В пути на пункт выдачи, Готов к выдаче
+            order.statuses = [status.text for status in statuses]  # Ожидается 19-21 мая, Отсортирован в сортировочном центре, В пути на пункт выдачи, Готов к выдаче
             try:
                 order.code_for_approve = order_row.find_element(By.XPATH,
                                                                 "./div/div/div[contains(@class,'delivery-code__value')]").text
@@ -296,11 +311,12 @@ class Bot:
         return orders
 
     def open_delivery(self):
+        sleep(3)
         hover = ActionChains(self.driver)
 
         profile_btn = self.driver.find_element(By.XPATH, "//span[contains(@class,'navbar-pc__icon--profile')]")
         hover.move_to_element(profile_btn).perform()
-        sleep(1)
+        sleep(3)
         delivery_btn = self.driver.find_element(By.XPATH,
                                                 "//span[text()='Доставки']/../../a[contains(@class,'profile-menu__link')]")
         delivery_btn.click()

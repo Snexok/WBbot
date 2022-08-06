@@ -413,6 +413,10 @@ async def bot_search_callback_query_handler(call: types.CallbackQuery):
         # category = 'Женщинам;Пляжная мода;Купальники'
         search_key = 'Женский раздельный купальник без пуш ап'
         inn = '381108544328'
+    if article in ['94577084']:
+        # category = 'Женщинам;Пляжная мода;Купальники'
+        search_key = 'Школьный портфель'
+        # inn = '381108544328'
 
     await States.ADMIN.set()
 
@@ -819,6 +823,7 @@ async def pup_addresses_start_handler(message: types.Message):
                          'Пример:\n'
                          'г Москва, Чистопрудная улица 32к2\n'
                          'г Москва, Вавиловская улица 22к8')
+
 
 
 @dp.message_handler(state=States.PUP_ADDRESSES_CONTINUE)
