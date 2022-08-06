@@ -600,19 +600,26 @@ async def bot_buy_handler(message: types.Message):
 async def re_bot_buy_handler(message: types.Message, state: FSMContext):
     id = str(message.chat.id)
     msg = message.text
+
+    # Первым был введён артикул, всё последующее - это ключевое слово
     article = msg.split(' ')[0]
     search_key = msg[len(article)+1:]
 
+    # Получаем имя бота, которые было указано в предыдущем шаге обработки операции
     data = await state.get_data()
     bot_name = data['bot_name']
 
     print(bot_name, article, search_key)
 
+    # Возвращаем состояние на обработку команд для Адимина,
+    # чтобы всё введенное после, снова обрабатывалось обработчиком админа
     await States.ADMIN.set()
 
+    # Получаем текуще активное событие
     bot_wait = BotsWait.load(bot_name=bot_name, wait=True)
     print(bot_wait)
 
+    # Определяем необходимость поиска или только выкуп
     is_go_search = True
     is_go_buy = True
     if bot_wait:
@@ -625,12 +632,15 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
             is_go_search = False
             is_go_buy = False
 
-    print("is_go_search = ", is_go_search, "is_go_buy = ", is_go_buy)
+    print("is_go_search = ", is_go_search, "\nis_go_buy = ", is_go_buy)
 
+    # Поиск
     if is_go_search:
+        # формируем данные о заказе
         orders = [[article, search_key, '', "1", "1", "381108544328"]]
         await message.answer(f'Начался поиск артикула {article}')
 
+        # собираем все данные о конкретных товарах
         res_msg = ''
         if DEBUG:
             run_bot = asyncio.to_thread(Admin.pre_run, orders)
@@ -644,6 +654,7 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
             except:
                 await message.answer(f'❌ Поиск артикула {article} упал на анализе карточки ❌')
 
+        # Запускаем поиск заказа
         if DEBUG:
             msgs = await Admin.bot_re_search(bot_name, data_for_bots)
         else:
@@ -661,21 +672,20 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
 
         await message.answer(res_msg)
 
+    # Выкуп
     if is_go_buy:
         await message.answer('Выкуп начался')
 
+        # Если до этого не существовало активного события, получаем текуще активное событие по боту
         if not bot_wait:
             bot_wait = BotsWait.load(bot_name=bot_name, wait=True)
 
-        reports = await Admin.bot_re_buy(message, bot_wait)
+        # запускаем выкуп
+        await Admin.bot_re_buy(message, bot_wait)
 
-        bot_names = [report['bot_name'] for report in reports]
+        res_msg = f"Завершен выкуп по боту: {bot_name}"
 
-        res_msg = "Завершен выкуп по ботам:"
-        for name in bot_names:
-            res_msg += f"\n{name}"
-
-        await message.answer('Выкуп завершен')
+        await message.answer(res_msg)
 
 @dp.callback_query_handler(state=States.RE_BUY)
 async def excepted_orders_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
