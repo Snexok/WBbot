@@ -3,10 +3,12 @@ from datetime import datetime
 from TG.Models.Model import Model
 
 class BotWait_Model(Model):
-    COLUMNS = ['id', 'bot_name', 'event', 'sub_event', 'start_datetime', 'end_datetime', 'wait', 'data']
+    COLUMNS = ['id', 'bot_name', 'event', 'sub_event', 'start_datetime', 'end_datetime', 'wait', 'data', 'order_id',
+               'pause', 'datetime_to_run']
     table_name = 'bots_wait'
 
-    def __init__(self, id=1, bot_name='', event='', sub_event='', start_datetime='', end_datetime='', wait=False, data=''):
+    def __init__(self, id=1, bot_name='', event='', sub_event='', start_datetime='', end_datetime='', wait=False, data='',
+                 order_id='', pause=False, datetime_to_run=''):
         super().__init__()
         self.id = id
         self.bot_name = bot_name
@@ -16,6 +18,9 @@ class BotWait_Model(Model):
         self.end_datetime = end_datetime
         self.wait = wait
         self.data = data
+        self.order_id = order_id
+        self.pause = pause
+        self.datetime_to_run = datetime_to_run
 
     def delete(self):
         path = f"DELETE FROM {self.table_name} WHERE id={self.id}"
@@ -26,15 +31,19 @@ class BotsWait_Model(Model):
     single_model = BotWait_Model
     table_name = single_model.table_name
 
-    @classmethod
-    def load(cls, bot_name=None, event=None, limit=None):
-        path = f"SELECT * FROM {cls.table_name} WHERE"
-        if bot_name:
-            path += f" bot_name='{bot_name}', "
-        elif event:
-            path += f" event='{event}', "
+    exceptional_events = ['PAYMENT']
 
-        path = path[:-2]
+    @classmethod
+    def load(cls, bot_name=None, event=None, limit=None, order_id=None):
+        path = f"SELECT * FROM {cls.table_name} WHERE wait=TRUE AND "
+        if bot_name:
+            path += f" bot_name='{bot_name}' AND "
+        if event:
+            path += f" event='{event}' AND "
+        if order_id:
+            path += f" order_id='{order_id}' AND "
+
+        path = path[:-5]
 
         if limit:
             path += f" LIMIT {str(limit)}"
@@ -50,8 +59,10 @@ class BotsWait_Model(Model):
     @classmethod
     def load_last(cls):
         path = f"SELECT * FROM {cls.table_name} WHERE " \
-               f"end_datetime = (SELECT MIN(end_datetime) FROM {cls.table_name}) " \
-               f"AND end_datetime < '{str(datetime.now())}' LIMIT 1"
+               f"datetime_to_run = (SELECT MIN(datetime_to_run) FROM {cls.table_name}) " \
+               f"AND datetime_to_run < '{str(datetime.now())}' AND wait=TRUE AND " \
+               f"event NOT IN {str(cls.exceptional_events).replace('[', '(').replace(']', ')')} " \
+               f"LIMIT 1"
         data = cls.execute(path, cls.fetchall)
         if data:
             data = cls.format_data(data)[0]

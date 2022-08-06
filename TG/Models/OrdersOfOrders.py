@@ -2,7 +2,7 @@ from datetime import datetime
 
 from TG.Models.Model import Model
 
-class OrderOfOrders(Model):
+class OrderOfOrders_Model(Model):
     COLUMNS = ['id', 'inn', 'articles', 'active', 'quantities_to_bought', 'quantities_bought', 'search_keys',
                'numbers_of_comments', 'comments', 'unused_comments', 'left_comments', 'bought_per_day', 'budget',
                'remaining_budget', 'start_datetime', 'end_datetime']
@@ -29,16 +29,23 @@ class OrderOfOrders(Model):
         self.start_datetime = start_datetime
         self.end_datetime = end_datetime
 
-class OrdersOfOrders(Model):
-    single_model = OrderOfOrders
+class OrdersOfOrders_Model(Model):
+    single_model = OrderOfOrders_Model
     table_name = single_model.table_name
 
     @classmethod
-    def load(cls, inn=None):
+    def load(cls, id=None, inn=None):
         path = f"SELECT * FROM {cls.table_name} WHERE end_datetime is null AND "
         if inn:
             path += f" inn='{inn}' AND "
+        if id:
+            path += f" id='{id}' AND "
 
         path = path[:-5]
 
-        return cls.format_data(cls.execute(path, cls.fetchall))
+        data = cls.format_data(cls.execute(path, cls.fetchall))
+
+        if id:
+            data = data[0]
+
+        return data

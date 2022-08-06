@@ -21,6 +21,7 @@ from TG.Models.BotsWaits import BotsWait_Model, BotWait_Model
 from TG.Models.Addresses import Addresses_Model, Address_Model
 from TG.Models.ExceptedOrders import ExceptedOrders_Model, ExceptedOrder_Model
 from TG.Models.Orders import Orders_Model
+from TG.Models.OrdersOfOrders import OrderOfOrders_Model, OrdersOfOrders_Model
 from TG.Models.Users import Users_Model, User_Model
 from TG.Models.Bots import Bots_Model as Bots_model
 from TG.Models.Whitelist import Whitelist_Model
@@ -33,7 +34,7 @@ from configs import config
 
 import pandas as pd
 
-DEBUG = True
+DEBUG = config['DEBUG']
 
 ADMIN_BTNS = ['🏡 распределить адреса по ботам 🏡', '🔍 поиск товаров 🔎', '➕ добавить пользователя ➕', '◄ назад']
 
@@ -165,7 +166,7 @@ async def main_handler(message: types.Message):
     elif user.role in "PUP":
         if "📊 статистика 📊" in msg:
             # orders = Orders.load_stat(pup_tg_id="791436094")
-            orders = Orders.load_stat(pup_tg_id=id)
+            orders = Orders_Model.load_stat(pup_tg_id=id)
             if orders:
                 msg = "📊 <b>Статистика за месяц:</b> 📅\n\n"
 
@@ -213,7 +214,7 @@ async def main_handler(message: types.Message):
             return
         elif "📓 проверить пвз 📓" in msg:
             # orders = Orders.load_check_state(pup_tg_id="791436094")
-            orders = Orders.load_check_state(pup_tg_id=id)
+            orders = Orders_Model.load_check_state(pup_tg_id=id)
             if orders:
                 msg = "📓 <b>Состояния ПВЗ</b> 📓\n\n"
 
@@ -554,6 +555,7 @@ async def plan_bot_search_message_handler(message: types.Message, state: FSMCont
         bot_wait.insert()
     except:
         await message.answer('Введите цифру')
+
 @dp.message_handler(state=States.AUTH_PARTNER, content_types=['text'])
 async def inside_handler(message: types.Message, state: FSMContext):
     msg = message.text
@@ -657,7 +659,7 @@ async def collect_orders_callback_query_handler(call: types.CallbackQuery):
 
     await call.message.edit_text(f'Началась сборка самовыкупов по {ie}')
     if id != "794329884":
-        await tg_bot.send_message("794329884", f'Началась сборка самовыкупов по {ie}')
+        await bot.send_message("794329884", f'Началась сборка самовыкупов по {ie}')
 
     res = await Partner().collect_orders(inn)
     res_msg = ''
@@ -669,7 +671,7 @@ async def collect_orders_callback_query_handler(call: types.CallbackQuery):
 
     await call.message.answer(res_msg + f'Закончилась сборка самовыкупов по {ie}')
     if id != "794329884":
-        await tg_bot.send_message("794329884", res_msg + f'Закончилась сборка самовыкупов по {ie}')
+        await bot.send_message("794329884", res_msg + f'Закончилась сборка самовыкупов по {ie}')
 
 
 @dp.callback_query_handler(state=States.EXCEPTED_ORDERS_LIST)
@@ -1078,10 +1080,14 @@ async def create_order_handler(message: types.Message, state: FSMContext):
     data['start_datetime'] = datetime.now()
     try:
         await States.ADMIN.set()
-        OrderOfOrders(**data).insert()
+        order = OrderOfOrders_Model(**data)
+        order.insert()
         await message.answer('Заказ создан')
     except:
         await message.answer('Не удалось создать заказ')
+
+    if order:
+        BotsWait.BuildOrderFulfillmentProcess(order)
 
 
 @dp.callback_query_handler(state=States.WATCH_ORDER)
@@ -1090,7 +1096,7 @@ async def watch_orders_callback_query_handler(call: types.CallbackQuery, state: 
     msg = call.data
 
     if msg == 'Активные':
-        orders = OrdersOfOrders.load()
+        orders = OrdersOfOrders_Model.load()
         for order in orders:
             res_msg = f"Заказ {order.id}\n" \
                       f"От: {order.start_datetime}\n\n" \
@@ -1108,7 +1114,7 @@ async def watch_orders_callback_query_handler(call: types.CallbackQuery, state: 
 
             await call.message.answer(res_msg)
     elif msg == 'По ИНН':
-        orders = OrdersOfOrders.load()
+        orders = OrdersOfOrders_Model.load()
 
 @dp.message_handler(state=States.PUP_ADDRESSES_CONTINUE)
 async def pup_addresses_continue_handler(message: types.Message):
@@ -1165,13 +1171,21 @@ async def others_callback_query_handler(call: types.CallbackQuery, state: FSMCon
     msg = call.data
     bot_name = msg.split(" ")[1]
 
-    bot_wait = BotsWait_Model.load(event="FOUND", bot_name=bot_name)
+    bot_wait = BotsWait_Model.load(event="PAYMENT", bot_name=bot_name)
 
-    await call.message.edit_text("Yfx")
+    print(msg)
 
-    await bot_buy(call.message, bot_wait)
+    await call.message.edit_text('Начался выкуп')
 
-    await call.message.edit_text("123")
+    reports = await bot_buy(call.message, bot_wait)
+
+    bot_names = [report['bot_name'] for report in reports]
+
+    res_msg = "Завершен выкуп по ботам:"
+    for name in bot_names:
+        res_msg += f"\n{name}"
+
+    await call.message.answer(res_msg)
 
 
 if __name__ == '__main__':

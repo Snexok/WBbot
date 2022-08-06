@@ -24,3 +24,6 @@ class States(StatesGroup):
     EXCEPTED_ORDERS_LIST = State()
     EXCEPTED_ORDERS_LIST_CHANGE = State()
     COLLECT_ORDERS = State()
+    AUTH_PARTNER = State()
+    CREATE_ORDER = State()
+    WATCH_ORDER = State()

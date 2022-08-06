@@ -1,7 +1,7 @@
 from TG.Models.Model import Model
 
 
-class Bot(Model):
+class Bot_Model(Model):
     COLUMNS = ['id', 'name', 'addresses', 'number', 'username', 'type', 'inns', 'status', 'author', 'balance']
     table_name = 'bots'
 
@@ -52,6 +52,7 @@ class Bots_Model(Model):
         print(path)
 
         data = cls.execute(path, cls.fetchall)
+        print(data)
         data = [d[:-1] for d in data]
         data = cls.format_data(data)
 
@@ -72,6 +73,6 @@ class Bots_Model(Model):
 
 
 if __name__ == '__main__':
-    bots= Bots.load_must_free(31, 'WB', '381108544328')
+    bots= Bots_Model.load_must_free(31, 'WB', '381108544328')
     for bot in bots:
         print(bot)

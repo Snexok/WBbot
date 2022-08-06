@@ -11,3 +11,6 @@ bots:
         number: "9104499982"
     Boulevard Depo:
         number: "9104499982"
+
+DEBUG: True
+TEST: True

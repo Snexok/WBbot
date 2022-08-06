@@ -1,7 +1,7 @@
 import asyncio
 import random
 
-import ujson as ujson
+import ujson
 
 from aiogram import Bot as TG_Bot
 
@@ -50,16 +50,14 @@ class Admin:
     #     #     loop.create_task(cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], pup_address.address, number, message))
 
     @classmethod
-    async def bot_search(cls, data):
+    async def bot_search(cls, bots_data, data):
         print("bot_search started")
-
-        bots_data = Bots_model.load_must_free(limit=len(data), _type="WB", inn=data[0][0]['inn'])
 
         for bot_data in bots_data:
             bot_data.set(status="SEARCH")
             bot_data.update()
 
-        bots = [Bot(data=tg_bot_data) for tg_bot_data in bots_data]
+        bots = [Bot(data=bot_data) for bot_data in bots_data]
 
         for bot in bots:
             bot.open_bot(manual=False)
@@ -98,7 +96,7 @@ class Admin:
         del bots
 
         for bot_data in bots_data:
-            bot_data.set(status="FOUND")
+            bot_data.status = "FOUND"
             bot_data.update()
 
         return msgs
@@ -299,25 +297,28 @@ class Admin:
         secret_key = secrets.token_urlsafe(64)
 
         return secret_key
+    #
+    # @classmethod
+    # async def wait_order_ended(cls, bot: Bot, pred_end_date, articles, address, order_number, message):
+    #     start_datetime = datetime.now()
+    #     rnd_time = timedelta(hours=random.randint(7, 14), minutes=random.randint(0, 60), seconds=random.randint(0, 60))
+    #     end_datetime = pred_end_date + rnd_time
+    #
+    #     time_to_end = (end_datetime - start_datetime).total_seconds()
+    #
+    #     await asyncio.sleep(time_to_end)
+    #
+    #     await bot.check_readiness(articles, address, order_number, message, cls.wait_order_ended)
 
     @classmethod
-    async def wait_order_ended(cls, bot: Bot, pred_end_date, articles, address, order_number, message):
-        start_datetime = datetime.now()
-        rnd_time = timedelta(hours=random.randint(7, 14), minutes=random.randint(0, 60), seconds=random.randint(0, 60))
-        end_datetime = pred_end_date + rnd_time
-
-        time_to_end = (end_datetime - start_datetime).total_seconds()
-
-        await asyncio.sleep(time_to_end)
-
-        await bot.check_readiness(articles, address, order_number, message, cls.wait_order_ended)
-
-    @classmethod
-    async def check_order(cls, bot_name, message=None):
+    async def check_order(cls, bot_name, message=None) -> bool:
         bot = Bot(name=bot_name)
         orders = Orders_Model.load(bot_name=bot_name, active=True, pred_end_date=datetime.now())
         bot.open_bot(manual=False)
-        await bot.check_readiness(orders, message, cls.wait_order_ended)
+        status: bool = await bot.check_readiness(orders, message)
+
+        return status
+
 
         # await asyncio.gather(asyncio.to_thread(check_order(bot)))
 
@@ -337,11 +338,6 @@ class Admin:
         res_datetime = now_datetime + timedelta(hours=hours, minutes=minutes, seconds=seconds)
 
         return res_datetime
-
-    @classmethod
-    async def send_notify_for_buy(cls, bot : TG_Bot, chat_id, bot_name):
-        keyboard = get_keyboard('admin_notify_for_buy', bot_name)
-        await bot.send_message(chat_id, 'Готов выкуп', reply_markup=keyboard)
 
 if __name__ == '__main__':
     a = {"w": 2, "r": 3}

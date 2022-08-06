@@ -10,11 +10,13 @@ from TG.Models.Bots import Bots_Model
 from TG.Models.Orders import Order_Model, Orders_Model
 from WB.Bot import Bot
 
-DEBUG = True
-TEST = True
+from configs import config
+
+DEBUG = config['DEBUG']
+TEST = config['TEST']
 
 
-async def bot_search(tg_bot: TG_Bot, chat_id, article, search_key, category):
+async def bot_search(bots_data, tg_bot: TG_Bot, chat_id, article, search_key, category):
     orders = [[article, search_key, category, "1", "1", "381108544328"]]
     await tg_bot.send_message(chat_id, f'Начался поиск артикула {article}')
 
@@ -32,10 +34,10 @@ async def bot_search(tg_bot: TG_Bot, chat_id, article, search_key, category):
             await tg_bot.send_message(chat_id, f'❌ Поиск артикула {article} упал на анализе карточки ❌')
 
     if DEBUG:
-        msgs = await Admin.bot_search(data_for_bots)
+        msgs = await Admin.bot_search(bots_data, data_for_bots)
     else:
         try:
-            msgs = await Admin.bot_search(data_for_bots)
+            msgs = await Admin.bot_search(bots_data, data_for_bots)
         except:
             await tg_bot.send_message(chat_id, f'❌ Поиск артикула {article} упал ❌')
     try:
@@ -78,14 +80,18 @@ async def bot_buy(message, bot_wait):
         reports = await asyncio.gather(run_bot)
         report = reports[0]
 
-        bot_wait.event = "PAID"
+        bot_wait.event = "CHECK_DELIVERY"
+        hours = random.randint(10, 16)
+        minutes = random.randint(0, 59)
+        seconds = random.randint(0, 59)
+        bot_wait.datetime_to_run = report['pred_end_date'] + timedelta(hours=hours, minutes=minutes, seconds=seconds)
+        bot_wait.wait = True
     except Exception as e:
         print(e)
         bot_wait.event += " FAIL"
+        bot_wait.end_datetime = datetime.now()
+        bot_wait.wait = False
 
-    bot_wait.end_datetime = datetime.now()
-    bot_wait.wait = False
-    bot_wait.data = []
     bot_wait.update()
 
     if "FAIL" in bot_wait.event:

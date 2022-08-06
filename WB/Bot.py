@@ -188,11 +188,12 @@ class Bot:
         else:
             return data
 
-    async def check_readiness(self, orders, message, wait_order_ended):
+    async def check_readiness(self, orders, message):
         bot = TG_Bot(token=API_TOKEN)
         sleep(1)
         # открываем страницу с заказами бота
         self.open_delivery()
+        sleep(1)
         # полуыаем все заказы бота
         local_orders = self.get_all_orders()
         for _order in local_orders:

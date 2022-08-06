@@ -72,7 +72,9 @@ class Model:
                     elif type(v[0]) is list:
                         if type(v[0][0]) is str:
                             if "," in str(v):
-                                path += "'" + str([[",".join(['"' + a.replace(",", ";") + '"' for a in _v])] for _v in v]).replace("'", "").replace('[', '{').replace(']', '}') + "', "
+                                path += "'" + str(
+                                    [[",".join(['"' + a.replace(",", ";") + '"' for a in _v])] for _v in v]).replace(
+                                    "'", "").replace('[', '{').replace(']', '}') + "', "
                             else:
                                 path += f"ARRAY{str(v)}::text[][], "
                         elif type(v[0][0]) is int:
@@ -101,7 +103,8 @@ class Model:
                 elif type(v) is list:
                     if type(v[0]) is str:
                         if "," in str(v):
-                            path += f"{k} = ARRAY[" + ",".join("'" + a.replace(",", ";") + "'" for a in v) + "]::text[], "
+                            path += f"{k} = ARRAY[" + ",".join(
+                                "'" + a.replace(",", ";") + "'" for a in v) + "]::text[], "
                         else:
                             path += f"{k} = ARRAY{str(v)}::text[], "
                     elif type(v[0]) is int:
@@ -110,7 +113,6 @@ class Model:
         path += f" WHERE id='{str(self.id)}'"
         print(path)
         self.execute(path)
-
 
     def delete(self):
         path = f"DELETE FROM {self.table_name} WHERE id='{self.id}'"

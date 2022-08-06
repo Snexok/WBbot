@@ -115,7 +115,7 @@ class Catalog():
         max_price_field = self.max_price_field()
         max_price_field.click()
         if sys.platform == "darwin":
-            min_price_field.send_keys(Keys.COMMAND + "a")
+            max_price_field.send_keys(Keys.COMMAND + "a")
         else:
             max_price_field.send_keys(Keys.CONTROL + "a")
         max_price_field.send_keys(Keys.DELETE)
