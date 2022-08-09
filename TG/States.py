@@ -18,7 +18,6 @@ class States(StatesGroup):
     RUN_BOT = State()
     CHECK_WAITS = State()
     BOT_SEARCH = State()
-    PLAN_BOT_SEARCH = State()
     BOT_BUY = State()
     COLLECT_OTHER_ORDERS = State()
     EXCEPTED_ORDERS_LIST = State()
@@ -28,3 +27,5 @@ class States(StatesGroup):
     CREATE_ORDER = State()
     WATCH_ORDER = State()
     RE_BUY = State()
+    EDIT_ORDER = State()
+    CHECK_BOTS_BALANCE = State()

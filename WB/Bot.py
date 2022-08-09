@@ -9,7 +9,7 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 from aiogram import Bot as TG_Bot
 
-from TG.Models.Bots import Bots_Model as Bots_model
+from TG.Models.Bots import Bots_Model, Bot_Model
 from TG.Models.Admins import Admins_Model as Admins_model
 from TG.Models.Orders import Order_Model, Orders_Model
 from WB.Pages.Basket import Basket
@@ -33,9 +33,9 @@ class Bot:
         self.basket = Basket(self.browser)
         self.page = 'main'
         if data:
-            self.data = data
+            self.data: Bot_Model = data
         elif name:
-            self.data = Bots_model.load(name=name)
+            self.data: Bot_Model = Bots_Model.load(name=name)
 
     def open_bot(self, manual=True):
         self.driver.maximize_window()
@@ -46,6 +46,7 @@ class Bot:
         self.browser.open_site(path)
         self.browser.load(f'./bots_sessions/{self.data.name}')
         self.browser.open_site(path)
+        sleep(3)
         if manual:
             try:
                 while self.browser.driver.current_url:
@@ -354,12 +355,15 @@ class Bot:
             orders += [order]
         return orders
 
-    def open_delivery(self):
-        sleep(3)
+    def hover_profile_modal(self):
         hover = ActionChains(self.driver)
 
         profile_btn = self.driver.find_element(By.XPATH, "//span[contains(@class,'navbar-pc__icon--profile')]")
         hover.move_to_element(profile_btn).perform()
+
+    def open_delivery(self):
+        sleep(3)
+        self.hover_profile_modal()
         sleep(3)
         delivery_btn = self.driver.find_element(By.XPATH,
                                                 "//span[text()='Доставки']/../../a[contains(@class,'profile-menu__link')]")
@@ -382,3 +386,10 @@ class Bot:
                 i += 1
         start_datetime = str(datetime.now())
         return {'payment': payment, 'datetime': start_datetime}
+
+    def check_balance(self):
+        self.hover_profile_modal()
+        sleep(2)
+        balance_text = self.driver.find_element(By.XPATH, "//span[contains(@class,'profile-menu__balance')]").text
+        balance = int("".join(balance_text.split(" ")[:-1]))
+        return balance

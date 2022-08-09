@@ -6,7 +6,6 @@ from datetime import datetime, timedelta
 
 import ujson
 from aiogram import Bot as TG_Bot
-from Bot import bot_search
 from TG.Markups import get_keyboard
 
 from configs import config
@@ -28,18 +27,22 @@ class BotsWait:
         while True:
             await sleep(5)
             bot_wait = BotsWait_Model.load_last()
-            print(bot_wait)
             if bot_wait:
+                print(bot_wait)
                 self.bot_wait = bot_wait
+                bot_wait.running = True
+                bot_wait.update()
                 # Запускаем обработку события, все параметры передаются в self
                 res_status = await self.exec_event()
                 if res_status:
                     # Сбрасываем индикатор ожидания
                     bot_wait.wait = False
+                    bot_wait.running = False
                     bot_wait.update()
                 # bots_wait.delete()
 
     async def exec_event(self):
+        print(self.bot_wait.event)
         if self.bot_wait.sub_event:
             if self.bot_wait.sub_event == 'SURF':
                 pass
@@ -72,10 +75,12 @@ class BotsWait:
                 res_msg += '\n' + f'Поиск артикула {data["article"]} завершен'
 
                 await self.tg_bot.send_message(admin.id, res_msg)
+                return
 
             elif self.bot_wait.event == 'FOUND':
                 # Уведомление о возможности выкупа
                 await self.send_notify_for_buy()
+                return
             elif self.bot_wait.event == 'CHECK_DELIVERY':
                 # Проверка готовности товара
                 status = await Admin.check_order(self.bot_wait.data.bot_name)
@@ -84,6 +89,10 @@ class BotsWait:
                     self.bot_wait.event = "CHECK_CLAIM"
                     self.bot_wait.datetime_to_run = self.get_work_time()
 
+                return
+            elif self.bot_wait.event == 'CHECK_BALANCE':
+                await self.check_balance()
+                return True
             elif self.bot_wait.event == 'ADD_COMMENT':
                 pass
 
@@ -227,6 +236,13 @@ class BotsWait:
         await self.tg_bot.send_message(self.bot_wait.data['chat_id'], 'Готов выкуп', reply_markup=keyboard)
         self.bot_wait.event = "PAYMENT"
         self.bot_wait.update()
+
+    async def check_balance(self):
+        print('CHECK_BALANCE')
+        bot = Bot(self.bot_wait.bot_name)
+        bot.open_bot(manual=False)
+        bot.data.balance = bot.check_balance()
+        bot.data.update()
 
 
 if __name__ == '__main__':

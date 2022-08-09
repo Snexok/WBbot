@@ -50,7 +50,7 @@ class Bots_Model(Model):
         return data
 
     @classmethod
-    def load_must_free(cls, limit=None, _type=None inn=None):
+    def load_must_free(cls, limit=None, _type=None, inn=None):
         path = f"SELECT b.*, coalesce (o.active_cnt, 0) as active_cnt FROM  " \
                f"(SELECT * FROM bots WHERE type = '{_type}' AND status = 'FREE' AND "+(f"'{inn}' = ANY(inns)" if inn else "inns is null")+") b " \
                f"LEFT JOIN " \

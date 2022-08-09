@@ -16,41 +16,6 @@ DEBUG = config['DEBUG']
 TEST = config['TEST']
 
 
-async def bot_search(bots_data, tg_bot: TG_Bot, chat_id, article, search_key, category):
-    orders = [[article, search_key, category, "1", "1", "381108544328"]]
-    await tg_bot.send_message(chat_id, f'Начался поиск артикула {article}')
-
-    res_msg = ''
-    if DEBUG:
-        run_bot = asyncio.to_thread(Admin.pre_run, orders)
-        data_for_bots = await asyncio.gather(run_bot)
-        data_for_bots = data_for_bots[0]
-    else:
-        try:
-            run_bot = asyncio.to_thread(Admin.pre_run, orders)
-            data_for_bots = await asyncio.gather(run_bot)
-            data_for_bots = data_for_bots[0]
-        except:
-            await tg_bot.send_message(chat_id, f'❌ Поиск артикула {article} упал на анализе карточки ❌')
-
-    if DEBUG:
-        msgs = await Admin.bot_search(bots_data, data_for_bots)
-    else:
-        try:
-            msgs = await Admin.bot_search(bots_data, data_for_bots)
-        except:
-            await tg_bot.send_message(chat_id, f'❌ Поиск артикула {article} упал ❌')
-    try:
-        for msg in msgs:
-            res_msg += msg + "\n"
-    except:
-        pass
-
-    res_msg += '\n' + f'Поиск артикула {article} завершен'
-
-    tg_bot.send_message(chat_id, res_msg)
-
-
 async def bot_buy(message, bot_wait):
     reports = []
 

@@ -3,24 +3,25 @@ from datetime import datetime
 from TG.Models.Model import Model
 
 class BotWait_Model(Model):
-    COLUMNS = ['id', 'bot_name', 'event', 'sub_event', 'start_datetime', 'end_datetime', 'wait', 'data', 'order_id',
-               'pause', 'datetime_to_run']
+    COLUMNS = ['id', 'order_id', 'bot_name', 'event', 'sub_event', 'datetime_to_run', 'wait', 'running', 'pause', 'data',
+               'start_datetime', 'end_datetime']
     table_name = 'bots_wait'
 
-    def __init__(self, id=1, bot_name='', event='', sub_event='', start_datetime='', end_datetime='', wait=False, data='',
-                 order_id='', pause=False, datetime_to_run=''):
+    def __init__(self, id=1, order_id='', bot_name='', event='', sub_event='', datetime_to_run='', wait=False,
+                 running=False, pause=False, data='', start_datetime='', end_datetime=''):
         super().__init__()
         self.id = id
+        self.order_id = order_id
         self.bot_name = bot_name
         self.event = event
         self.sub_event = sub_event
+        self.datetime_to_run = datetime_to_run
+        self.wait = wait
+        self.running = running
+        self.pause = pause
+        self.data = data
         self.start_datetime = start_datetime
         self.end_datetime = end_datetime
-        self.wait = wait
-        self.data = data
-        self.order_id = order_id
-        self.pause = pause
-        self.datetime_to_run = datetime_to_run
 
     def delete(self):
         path = f"DELETE FROM {self.table_name} WHERE id={self.id}"
@@ -65,8 +66,8 @@ class BotsWait_Model(Model):
     @classmethod
     def load_last(cls):
         path = f"SELECT * FROM {cls.table_name} WHERE " \
-               f"datetime_to_run = (SELECT MIN(datetime_to_run) FROM {cls.table_name}) " \
-               f"AND datetime_to_run < '{str(datetime.now())}' AND wait=TRUE AND " \
+               f"datetime_to_run = (SELECT MIN(datetime_to_run) FROM {cls.table_name} WHERE wait=TRUE AND running!=TRUE) " \
+               f"AND datetime_to_run < '{str(datetime.now())}' AND wait=TRUE AND running!=TRUE AND " \
                f"event NOT IN {str(cls.exceptional_events).replace('[', '(').replace(']', ')')} " \
                f"LIMIT 1"
         data = cls.execute(path, cls.fetchall)

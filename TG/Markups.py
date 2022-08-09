@@ -9,19 +9,19 @@ def get_markup(markup_name, role='', is_admin=False, id=''):
         return markup
     elif 'admin_main' == markup_name:
         markup = types.ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
-        markup.add("💰 Создать заказ 💰")
-        markup.add("👀 Посмотреть заказы 👀")
-        markup.add("✏️ редактировать заказы ✏️")
-        markup.add("🔍 Поиск товаров 🔎")
-        markup.add("👨‍💻 Запланировать поиск товаров 👨‍💻")
-        markup.add("💰 Выкуп собраных заказов 💰")
-        markup.add("💸 Повторный выкуп 💸")
-        markup.add("➕ Добавить пользователя ➕")
-        # markup.add("💼 Авторизоваться в партнёрку 💼")
         if id:
             if id == '794329884' or id == '535533975':
                 markup.add("🤖 Открыть бота 🤖")
                 markup.add("🕙 Проверить ожидаемое 🕑")
+                markup.add("💵 Проверить баланс ВСЕХ ботов 💵")
+        markup.add("💰 Выкуп собраных заказов 💰")
+        markup.add("🔍 Поиск товаров 🔎")
+        markup.add("➕ Добавить пользователя ➕")
+        markup.add("💰 Создать заказ 💰")
+        markup.add("👀 Посмотреть заказы 👀")
+        markup.add("✏️ редактировать заказы ✏️")
+        markup.add("💸 Повторный выкуп 💸")
+        # markup.add("💼 Авторизоваться в партнёрку 💼")
         markup.add("✉ Проверить адреса ✉")
         markup.add("🏡 Распределить адреса по ботам 🏡")
         markup.add("◄ Назад")
@@ -116,6 +116,14 @@ def get_keyboard(keyboard_name, *args):
         btns = []
         btns += [types.InlineKeyboardButton(text='Активные', callback_data='Активные')]
         btns += [types.InlineKeyboardButton(text='По ИНН', callback_data='По ИНН')]
+        keyboard.add(*btns)
+
+        return keyboard
+    elif 'yes_or_no' == keyboard_name:
+        keyboard = types.InlineKeyboardMarkup()
+        btns = []
+        btns += [types.InlineKeyboardButton(text='Да', callback_data='yes')]
+        btns += [types.InlineKeyboardButton(text='Нет', callback_data='no')]
         keyboard.add(*btns)
 
         return keyboard

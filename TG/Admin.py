@@ -51,8 +51,10 @@ class Admin:
     #     #     loop.create_task(cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], pup_address.address, number, message))
 
     @classmethod
-    async def bot_search(cls, bots_data, data):
+    async def bot_search(cls, data):
         print("bot_search started")
+
+        bots_data = Bots_Model.load_must_free(limit=len(data), _type="WB")
 
         for bot_data in bots_data:
             bot_data.set(status="SEARCH")

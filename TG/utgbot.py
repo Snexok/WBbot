@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta
 from asyncio import sleep
 import io
-from random import random
+import random
 
 import asyncio
 import ujson
@@ -23,7 +23,7 @@ from TG.Models.ExceptedOrders import ExceptedOrders_Model, ExceptedOrder_Model
 from TG.Models.Orders import Orders_Model
 from TG.Models.OrdersOfOrders import OrderOfOrders_Model, OrdersOfOrders_Model
 from TG.Models.Users import Users_Model, User_Model
-from TG.Models.Bots import Bots_Model as Bots_model
+from TG.Models.Bots import Bots_Model
 from TG.Models.Whitelist import Whitelist_Model
 from TG.Models.Admins import Admin_Model as Admin_model
 from TG.Markups import get_markup, get_keyboard, get_list_keyboard
@@ -36,10 +36,7 @@ import pandas as pd
 
 DEBUG = config['DEBUG']
 
-ADMIN_BTNS = ['🏡 распределить адреса по ботам 🏡', '🔍 поиск товаров 🔎', '➕ добавить пользователя ➕', '◄ назад']
-
 API_TOKEN = config['tokens']['telegram']
-
 # Initialize bot and dispatcher
 tg_bot = TG_Bot(token=API_TOKEN)
 loop = asyncio.get_event_loop()
@@ -130,19 +127,19 @@ async def main_handler(message: types.Message):
             return
     elif user.role in "FF":
         if "🚀 собрать самовыкупы 🚀" in msg:
-            # orders = Orders.load(collected=False)
-            # for order in orders:
-            #     await message.answer(f'Артикулы заказа {order.articles}\n\n'
-            #                          f'Адрес заказа {order.pup_address}\n\n'
-            #                          f'Время заказа {order.start_date}')
-            # await message.answer('⛔ 🚀 Сборка самовыкупов пока не доступна 🚀 ⛔')
-            users = Users_Model.load(role='IE')
-            ies = [user.ie for user in users]
-            print(ies)
-            await States.COLLECT_ORDERS.set()
-            markup = get_list_keyboard(ies)
-            await message.answer('Выберите ИП, по которому хотите собрать самовыкупы', reply_markup=markup)
-            return
+            orders = Orders_Model.load(collected=False)
+            for order in orders:
+                await message.answer(f'Артикулы заказа {order.articles}\n\n'
+                                     f'Адрес заказа {order.pup_address}\n\n'
+                                     f'Время заказа {order.start_date}')
+            await message.answer('⛔ 🚀 Сборка самовыкупов пока не доступна 🚀 ⛔')
+            # users = Users_Model.load(role='IE')
+            # ies = [user.ie for user in users]
+            # print(ies)
+            # await States.COLLECT_ORDERS.set()
+            # markup = get_list_keyboard(ies)
+            # await message.answer('Выберите ИП, по которому хотите собрать самовыкупы', reply_markup=markup)
+            # return
         elif "⛔ собрать реальные заказы 🚚" in msg:
             await message.answer('⛔ Сборка РЕАЛЬНЫХ заказов ПОКА НЕДОСТУПНА ⛔')
             # users = Users.load(role='IE')
@@ -334,18 +331,11 @@ async def admin_handler(message: types.Message):
         await message.answer('Пришлите Excel файл заказа\n'
                              'Или выберите артикул и выкупиться 1 товар с таким артикулом', reply_markup=keyboard)
         await States.BOT_SEARCH.set()
-    elif "👨‍💻 запланировать поиск товаров 👨‍💻" in msg:
-        keyboard = get_keyboard('admin_bot_search')
-        await message.answer('Пришлите Excel файл заказа\n'
-                             'Или выберите артикул и выкупиться 1 товар с таким артикулом', reply_markup=keyboard)
-        await States.PLAN_BOT_SEARCH.set()
     elif "💰 выкуп собраных заказов 💰" in msg:
         bots_wait = BotsWait_Model.load(event="FOUND")
         if bots_wait:
             await message.answer(f'{len(bots_wait)} ботов ожидают выкупа, скольких вы хотите выкупить?')
-            await message.answer(
-                '<b>ФИЧА</b>: <i>нажмите кнопку</i> <b>"💰 выкуп собраных заказов 💰"</b> <i>для того, чтобы выкупить</i> <b>только один</b>.',
-                parse_mode="HTML")
+            await message.answer('<b>ФИЧА</b>: <i>нажмите кнопку</i> <b>"💰 выкуп собраных заказов 💰"</b> <i>для того, чтобы выкупить</i> <b>только один</b>.', parse_mode="HTML")
             await States.BOT_BUY.set()
         else:
             markup = get_markup('admin_main', id=id)
@@ -353,7 +343,7 @@ async def admin_handler(message: types.Message):
                                  '💲Вы выкупили все заказы!💲', reply_markup=markup)
     elif "💸 повторный выкуп 💸" in msg:
         await States.RE_BUY.set()
-        tg_bots = Bots_model.load_with_balance()
+        tg_bots = Bots_Model.load_with_balance()
         bots_name = [f"{tg_bots[i].name} {tg_bots[i].balance} ₽" for i in range(len(tg_bots))]
         markup = get_keyboard('admin_bots', bots_name)
         await message.answer('Выберите бота', reply_markup=markup)
@@ -387,6 +377,11 @@ async def admin_handler(message: types.Message):
             await States.ADMIN.set()
             await message.answer('Все товары доставлены')
         return
+    elif "💵 проверить баланс всех ботов 💵" in msg:
+        await States.CHECK_BOTS_BALANCE.set()
+        keyboard = get_keyboard('yes_or_no')
+        await message.answer('Вы уверены, что хотите запустить проверку балансов всех ботов?', reply_markup=keyboard)
+        return
     elif '✉ проверить адреса ✉' in msg:
         res_message, state = Admin.check_not_checked_pup_addresses()
         markup = get_markup('admin_main', id=id)
@@ -402,8 +397,9 @@ async def admin_handler(message: types.Message):
             if id == '794329884' or id == '535533975':
                 if "🤖 открыть бота 🤖" in msg:
                     await States.RUN_BOT.set()
-                    tg_bots = Bots_model.load()
-                    bots_name = [f"{tg_bots[i].name} {tg_bots[i].type}" for i in range(len(tg_bots))]
+                    bots = Bots_Model.load()
+                    bots_name = [f"{bots[i].name}" for i in range(len(bots))]
+                    bots_name.sort()
                     markup = get_keyboard('admin_bots', bots_name)
                     await message.answer('Выберите бота', reply_markup=markup)
                 if "🤖 статус ботов 🤖":
@@ -443,6 +439,7 @@ async def bot_search_callback_query_handler(call: types.CallbackQuery):
     await call.message.edit_text(f'Начался поиск артикула {article}')
 
     res_msg = ''
+    data_for_bots = []
     if DEBUG:
         run_bot = asyncio.to_thread(Admin.pre_run, orders)
         data_for_bots = await asyncio.gather(run_bot)
@@ -455,6 +452,7 @@ async def bot_search_callback_query_handler(call: types.CallbackQuery):
         except:
             await call.message.answer(f'❌ Поиск артикула {article} упал на анализе карточки ❌')
 
+    msgs = ''
     if DEBUG:
         msgs = await Admin.bot_search(data_for_bots)
     else:
@@ -473,114 +471,12 @@ async def bot_search_callback_query_handler(call: types.CallbackQuery):
     await call.message.answer(res_msg)
 
 
-@dp.message_handler(state=States.BOT_SEARCH, content_types=['document'])
-async def bot_search_handler(message: types.Message):
-    await States.ADMIN.set()
-
-    document = io.BytesIO()
-    await message.document.download(destination_file=document)
-    df = pd.read_excel(document)
-    orders = [row.tolist() for i, row in df.iterrows()]
-    data_for_bots = Admin.pre_run(orders)
-    await message.answer('Поиск начался')
-    if DEBUG:
-        msgs = await Admin.bot_search(data_for_bots)
-    else:
-        try:
-            msgs = await Admin.bot_search(data_for_bots)
-        except:
-            await message.answer('❌ Поиск упал ❌')
-
-    for msg in msgs:
-        await message.answer(msg)
-
-    await message.answer('Поиск завершен')
-
-
-@dp.message_handler(state=States.BOT_SEARCH, content_types=['text'])
-async def inside_handler(message: types.Message):
-    msg = message.text.lower()
-    id = str(message.chat.id)
-    if msg in ADMIN_BTNS:
-        await States.ADMIN.set()
-        await admin_handler(message)
-        return
-
-
-@dp.callback_query_handler(state=States.PLAN_BOT_SEARCH)
-async def plan_bot_search_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
-    id = str(call.message.chat.id)
-    msg = call.data
-    article = msg
-    category = ''
-    search_key = ''
-    if article in ['90086267', '90086484', '90086527']:
-        # category = 'Женщинам;Пляжная мода;Купальники'
-        search_key = 'купальник женский раздельный с высокой талией'
-    if article in ['90085903', '90398226']:
-        # category = 'Женщинам;Пляжная мода;Купальники'
-        search_key = 'слитный купальник женский утягивающий'
-
-    await state.set_data({'article': article, 'search_key': search_key, 'category': category})
-
-    await call.message.answer('Введите через сколько часов нужно отработать поиск')
-
-
-@dp.message_handler(state=States.PLAN_BOT_SEARCH, content_types=['document'])
-async def plan_bot_search_document_handler(message: types.Message):
-    await States.ADMIN.set()
-    await message.answer('Планирование по документу пока не готово')
-
-    document = io.BytesIO()
-    await message.document.download(destination_file=document)
-    df = pd.read_excel(document)
-    orders = [row.tolist() for i, row in df.iterrows()]
-    data_for_bots = Admin.pre_run(orders)
-    await message.answer('Поиск начался')
-    if DEBUG:
-        msgs = await Admin.bot_search(data_for_bots)
-    else:
-        try:
-            msgs = await Admin.bot_search(data_for_bots)
-        except:
-            await message.answer('❌ Поиск упал ❌')
-
-    for msg in msgs:
-        await message.answer(msg)
-
-    await message.answer('Поиск завершен')
-
-
-@dp.message_handler(state=States.PLAN_BOT_SEARCH, content_types=['text'])
-async def plan_bot_search_message_handler(message: types.Message, state: FSMContext):
-    msg = message.text
-    id = str(message.chat.id)
-    try:
-        await States.ADMIN.set()
-
-        hours = int(msg)
-        data = await state.get_data()
-        # article = data['article']
-        # search_key = data['search_key']
-        # category = data['category']
-        data['chat_id'] = id
-
-        end_datetime = datetime.now() + timedelta(hours=hours)
-        data = ujson.dumps(data)
-        print(f'data {data}')
-        bot_wait = BotWait_Model(event='SEARCH', end_datetime=end_datetime, wait=True, data=data)
-        bot_wait.insert()
-    except:
-        await message.answer('Введите цифру')
-
-
 @dp.message_handler(state=States.AUTH_PARTNER, content_types=['text'])
 async def inside_handler(message: types.Message, state: FSMContext):
     msg = message.text
     id = str(message.chat.id)
     state_data = await state.get_data()
-    print(state_data)
-    print('number: ', state_data.get('number'))
+
     if state_data.get('number') == None:
         number = str(int(msg))
         state_data['number'] = number
@@ -607,29 +503,21 @@ async def inside_handler(message: types.Message, state: FSMContext):
 async def run_bot_callback_query_handler(call: types.CallbackQuery):
     id = str(call.message.chat.id)
     msg = call.data
-    bot_name, bot_type = msg.split(' ')
+    # bot_name, bot_type = msg.split(' ')
+    bot_name = msg
     await States.ADMIN.set()
     await call.message.edit_text(msg + " открыт")
     await Admin.open_bot(bot_name=bot_name)
 
 
 @dp.message_handler(state=States.RUN_BOT)
-async def run_bot_callback_query_handler(message: types.Message):
+async def run_bot_message_handler(message: types.Message):
     id = str(message.chat.id)
     msg = message.text
     bot_name = msg
     await States.ADMIN.set()
     await message.answer(msg + " открыт")
     await Admin.open_bot(bot_name=bot_name)
-
-
-@dp.message_handler(state=States.RUN_BOT)
-async def run_bot_handler(message: types.Message):
-    id = str(message.chat.id)
-    msg = message.text
-    if msg.lower() in ADMIN_BTNS:
-        await States.ADMIN.set()
-        await admin_handler(message)
 
 
 @dp.callback_query_handler(state=States.CHECK_WAITS)
@@ -640,15 +528,24 @@ async def check_waits_callback_query_handler(call: types.CallbackQuery):
     await call.message.edit_text(msg + " открыт")
     await Admin.check_order(msg, call.message)
 
+@dp.callback_query_handler(state=States.CHECK_BOTS_BALANCE)
+async def check_waits_callback_query_handler(call: types.CallbackQuery):
+    id = str(call.message.chat.id)
+    msg = call.data
 
-@dp.message_handler(state=States.CHECK_WAITS)
-async def check_waits_handler(message: types.Message):
-    id = str(message.chat.id)
-    msg = message.text
-    if msg.lower() in ADMIN_BTNS:
-        await States.ADMIN.set()
-        await admin_handler(message)
+    await States.ADMIN.set()
+    if msg == "yes":
+        all_bots = Bots_Model.load(_type="WB")
+        print([bot.name for bot in all_bots])
+        print(len([bot.name for bot in all_bots]))
+        random.shuffle(all_bots)
+        start_date = datetime.now()
+        minutes = 0
+        for bot in all_bots:
+            minutes += random.randint(1,4)
+            BotWait_Model(bot_name=bot.name, event="CHECK_BALANCE", wait=True, datetime_to_run=start_date+timedelta(minutes=minutes, seconds=random.randint(0,59))).insert()
 
+        await call.message.edit_text(msg)
 
 @dp.callback_query_handler(state=States.COLLECT_OTHER_ORDERS)
 async def collect_other_orders_callback_query_handler(call: types.CallbackQuery):
@@ -785,10 +682,6 @@ async def to_whitelist_handler(message: types.Message):
         await States.ADMIN.set()
         markup = get_markup('admin_main', id=id)
         await message.answer(f"Пользователь с username {msg} добавлен", reply_markup=markup)
-    elif msg.lower() in ADMIN_BTNS and Admin.is_admin(id):
-        await States.ADMIN.set()
-        await admin_handler(message)
-        return
 
 
 @dp.message_handler(state=States.BOT_BUY, content_types=['text'])
@@ -797,10 +690,6 @@ async def bot_buy_handler(message: types.Message):
     msg = message.text
     if msg.lower() == "💰 выкуп собраных заказов 💰":
         bots_cnt = 1
-    elif msg.lower() in ADMIN_BTNS:
-        await States.ADMIN.set()
-        await admin_handler(message)
-        return
     else:
         try:
             bots_cnt = int(msg)
@@ -843,7 +732,7 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
     await States.ADMIN.set()
 
     # Получаем текуще активное событие
-    bot_wait = BotsWait.load(bot_name=bot_name, wait=True)
+    bot_wait = BotsWait_Model.load(bot_name=bot_name, wait=True)
     print(bot_wait)
 
     # Определяем необходимость поиска или только выкуп
@@ -869,6 +758,7 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
 
         # собираем все данные о конкретных товарах
         res_msg = ''
+        data_for_bots = []
         if DEBUG:
             run_bot = asyncio.to_thread(Admin.pre_run, orders)
             data_for_bots = await asyncio.gather(run_bot)
@@ -881,6 +771,7 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
             except:
                 await message.answer(f'❌ Поиск артикула {article} упал на анализе карточки ❌')
 
+        msgs = ''
         # Запускаем поиск заказа
         if DEBUG:
             msgs = await Admin.bot_re_search(bot_name, data_for_bots)
@@ -905,7 +796,7 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
 
         # Если до этого не существовало активного события, получаем текуще активное событие по боту
         if not bot_wait:
-            bot_wait = BotsWait.load(bot_name=bot_name, wait=True)
+            bot_wait = BotsWait_Model.load(bot_name=bot_name, wait=True)
 
         # запускаем выкуп
         await Admin.bot_re_buy(message, bot_wait)
@@ -931,10 +822,6 @@ async def excepted_orders_callback_query_handler(call: types.CallbackQuery, stat
 async def address_distribution_handler(message: types.Message):
     msg = message.text
     id = str(message.chat.id)
-    if msg.lower() in ADMIN_BTNS:
-        await States.ADMIN.set()
-        await admin_handler(message)
-        return
 
     bots_data_str = msg.split('\n\n')
 
@@ -944,12 +831,12 @@ async def address_distribution_handler(message: types.Message):
         name = bot_data[0]
         new_addresses = bot_data[1:]
 
-        wb_bot = Bots_model.load(name=name)
+        wb_bot = Bots_Model.load(name=name)
         wb_bot.append(addresses=new_addresses)
         wb_bot.update()
 
         for address in new_addresses:
-            address = Address_Model().load(address=address)
+            address = Addresses_Model.load(address=address)
             address.set(added_to_bot=True)
             address.update()
 
@@ -998,11 +885,6 @@ async def ff_address_end_handler(message: types.Message):
 async def address_verification_handler(message: types.Message):
     msg = message.text
     id = str(message.chat.id)
-
-    if msg.lower() in ADMIN_BTNS:
-        await States.ADMIN.set()
-        await admin_handler(message)
-        return
 
     new_addresses = msg.split('\n')
 
@@ -1213,6 +1095,7 @@ async def watch_orders_callback_query_handler(call: types.CallbackQuery, state: 
     id = str(call.message.chat.id)
     msg = call.data
 
+    await States.ADMIN.set()
     if msg == 'Активные':
         orders = OrdersOfOrders_Model.load()
         for order in orders:
@@ -1266,7 +1149,7 @@ async def pup_addresses_continue_handler(message: types.Message):
             f'Это все адреса?\n\n{addresses_to_print}\nЕсли есть еще адреса напишите их?\n\nЕсли это все адреса, просто напишите "Всё"',
             reply_markup=markup)
 
-    user.update()
+        user.update()
 
 
 @dp.message_handler()
@@ -1286,7 +1169,7 @@ async def default_handler(message: types.Message):
 
 
 @dp.callback_query_handler(text_contains='_bw_', state="*")
-async def others_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
+async def others_callback_query_handler(call: types.CallbackQuery):
     id = str(call.message.chat.id)
     msg = call.data
     bot_name = msg.split(" ")[1]
@@ -1309,5 +1192,5 @@ async def others_callback_query_handler(call: types.CallbackQuery, state: FSMCon
 
 
 if __name__ == '__main__':
-    # dp.loop.create_task(BotsWait(tg_bot).main())
+    dp.loop.create_task(BotsWait(tg_bot).main())
     executor.start_polling(dp)
