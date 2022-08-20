@@ -366,7 +366,7 @@ async def admin_handler(message: types.Message):
                 is_order_wait_exist = BotsWait_Model.check_exist_order_wait(order.bot_name, order.id)
                 if not is_order_wait_exist:
                     bot_wait = BotWait_Model(bot_name=order.bot_name, event='delivery', start_datetime=datetime.now(),
-                                             end_datetime=order.pred_end_date, wait=True,
+                                             end_datetime=order.pred_end_date, wait=False,
                                              data=json.dumps('{"id": ' + str(order.id) + '}'))
                     bot_wait.insert()
                 if order.bot_name not in bots_name:

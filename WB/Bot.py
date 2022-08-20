@@ -68,6 +68,8 @@ class Bot:
                 print("Не указан не ключ поиска, не категория")
 
             sleep(2)
+
+            self.age_verification()
             price = d['additional_data']['price']
             self.catalog.price_filter(int(price * 0.75), int(price * 1.25))
             sleep(2)
@@ -166,6 +168,14 @@ class Bot:
         self.driver.get("https://www.wildberries.ru/")
         sleep(2)
         self.driver.get(f"https://www.wildberries.ru/catalog/{str(article)}/detail.aspx?targetUrl=MI")
+        sleep(2)
+
+        age_validation_btn = self.driver.find_element(By.XPATH, f'//button[text()="Да, мне есть 18 лет"]')
+        print(age_validation_btn)
+        if age_validation_btn:
+            age_validation_btn.click()
+            sleep(1)
+
         data = {}
 
         try:
@@ -393,3 +403,24 @@ class Bot:
         balance_text = self.driver.find_element(By.XPATH, "//span[contains(@class,'profile-menu__balance')]").text
         balance = int("".join(balance_text.split(" ")[:-1]))
         return balance
+
+    def age_verification(self):
+        products_for_adults = self.driver.find_elements(By.XPATH, f'//div[text()="Товары для взрослых"]')
+        if products_for_adults:
+            for product in products_for_adults:
+                try:
+                    product.click()
+                    break
+                except:
+                    pass
+
+            sleep(1)
+
+            self.driver.find_element(By.XPATH, f'//button[text()="Да, мне есть 18 лет"]').click()
+
+            sleep(2.5)
+
+            self.driver.back()
+
+            sleep(2.5)
+

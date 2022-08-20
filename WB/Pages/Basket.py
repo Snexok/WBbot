@@ -128,7 +128,8 @@ class Basket():
         sleep(2)
         # self.driver.find_element(By.XPATH, '//button[contains(@class,"popup__btn-main")]').click()
         # sleep(2)
-        svg = self.driver.find_element(By.XPATH, '//div[@class="qr-code__value"]')
+        svg = WebDriverWait(self.driver, 5).until(
+            lambda d: d.find_element(By.XPATH, '//div[@class="qr-code__value"]'))
         self.save_qr_code(svg, file_name)
 
         return file_name

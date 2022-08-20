@@ -220,7 +220,8 @@ class BotsWait:
             bot_wait.insert()
 
         msgs += [f"✅ Собран заказ бота {report['bot_name']}✅\n"
-                 f"Артикулы {report['articles']}"]
+                 f"Артикулы {report['articles']}\n"
+                 f"Адреса: {bot_data.addresses}"]
 
         print("bot_search ended")
 
@@ -238,11 +239,13 @@ class BotsWait:
         self.bot_wait.update()
 
     async def check_balance(self):
-        print('CHECK_BALANCE')
         bot = Bot(self.bot_wait.bot_name)
         bot.open_bot(manual=False)
-        bot.data.balance = bot.check_balance()
+        balance = bot.check_balance()
+        bot.data.balance = balance
         bot.data.update()
+        if balance:
+            self.bot_wait.data = json.dumps({'balance': balance})
 
 
 if __name__ == '__main__':

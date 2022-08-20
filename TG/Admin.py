@@ -108,7 +108,7 @@ class Admin:
     async def bot_re_search(cls, bot_name, data):
         print("bot_search started")
 
-        bot_data = Bots_model.load(name=bot_name)
+        bot_data = Bots_Model.load(name=bot_name)
 
         bot_data.set(status="SEARCH")
         bot_data.update()
@@ -124,7 +124,7 @@ class Admin:
         for i, report in enumerate(reports):
             print(report)
             data = ujson.dumps(report)
-            bot_wait = BotWait(bot_name=bot.data.name, event="RE_FOUND", wait=True,
+            bot_wait = BotWait_Model(bot_name=bot.data.name, event="RE_FOUND", wait=True,
                                start_datetime=datetime.now(), data=data)
             bot_wait.insert()
 
@@ -223,7 +223,7 @@ class Admin:
                 bot_wait.data = []
                 bot_wait.update()
 
-                bot_data.set(status="FREE")
+                bot_data.set(status="HOLD")
                 bot_data.update()
 
         return reports\
@@ -291,7 +291,7 @@ class Admin:
                 await message.answer(
                     f"❌ НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
 
-            bot_data.set(status="FREE")
+            bot_data.set(status="HOLD")
             bot_data.update()
 
         return reports

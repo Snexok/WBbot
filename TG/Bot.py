@@ -107,7 +107,7 @@ async def bot_buy(message, bot_wait):
 
         bot_wait.update()
 
-        bot_data.set(status="FREE")
+        bot_data.set(status="HOLD")
         bot_data.update()
 
     return reports
