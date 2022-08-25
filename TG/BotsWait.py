@@ -33,12 +33,10 @@ class BotsWait:
                 bot_wait.running = True
                 bot_wait.update()
                 # Запускаем обработку события, все параметры передаются в self
-                res_status = await self.exec_event()
-                if res_status:
-                    # Сбрасываем индикатор ожидания
-                    bot_wait.wait = False
-                    bot_wait.running = False
-                    bot_wait.update()
+                await self.exec_event()
+                # Сбрасываем индикатор ожидания
+                bot_wait.running = False
+                bot_wait.update()
                 # bots_wait.delete()
 
     async def exec_event(self):
@@ -67,6 +65,7 @@ class BotsWait:
                         msgs = await self.bot_search(data['article'], data['search_key'], data.get('category'), data['inn'])
                     except:
                         await self.tg_bot.send_message(admin.id, f'❌ Поиск артикула {data["article"]} упал ❌')
+                        return False
 
                 res_msg = ''
                 for msg in msgs:
@@ -75,7 +74,7 @@ class BotsWait:
                 res_msg += '\n' + f'Поиск артикула {data["article"]} завершен'
 
                 await self.tg_bot.send_message(admin.id, res_msg)
-                return
+                return True
 
             elif self.bot_wait.event == 'FOUND':
                 # Уведомление о возможности выкупа

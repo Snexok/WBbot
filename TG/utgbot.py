@@ -1174,7 +1174,7 @@ async def others_callback_query_handler(call: types.CallbackQuery):
     msg = call.data
     bot_name = msg.split(" ")[1]
 
-    bot_wait = BotsWait_Model.load(event="PAYMENT", bot_name=bot_name)
+    bot_wait = BotsWait_Model.load(event="PAYMENT", bot_name=bot_name, wait=True)
 
     print(msg)
 
