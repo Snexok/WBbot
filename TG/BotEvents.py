@@ -12,48 +12,49 @@ from configs import config
 from TG.Admin import Admin
 from TG.Models.Admins import Admins_Model, Admin_Model
 from TG.Models.Bots import Bots_Model
-from TG.Models.BotsWaits import BotWait_Model, BotsWait_Model
+from TG.Models.BotEvents import BotEvent_Model, BotsEvents_Model
 from TG.Models.OrdersOfOrders import OrdersOfOrders_Model, OrderOfOrders_Model
 from WB.Bot import Bot
 
 DEBUG = config['DEBUG']
 
-class BotsWait:
+
+class BotEvents:
     def __init__(self, tg_bot: TG_Bot):
         self.tg_bot = tg_bot
-        self.bot_wait: BotWait_Model = None
+        self.bot_event: BotEvent_Model = None
 
     async def main(self):
         while True:
             await sleep(5)
-            bot_wait = BotsWait_Model.load_last()
-            if bot_wait:
-                print(bot_wait)
-                self.bot_wait = bot_wait
-                bot_wait.running = True
-                bot_wait.update()
+            bot_event = BotsEvents_Model.load_last()
+            if bot_event:
+                print(bot_event)
+                self.bot_event = bot_event
+                bot_event.running = True
+                bot_event.update()
                 # Запускаем обработку события, все параметры передаются в self
                 await self.exec_event()
                 # Сбрасываем индикатор ожидания
-                bot_wait.running = False
-                bot_wait.update()
-                # bots_wait.delete()
+                bot_event.running = False
+                bot_event.update()
+                # bots_event.delete()
 
     async def exec_event(self):
-        print(self.bot_wait.event)
-        if self.bot_wait.sub_event:
-            if self.bot_wait.sub_event == 'SURF':
+        print(self.bot_event.event)
+        if self.bot_event.sub_event:
+            if self.bot_event.sub_event == 'SURF':
                 pass
-            elif self.bot_wait.sub_event == 'SEARCH_FAVORITES':
+            elif self.bot_event.sub_event == 'SEARCH_FAVORITES':
                 pass
-            elif self.bot_wait.sub_event == 'PICK_BASKET':
+            elif self.bot_event.sub_event == 'PICK_BASKET':
                 pass
-            elif self.bot_wait.sub_event == 'PICK_FAVORITE':
+            elif self.bot_event.sub_event == 'PICK_FAVORITE':
                 pass
         else:
-            if self.bot_wait.event == 'SEARCH':
+            if self.bot_event.event == 'SEARCH':
                 # Запуск процесса поиска
-                data = self.bot_wait.data
+                data = self.bot_event.data
 
                 admin: Admin_Model = Admins_Model.get_sentry_admin()
 
@@ -62,7 +63,8 @@ class BotsWait:
                     msgs = await self.bot_search(data['article'], data['search_key'], data.get('category'), data['inn'])
                 else:
                     try:
-                        msgs = await self.bot_search(data['article'], data['search_key'], data.get('category'), data['inn'])
+                        msgs = await self.bot_search(data['article'], data['search_key'], data.get('category'),
+                                                     data['inn'])
                     except:
                         await self.tg_bot.send_message(admin.id, f'❌ Поиск артикула {data["article"]} упал ❌')
                         return False
@@ -76,45 +78,45 @@ class BotsWait:
                 await self.tg_bot.send_message(admin.id, res_msg)
                 return True
 
-            elif self.bot_wait.event == 'FOUND':
+            elif self.bot_event.event == 'FOUND':
                 # Уведомление о возможности выкупа
                 await self.send_notify_for_buy()
                 return
-            elif self.bot_wait.event == 'CHECK_DELIVERY':
+            elif self.bot_event.event == 'CHECK_DELIVERY':
                 # Проверка готовности товара
-                status = await Admin.check_order(self.bot_wait.data.bot_name)
+                status = await Admin.check_order(self.bot_event.data.bot_name)
 
                 if status:
-                    self.bot_wait.event = "CHECK_CLAIM"
-                    self.bot_wait.datetime_to_run = self.get_work_time()
+                    self.bot_event.event = "CHECK_CLAIM"
+                    self.bot_event.datetime_to_run = self.get_work_time()
 
                 return
-            elif self.bot_wait.event == 'CHECK_BALANCE':
+            elif self.bot_event.event == 'CHECK_BALANCE':
                 await self.check_balance()
                 return True
-            elif self.bot_wait.event == 'ADD_COMMENT':
+            elif self.bot_event.event == 'ADD_COMMENT':
                 pass
 
     @classmethod
     def set_event_for_order(cls, order_id):
         order = OrdersOfOrders_Model.load(id=order_id)
-        bots_wait = BotsWait_Model.load(order_id=order_id)
+        bots_event = BotsEvents_Model.load(order_id=order_id)
 
-        bots_wait_stat = {}
-        for bot_wait in bots_wait:
-            articles = bot_wait.data.get('articles')
+        bots_event_stat = {}
+        for bot_event in bots_event:
+            articles = bot_event.data.get('articles')
             print(articles)
             if articles:
                 for article in articles:
-                    if article in bots_wait_stat:
-                        bots_wait_stat[article] += 1
+                    if article in bots_event_stat:
+                        bots_event_stat[article] += 1
                     else:
-                        bots_wait_stat[article] = 1
-        print(bots_wait_stat)
+                        bots_event_stat[article] = 1
+        print(bots_event_stat)
         order_stats = dict(zip(order.articles, order.quantities_to_bought))
         print(order_stats)
         for os_key, os_value in order_stats.items():
-            article_cnt = bots_wait_stat.get(os_key)
+            article_cnt = bots_event_stat.get(os_key)
             if article_cnt:
                 if article_cnt < os_value:
                     pass
@@ -129,13 +131,13 @@ class BotsWait:
         now_hour = now_datetime.time().hour
 
         res_datetime = 0
-        hours = random.randint(h, h+12)
+        hours = random.randint(h, h + 12)
         minutes = random.randint(1, 59)
         seconds = random.randint(1, 59)
 
         j = 0
-        while abs(hours+now_hour) % 24 < 8:
-            hours = random.randint(h+j, h+12+j)
+        while abs(hours + now_hour) % 24 < 8:
+            hours = random.randint(h + j, h + 12 + j)
             j += 2
 
         res_datetime = now_datetime + timedelta(hours=hours, minutes=minutes, seconds=seconds)
@@ -147,7 +149,8 @@ class BotsWait:
         datas = []
         for i, article in enumerate(order.articles):
             for j in range(order.quantities_to_bought[i]):
-                datas += [{'article': article, 'search_key': order.search_keys[i], 'inn': order.inn, 'chat_id':admin.id}]
+                datas += [
+                    {'article': article, 'search_key': order.search_keys[i], 'inn': order.inn, 'chat_id': admin.id}]
 
         # Перетасовываем заказы
         random.shuffle(datas)
@@ -159,7 +162,8 @@ class BotsWait:
                 bonus_hours += 24
                 in_day_cnt = 0
             data = json.dumps(data)
-            bw = BotWait_Model(event="SEARCH", wait=True, datetime_to_run=cls.get_work_time(i+bonus_hours), data=data)
+            bw = BotEvent_Model(event="SEARCH", wait=True, datetime_to_run=cls.get_work_time(i + bonus_hours),
+                                data=data)
             bw.insert()
             in_day_cnt += 1
 
@@ -184,8 +188,8 @@ class BotsWait:
 
         bot_data = Bots_Model.load_must_free(limit=1, _type="WB")[0]
 
-        self.bot_wait.bot_name = bot_data.name
-        self.bot_wait.update()
+        self.bot_event.bot_name = bot_data.name
+        self.bot_event.update()
 
         bot_data.set(status="SEARCH")
         bot_data.update()
@@ -201,22 +205,22 @@ class BotsWait:
         print(report)
         datetime_to_run = self.get_work_time()
 
-        if self.bot_wait:
-            self.bot_wait.event = "FOUND"
-            self.bot_wait.wait = True
-            self.bot_wait.datetime_to_run = datetime_to_run
-            print(self.bot_wait.data)
-            print(type(self.bot_wait.data))
+        if self.bot_event:
+            self.bot_event.event = "FOUND"
+            self.bot_event.wait = True
+            self.bot_event.datetime_to_run = datetime_to_run
+            print(self.bot_event.data)
+            print(type(self.bot_event.data))
             # добавляем данные из поиска
             for key, value in report.items():
-                self.bot_wait.data[key] = value
-            self.bot_wait.data = ujson.dumps(self.bot_wait.data)
-            self.bot_wait.update()
+                self.bot_event.data[key] = value
+            self.bot_event.data = ujson.dumps(self.bot_event.data)
+            self.bot_event.update()
         else:
-            bot_wait = BotWait_Model(bot_name=bot.data.name, event="FOUND", wait=True,
-                                     start_datetime=datetime.now(), datetime_to_run=datetime_to_run,
-                                     data=data)
-            bot_wait.insert()
+            bot_event = BotEvent_Model(bot_name=bot.data.name, event="FOUND", wait=True,
+                                       start_datetime=datetime.now(), datetime_to_run=datetime_to_run,
+                                       data=data)
+            bot_event.insert()
 
         msgs += [f"✅ Собран заказ бота {report['bot_name']}✅\n"
                  f"Артикулы {report['articles']}\n"
@@ -232,22 +236,22 @@ class BotsWait:
         return msgs
 
     async def send_notify_for_buy(self):
-        keyboard = get_keyboard('admin_notify_for_buy', self.bot_wait.bot_name)
-        await self.tg_bot.send_message(self.bot_wait.data['chat_id'], 'Готов выкуп', reply_markup=keyboard)
-        self.bot_wait.event = "PAYMENT"
-        self.bot_wait.update()
+        keyboard = get_keyboard('admin_notify_for_buy', self.bot_event.bot_name)
+        await self.tg_bot.send_message(self.bot_event.data['chat_id'], 'Готов выкуп', reply_markup=keyboard)
+        self.bot_event.event = "PAYMENT"
+        self.bot_event.update()
 
     async def check_balance(self):
-        bot = Bot(self.bot_wait.bot_name)
+        bot = Bot(self.bot_event.bot_name)
         bot.open_bot(manual=False)
         balance = bot.check_balance()
         bot.data.balance = balance
         bot.data.update()
         if balance:
-            self.bot_wait.data = json.dumps({'balance': balance})
+            self.bot_event.data = json.dumps({'balance': balance})
 
 
 if __name__ == '__main__':
     # BotsWait.set_event_for_order('2')
     order = OrdersOfOrders_Model.load('куц')
-    BotsWait.BuildOrderFulfillmentProcess(order)
+    BotEvents.BuildOrderFulfillmentProcess(order)

@@ -15,9 +15,9 @@ from aiogram import Dispatcher, executor, types
 from aiogram.utils.json import json
 
 from TG.Bot import bot_buy
-from TG.BotsWait import BotsWait
+from TG.BotEvents import BotEvents
 from TG.Admin import Admin
-from TG.Models.BotsWaits import BotsWait_Model, BotWait_Model
+from TG.Models.BotEvents import BotsEvents_Model, BotEvent_Model
 from TG.Models.Addresses import Addresses_Model, Address_Model
 from TG.Models.ExceptedOrders import ExceptedOrders_Model, ExceptedOrder_Model
 from TG.Models.Orders import Orders_Model
@@ -332,9 +332,9 @@ async def admin_handler(message: types.Message):
                              'Или выберите артикул и выкупиться 1 товар с таким артикулом', reply_markup=keyboard)
         await States.BOT_SEARCH.set()
     elif "💰 выкуп собраных заказов 💰" in msg:
-        bots_wait = BotsWait_Model.load(event="FOUND")
-        if bots_wait:
-            await message.answer(f'{len(bots_wait)} ботов ожидают выкупа, скольких вы хотите выкупить?')
+        bots_event = BotsEvents_Model.load(event="FOUND")
+        if bots_event:
+            await message.answer(f'{len(bots_event)} ботов ожидают выкупа, скольких вы хотите выкупить?')
             await message.answer('<b>ФИЧА</b>: <i>нажмите кнопку</i> <b>"💰 выкуп собраных заказов 💰"</b> <i>для того, чтобы выкупить</i> <b>только один</b>.', parse_mode="HTML")
             await States.BOT_BUY.set()
         else:
@@ -363,12 +363,12 @@ async def admin_handler(message: types.Message):
             bots_name = []
             for order in orders:
                 print(order)
-                is_order_wait_exist = BotsWait_Model.check_exist_order_wait(order.bot_name, order.id)
+                is_order_wait_exist = BotsEvents_Model.check_exist_order_wait(order.bot_name, order.id)
                 if not is_order_wait_exist:
-                    bot_wait = BotWait_Model(bot_name=order.bot_name, event='delivery', start_datetime=datetime.now(),
-                                             end_datetime=order.pred_end_date, wait=False,
-                                             data=json.dumps('{"id": ' + str(order.id) + '}'))
-                    bot_wait.insert()
+                    bot_event = BotEvent_Model(bot_name=order.bot_name, event='delivery', start_datetime=datetime.now(),
+                                               end_datetime=order.pred_end_date, wait=False,
+                                               data=json.dumps('{"id": ' + str(order.id) + '}'))
+                    bot_event.insert()
                 if order.bot_name not in bots_name:
                     bots_name += [order.bot_name]
             keyboard = get_keyboard('admin_bots', bots_name)
@@ -543,7 +543,7 @@ async def check_waits_callback_query_handler(call: types.CallbackQuery):
         minutes = 0
         for bot in all_bots:
             minutes += random.randint(1,4)
-            BotWait_Model(bot_name=bot.name, event="CHECK_BALANCE", wait=True, datetime_to_run=start_date+timedelta(minutes=minutes, seconds=random.randint(0,59))).insert()
+            BotEvent_Model(bot_name=bot.name, event="CHECK_BALANCE", wait=True, datetime_to_run=start_date + timedelta(minutes=minutes, seconds=random.randint(0, 59))).insert()
 
         await call.message.edit_text(msg)
 
@@ -732,14 +732,14 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
     await States.ADMIN.set()
 
     # Получаем текуще активное событие
-    bot_wait = BotsWait_Model.load(bot_name=bot_name, wait=True)
-    print(bot_wait)
+    bot_event = BotsEvents_Model.load(bot_name=bot_name, wait=True)
+    print(bot_event)
 
     # Определяем необходимость поиска или только выкуп
     is_go_search = True
     is_go_buy = True
-    if bot_wait:
-        if bot_wait.event == "RE_FOUND":
+    if bot_event:
+        if bot_event.event == "RE_FOUND":
             is_go_search = False
             is_go_buy = True
         try:
@@ -795,11 +795,11 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
         await message.answer('Выкуп начался')
 
         # Если до этого не существовало активного события, получаем текуще активное событие по боту
-        if not bot_wait:
-            bot_wait = BotsWait_Model.load(bot_name=bot_name, wait=True)
+        if not bot_event:
+            bot_event = BotsEvents_Model.load(bot_name=bot_name, wait=True)
 
         # запускаем выкуп
-        await Admin.bot_re_buy(message, bot_wait)
+        await Admin.bot_re_buy(message, bot_event)
 
         res_msg = f"Завершен выкуп по боту: {bot_name}"
 
@@ -1087,7 +1087,7 @@ async def create_order_handler(message: types.Message, state: FSMContext):
         await message.answer('Не удалось создать заказ')
 
     if order:
-        BotsWait.BuildOrderFulfillmentProcess(order)
+        BotEvents.BuildOrderFulfillmentProcess(order)
 
 
 @dp.callback_query_handler(state=States.WATCH_ORDER)
@@ -1174,13 +1174,13 @@ async def others_callback_query_handler(call: types.CallbackQuery):
     msg = call.data
     bot_name = msg.split(" ")[1]
 
-    bot_wait = BotsWait_Model.load(event="PAYMENT", bot_name=bot_name, wait=True)
+    bot_event = BotsEvents_Model.load(event="PAYMENT", bot_name=bot_name, wait=True)
 
     print(msg)
 
     await call.message.edit_text('Начался выкуп')
 
-    reports = await bot_buy(call.message, bot_wait)
+    reports = await bot_buy(call.message, bot_event)
 
     bot_names = [report['bot_name'] for report in reports]
 
@@ -1192,5 +1192,5 @@ async def others_callback_query_handler(call: types.CallbackQuery):
 
 
 if __name__ == '__main__':
-    dp.loop.create_task(BotsWait(tg_bot).main())
+    dp.loop.create_task(BotEvents(tg_bot).main())
     executor.start_polling(dp)

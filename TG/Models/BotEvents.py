@@ -2,10 +2,10 @@ from datetime import datetime
 
 from TG.Models.Model import Model
 
-class BotWait_Model(Model):
+class BotEvent_Model(Model):
     COLUMNS = ['id', 'order_id', 'bot_name', 'event', 'sub_event', 'datetime_to_run', 'wait', 'running', 'pause', 'data',
                'start_datetime', 'end_datetime']
-    table_name = 'bots_wait'
+    table_name = 'bot_events'
 
     def __init__(self, id=1, order_id='', bot_name='', event='', sub_event='', datetime_to_run='', wait=False,
                  running=False, pause=False, data='', start_datetime='', end_datetime=''):
@@ -28,8 +28,8 @@ class BotWait_Model(Model):
 
         return self.execute(path)
 
-class BotsWait_Model(Model):
-    single_model = BotWait_Model
+class BotsEvents_Model(Model):
+    single_model = BotEvent_Model
     table_name = single_model.table_name
 
     exceptional_events = ['PAYMENT']
@@ -96,5 +96,5 @@ class BotsWait_Model(Model):
             return False
 
 if __name__ == '__main__':
-    bots_wait = BotsWait_Model.check('22')
-    print(bots_wait)
+    bots_event = BotsEvents_Model.check('22')
+    print(bots_event)

@@ -10,7 +10,7 @@ from TG.Markups import get_markup, get_keyboard
 from TG.Models.Addresses import Addresses_Model
 from TG.Models.Admins import Admins_Model as Admins_Model
 from TG.Models.Bots import Bots_Model as Bots_Model
-from TG.Models.BotsWaits import BotWait_Model, BotsWait_Model
+from TG.Models.BotEvents import BotEvent_Model, BotsEvents_Model
 from TG.Models.Orders import Order_Model as Order_Model, Orders_Model as Orders_Model
 from TG.States import States
 
@@ -74,20 +74,20 @@ class Admin:
             data = ujson.dumps(report)
             end_datetime = cls.get_work_time()
 
-            bot_wait = BotsWait_Model.load(bots[i].data.name, "SEARCH")
-            if bot_wait:
-                bot_wait.event = "FOUND"
-                bot_wait.wait = True
-                bot_wait.start_datetime = datetime.now()
-                bot_wait.end_datetime = end_datetime
+            bot_event = BotsEvents_Model.load(bots[i].data.name, "SEARCH")
+            if bot_event:
+                bot_event.event = "FOUND"
+                bot_event.wait = True
+                bot_event.start_datetime = datetime.now()
+                bot_event.end_datetime = end_datetime
                 # добавляем данные из поиска
                 for key, value in data.items():
-                    bot_wait.data[key] = value
-                bot_wait.update()
+                    bot_event.data[key] = value
+                bot_event.update()
             else:
-                bot_wait = BotWait_Model(bot_name=bots[i].data.name, event="FOUND", wait=True,
-                                         start_datetime=datetime.now(), end_datetime=end_datetime, data=data)
-                bot_wait.insert()
+                bot_event = BotEvent_Model(bot_name=bots[i].data.name, event="FOUND", wait=True,
+                                           start_datetime=datetime.now(), end_datetime=end_datetime, data=data)
+                bot_event.insert()
 
             msgs += [f"✅ Собран заказ бота {report['bot_name']}✅\n"
                      f"Артикулы {report['articles']}"]
@@ -124,9 +124,9 @@ class Admin:
         for i, report in enumerate(reports):
             print(report)
             data = ujson.dumps(report)
-            bot_wait = BotWait_Model(bot_name=bot.data.name, event="RE_FOUND", wait=True,
-                               start_datetime=datetime.now(), data=data)
-            bot_wait.insert()
+            bot_event = BotEvent_Model(bot_name=bot.data.name, event="RE_FOUND", wait=True,
+                                       start_datetime=datetime.now(), data=data)
+            bot_event.insert()
 
             msgs += [f"✅ Собран заказ бота {report['bot_name']}✅\n"
                      f"Артикулы {report['articles']}"]
@@ -143,16 +143,16 @@ class Admin:
 
     @staticmethod
     async def bot_buy(message=None, bots_cnt=1):
-        bots_wait = BotsWait_Model.load(event="FOUND", limit=bots_cnt)
+        bots_event = BotsEvents_Model.load(event="FOUND", limit=bots_cnt)
 
         reports = []
 
-        for bot_wait in bots_wait:
-            print(type(bot_wait.data))
-            report = bot_wait.data
-            # report = ujson.loads(bot_wait.data)
+        for bot_event in bots_event:
+            print(type(bot_event.data))
+            report = bot_event.data
+            # report = ujson.loads(bot_event.data)
 
-            bot_name = bot_wait.bot_name
+            bot_name = bot_event.bot_name
             print("Bot Name _ ", bot_name)
             bot_data = Bots_Model.load(bot_name)
 
@@ -162,7 +162,7 @@ class Admin:
 
             bot.open_bot(manual=False)
             try:
-                bot_wait.event = "CHOOSE_ADDRESS"
+                bot_event.event = "CHOOSE_ADDRESS"
 
                 addresses = bot.data.addresses
                 post_place = random.choice(addresses if type(addresses) is list else [addresses])
@@ -170,7 +170,7 @@ class Admin:
 
                 number = Orders_Model.get_number()
 
-                bot_wait.event = "BUYS"
+                bot_event.event = "BUYS"
 
                 run_bot = asyncio.to_thread(bot.buy, report, post_place, number)
                 reports = await asyncio.gather(run_bot)
@@ -178,9 +178,9 @@ class Admin:
 
             except Exception as e:
                 print(e)
-                bot_wait.event += " FAIL"
+                bot_event.event += " FAIL"
 
-            if "FAIL" in bot_wait.event:
+            if "FAIL" in bot_event.event:
                 if message:
                     await message.answer('❌ Ошибка выкупа ❌')
             else:
@@ -196,7 +196,7 @@ class Admin:
 
                 reports += [report]
                 if paid['payment']:
-                    bot_wait.event = "PAID"
+                    bot_event.event = "PAID"
                     print(paid['datetime'])
                     pup_address = Addresses_Model.load(address=report['post_place'])
                     order = Order_Model(number=number, total_price=report['total_price'], services_price=50,
@@ -216,12 +216,12 @@ class Admin:
                                          f"Адрес доставки {report['post_place']}\n\n"
                                          f"Время оплаты {paid['datetime']}")
                 else:
-                    bot_wait.event = "PAID_LOSE"
+                    bot_event.event = "PAID_LOSE"
                     await message.answer(f"❌ НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
-                bot_wait.end_datetime = datetime.now()
-                bot_wait.wait = False
-                bot_wait.data = []
-                bot_wait.update()
+                bot_event.end_datetime = datetime.now()
+                bot_event.wait = False
+                bot_event.data = []
+                bot_event.update()
 
                 bot_data.set(status="HOLD")
                 bot_data.update()
@@ -229,13 +229,13 @@ class Admin:
         return reports\
 
     @staticmethod
-    async def bot_re_buy(message, bot_wait):
+    async def bot_re_buy(message, bot_event):
         reports = []
 
-        report = bot_wait.data
-        # report = ujson.loads(bot_wait.data)
+        report = bot_event.data
+        # report = ujson.loads(bot_event.data)
 
-        bot_name = bot_wait.bot_name
+        bot_name = bot_event.bot_name
         print("Bot Name _ ", bot_name)
         bot_data = Bots_model.load(bot_name)
 
@@ -244,7 +244,7 @@ class Admin:
         bot = Bot(data=bot_data)
 
         bot.open_bot(manual=False)
-        bot_wait.event = "CHOOSE_ADDRESS"
+        bot_event.event = "CHOOSE_ADDRESS"
 
         addresses = bot.data.addresses
         post_place = random.choice(addresses if type(addresses) is list else [addresses])
@@ -252,20 +252,20 @@ class Admin:
 
         number = Orders_Model.get_number()
 
-        bot_wait.event = "BUYS"
+        bot_event.event = "BUYS"
 
         run_bot = asyncio.to_thread(bot.re_buy, report, post_place, number)
         reports = await asyncio.gather(run_bot)
         report = reports[0]
 
-        bot_wait.event = "PAID"
+        bot_event.event = "PAID"
 
-        bot_wait.end_datetime = datetime.now()
-        bot_wait.wait = False
-        bot_wait.data = []
-        bot_wait.update()
+        bot_event.end_datetime = datetime.now()
+        bot_event.wait = False
+        bot_event.data = []
+        bot_event.update()
 
-        if "FAIL" in bot_wait.event:
+        if "FAIL" in bot_event.event:
             await message.answer('❌ Ошибка выкупа ❌')
         else:
             reports += [report]
