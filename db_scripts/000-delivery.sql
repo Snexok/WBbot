@@ -1,4 +1,4 @@
-create table IF NOT EXISTS orders
+create table IF NOT EXISTS delivery
 (
 	id integer not null
 		constraint orders_pkey
@@ -21,5 +21,5 @@ create table IF NOT EXISTS orders
 	statuses text[]
 );
 
-alter table orders owner to postgres;
+alter table delivery owner to postgres;
 

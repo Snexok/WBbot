@@ -82,7 +82,7 @@ class BotsWait_Model(Model):
         return cls.format_data(cls.execute(path, cls.fetchall))
 
     @classmethod
-    def check_exist_order_wait(cls, bot_name, order_id):
+    def check_exist_delivery_wait(cls, bot_name, order_id):
         path = f"SELECT t.* " \
                f"FROM (SELECT * FROM {cls.table_name} WHERE bot_name='{bot_name}') t " \
                f"WHERE data->>'id'='{str(order_id)}' AND wait=TRUE LIMIT 1"

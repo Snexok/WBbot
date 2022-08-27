@@ -9,8 +9,8 @@ from aiogram import Bot as TG_Bot
 
 from selenium.webdriver.support.wait import WebDriverWait
 
-from TG.Models.ExceptedOrders import ExceptedOrders_Model
-from TG.Models.Orders import Orders_Model
+from TG.Models.ExceptedDeliveries import ExceptedDeliveries_Model
+from TG.Models.Delivery import Deliveries_Model
 from WB.Browser import Browser
 from configs import config
 
@@ -21,10 +21,10 @@ class Partner:
         self.browser = Browser(driver)
         self.driver = self.browser.driver
 
-    async def collect_orders(self, inn):
-        orders = await self.get_not_collected_orders(inn)
-        print(orders)
-        if not orders:
+    async def collect_deliveries(self, inn):
+        deliveries = await self.get_not_collected_deliveries(inn)
+        print(deliveries)
+        if not deliveries:
             res = ['💤 Самовыкупов по данному ИП нет 💤']
             return res
         res = []
@@ -36,10 +36,10 @@ class Partner:
             return res
 
         await sleep(10)
-        for j, order in enumerate(orders):
-            if order.inn == inn:
-                print(order)
-                res += await self.choose_task(order)
+        for j, delivery in enumerate(deliveries):
+            if delivery.inn == inn:
+                print(delivery)
+                res += await self.choose_task(delivery)
             else:
                 break
         await sleep(5)
@@ -51,20 +51,20 @@ class Partner:
             await self.open_and_send_shks()
             await self.pick_all_tasks()
 
-            # order_numbers = [task['order_number'] for task in tasks]
-            # res += await self.choose_task(order)
+            # delivery_numbers = [task['delivery_number'] for task in tasks]
+            # res += await self.choose_task(delivery)
             await self.print_all_tasks_shk()
             # await self.close_assembly()
 
         return res
 
-    async def collect_other_orders(self, inn):
+    async def collect_other_deliveries(self, inn):
         await self.open(inn)
         await self.open_marketplace()
         await sleep(10)
-        excepted_orders = ExceptedOrders_Model.load(inn)
-        excepted_orders_numbers = [eo.order_number for eo in excepted_orders]
-        self.choose_all_tasks_except(excepted_orders_numbers)
+        excepted_deliveries = ExceptedDeliveries_Model.load(inn)
+        excepted_deliveries_numbers = [ed.delivery_number for ed in excepted_deliveries]
+        self.choose_all_tasks_except(excepted_deliveries_numbers)
         await sleep(5)
         # await self.add_to_assembly()
         # await self.go_to_assembly()
@@ -74,9 +74,9 @@ class Partner:
         # await self.print_all_tasks_shk()
         # await self.close_assembly()
 
-    async def get_not_collected_orders(self, inn):
-        orders = Orders_Model.load(collected=False, inn=inn)
-        return orders
+    async def get_not_collected_deliveries(self, inn):
+        deliveries = Deliveries_Model.load(collected=False, inn=inn)
+        return deliveries
 
     async def open(self, inn):
         self.driver.maximize_window()
@@ -113,7 +113,7 @@ class Partner:
             start_art = cat_i + len('catalog/')
             article = href[start_art:start_art + 8]
 
-            order_number = row.find_element(By.XPATH, "./div[contains(@class,'id')]").text
+            delivery_number = row.find_element(By.XPATH, "./div[contains(@class,'id')]").text
 
             date = row.find_element(By.XPATH,
                                     "./div[contains(@class,'creationDat')]/div/div/div[contains(@class,'date')]").text
@@ -124,11 +124,11 @@ class Partner:
             delivery_address = row.find_element(By.XPATH, "./div[contains(@class,'deliveryAddress')]").text
 
             tasks += [{'date': date, 'time': time, 'datetime': dt, 'article': article, 'row': row,
-                        'delivery_address': delivery_address, 'order_number': order_number}]
+                        'delivery_address': delivery_address, 'delivery_number': delivery_number}]
 
         return tasks
 
-    async def choose_task(self, order):
+    async def choose_task(self, delivery):
         """
         Выбирает товар на сборку, который по параметрам совпадает с переданныым в него заказом.
         Сравнивает заказ и товар в списке сборочных заданий
@@ -140,12 +140,12 @@ class Partner:
         hover = ActionChains(self.driver)
         tasks = await self.get_tasks()
         res = []
-        for i in range(len(order.articles)):
+        for i in range(len(delivery.articles)):
             for j, task in enumerate(tasks):
-                if task['article'] == order.articles[i] and task['delivery_address'] == order.pup_address:
+                if task['article'] == delivery.articles[i] and task['delivery_address'] == delivery.pup_address:
                     _task_time = datetime.fromisoformat(str(task['datetime']))
-                    order_time = datetime.fromisoformat(str(order.start_date))
-                    if abs(order_time - _task_time).seconds < 120:
+                    delivery_time = datetime.fromisoformat(str(delivery.start_date))
+                    if abs(delivery_time - _task_time).seconds < 120:
                         # Выбираем товар из списка
                         check_box = WebDriverWait(task['row'], 60).until(
                             lambda d: d.find_element(By.XPATH, "./div/div/label"))
@@ -154,35 +154,35 @@ class Partner:
 
                         # Формируем ответное сообщение по данному заказу
                         msg = f"✅ В сборку добавлен заказ ✅\n" \
-                              f"Артикул: {order.articles[i]}\n" \
-                              f"Адрес: {order.pup_address}\n" \
-                              f"Время выкупа: {str(order.start_date)[:-10]}"
+                              f"Артикул: {delivery.articles[i]}\n" \
+                              f"Адрес: {delivery.pup_address}\n" \
+                              f"Время выкупа: {str(delivery.start_date)[:-10]}"
                         res += [msg]
 
-                        order.number = task['order_number']
-                        order.statuses[i] = 'on_assembly'
+                        delivery.number = task['delivery_number']
+                        delivery.statuses[i] = 'on_assembly'
 
-                        order.update()
+                        delivery.update()
 
                         break
                 if j == len(tasks)-1:
                     msg = f"❌ Не найден заказ ❌\n" \
-                          f"Артикул: {order.articles[i]}\n" \
-                          f"Адрес: {order.pup_address}\n" \
-                          f"Время выкупа: {str(order.start_date)[:-10]}\n" \
+                          f"Артикул: {delivery.articles[i]}\n" \
+                          f"Адрес: {delivery.pup_address}\n" \
+                          f"Время выкупа: {str(delivery.start_date)[:-10]}\n" \
                           f"❗Вероятно уехал с ФБО❗"
 
-                    order.statuses[i] = 'FBO'
+                    delivery.statuses[i] = 'FBO'
 
-                    order.update()
+                    delivery.update()
 
                     res += [msg]
         del hover
         return res
 
-    async def choose_tasks(self, orders):
-        for order in orders:
-            await self.choose_task(order)
+    async def choose_tasks(self, deliveries):
+        for delivery in deliveries:
+            await self.choose_task(delivery)
 
     async def add_to_assembly(self):
         """
@@ -232,15 +232,15 @@ class Partner:
         self.driver.find_element(By.XPATH, "//div[contains(@class, 'Modal__close')]/button").click()
         await sleep(2)
 
-    async def get_target_task(self, article, order_datetime):
+    async def get_target_task(self, article, delivery_datetime):
         self.tasks = self.get_tasks()
         min_dif = timedelta(weeks=6)
         min_task = None
         for task in await self.tasks:
             if task['article'] == article:
                 task_time = datetime.fromisoformat(str(task['datetime']))
-                order_time = datetime.fromisoformat(str(order_datetime))
-                dif = abs(order_time - task_time)
+                delivery_time = datetime.fromisoformat(str(delivery_datetime))
+                dif = abs(delivery_time - task_time)
                 if dif < min_dif:
                     min_dif = dif
                     min_task = task
@@ -280,7 +280,7 @@ class Partner:
             article = href[start_art:start_art + 8]
             print("article", article)
 
-            # order_number = task.find_element(By.XPATH, "./div[contains(@class,'id')]").text
+            # delivery_number = task.find_element(By.XPATH, "./div[contains(@class,'id')]").text
 
             # открываем blob с артикулом в новой вкладке
             task.find_element(By.XPATH, "./div/div/button").click()
@@ -292,9 +292,9 @@ class Partner:
             # получаем байткод pdf файла и отправляем его на адрес Фулфилмента
             shk_bytes = await self.get_file_content_chrome()
             await sleep(1)
-            # await bot.send_document("794329884", (f'{article}.pdf', shk_bytes), caption=order_number)
-            # await bot.send_document("791436094", (f'{article}.pdf', shk_bytes), caption=order_number)
-            # await bot.send_document("424847668", (f'{article}.pdf', shk_bytes), caption=order_number)
+            # await bot.send_document("794329884", (f'{article}.pdf', shk_bytes), caption=delivery_number)
+            # await bot.send_document("791436094", (f'{article}.pdf', shk_bytes), caption=delivery_number)
+            # await bot.send_document("424847668", (f'{article}.pdf', shk_bytes), caption=delivery_number)
             await bot.send_document("794329884", (f'{article}.pdf', shk_bytes))
             await bot.send_document("791436094", (f'{article}.pdf', shk_bytes))
             await bot.send_document("424847668", (f'{article}.pdf', shk_bytes))

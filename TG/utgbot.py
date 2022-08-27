@@ -19,8 +19,8 @@ from TG.BotsWait import BotsWait
 from TG.Admin import Admin
 from TG.Models.BotsWaits import BotsWait_Model, BotWait_Model
 from TG.Models.Addresses import Addresses_Model, Address_Model
-from TG.Models.ExceptedOrders import ExceptedOrders_Model, ExceptedOrder_Model
-from TG.Models.Orders import Orders_Model
+from TG.Models.ExceptedDeliveries import ExceptedDeliveries_Model, ExceptedDelivery_Model
+from TG.Models.Delivery import Deliveries_Model
 from TG.Models.OrdersOfOrders import OrderOfOrders_Model, OrdersOfOrders_Model
 from TG.Models.Users import Users_Model, User_Model
 from TG.Models.Bots import Bots_Model
@@ -127,11 +127,11 @@ async def main_handler(message: types.Message):
             return
     elif user.role in "FF":
         if "🚀 собрать самовыкупы 🚀" in msg:
-            orders = Orders_Model.load(collected=False)
-            for order in orders:
-                await message.answer(f'Артикулы заказа {order.articles}\n\n'
-                                     f'Адрес заказа {order.pup_address}\n\n'
-                                     f'Время заказа {order.start_date}')
+            deliveries = Deliveries_Model.load(collected=False)
+            for delivery in deliveries:
+                await message.answer(f'Артикулы заказа {delivery.articles}\n\n'
+                                     f'Адрес заказа {delivery.pup_address}\n\n'
+                                     f'Время заказа {delivery.start_date}')
             await message.answer('⛔ 🚀 Сборка самовыкупов пока не доступна 🚀 ⛔')
             # users = Users_Model.load(role='IE')
             # ies = [user.ie for user in users]
@@ -164,19 +164,19 @@ async def main_handler(message: types.Message):
                 return
     elif user.role in "PUP":
         if "📊 статистика 📊" in msg:
-            # orders = Orders.load_stat(pup_tg_id="791436094")
-            orders = Orders_Model.load_stat(pup_tg_id=id)
-            if orders:
+            # deliveries = Deliveries_Model.load_stat(pup_tg_id="791436094")
+            deliveries = Deliveries_Model.load_stat(pup_tg_id=id)
+            if deliveries:
                 msg = "📊 <b>Статистика за месяц:</b> 📅\n\n"
 
-                total_price_str = str(sum([order.total_price for order in orders]))
+                total_price_str = str(sum([delivery.total_price for delivery in deliveries]))
                 total_price = ''.join(
                     [p + ' ' if (len(total_price_str) - i) % 3 == 1 else p for i, p in enumerate(total_price_str)])
                 msg += f"<b>Оборот:</b> {total_price}₽\n" \
-                       f"<b>Заказы:</b> {sum([sum(order.quantities) for order in orders])} 📦\n"
+                       f"<b>Заказы:</b> {sum([sum(delivery.quantities) for delivery in deliveries])} 📦\n"
 
-                addresses_list = list(set(order.pup_address for order in orders))
-                cities_list = list(set(order.pup_address.split(",")[0] for order in orders))
+                addresses_list = list(set(delivery.pup_address for delivery in deliveries))
+                cities_list = list(set(delivery.pup_address.split(",")[0] for delivery in deliveries))
 
                 stat = []
                 for i, address in enumerate(addresses_list):
@@ -185,14 +185,14 @@ async def main_handler(message: types.Message):
                     stat[i]['total_price'] = 0
                     stat[i]['fbo_cnt'] = 0
 
-                    for order in orders:
-                        if order.pup_address == address:
+                    for delivery in deliveries:
+                        if delivery.pup_address == address:
                             stat[i]['address'] = address
-                            stat[i]['total_price'] += order.total_price
+                            stat[i]['total_price'] += delivery.total_price
                             stat[i]['cnt'] += 1
-                            print(order.statuses)
-                            if "FBO" in order.statuses:
-                                stat[i]['fbo_cnt'] += sum(1 if status == "FBO" else 0 for status in order.statuses)
+                            print(delivery.statuses)
+                            if "FBO" in delivery.statuses:
+                                stat[i]['fbo_cnt'] += sum(1 if status == "FBO" else 0 for status in delivery.statuses)
 
                 stat = sorted(stat, key=lambda o: o['total_price'], reverse=True)
 
@@ -214,13 +214,13 @@ async def main_handler(message: types.Message):
             await message.answer(msg, parse_mode="HTML")
             return
         elif "📓 проверить пвз 📓" in msg:
-            # orders = Orders.load_check_state(pup_tg_id="791436094")
-            orders = Orders_Model.load_check_state(pup_tg_id=id)
-            if orders:
+            # deliveries = Deliveries_Model.load_check_state(pup_tg_id="791436094")
+            deliveries = Deliveries_Model.load_check_state(pup_tg_id=id)
+            if deliveries:
                 msg = "📓 <b>Состояния ПВЗ</b> 📓\n\n"
 
-                addresses_list = list(set(order.pup_address for order in orders))
-                cities_list = list(set(order.pup_address.split(",")[0] for order in orders))
+                addresses_list = list(set(delivery.pup_address for delivery in deliveries))
+                cities_list = list(set(delivery.pup_address.split(",")[0] for delivery in deliveries))
 
                 is_fbos_cnt = 0
 
@@ -230,24 +230,24 @@ async def main_handler(message: types.Message):
                     stat[i]['cnt'] = 0
                     stat[i]['fbo_cnt'] = 0
                     stat[i]['articles'] = []
-                    for order in orders:
-                        if order.pup_address == address:
+                    for delivery in deliveries:
+                        if delivery.pup_address == address:
                             stat[i]['address'] = address
                             stat[i]['cnt'] += 1
-                            print("FBO" in order.statuses, order.statuses)
-                            if "FBO" in order.statuses:
+                            print("FBO" in delivery.statuses, delivery.statuses)
+                            if "FBO" in delivery.statuses:
                                 is_fbos_cnt += 1
-                                is_fbos = [1 if status == "FBO" else 0 for status in order.statuses]
+                                is_fbos = [1 if status == "FBO" else 0 for status in delivery.statuses]
                                 stat[i]['fbo_cnt'] += sum(is_fbos)
                                 for j, is_fbo in enumerate(is_fbos):
                                     if is_fbo:
-                                        in_articles = [order.articles[j] in article for article in stat[i]['articles']]
+                                        in_articles = [delivery.articles[j] in article for article in stat[i]['articles']]
                                         if any(in_articles):
                                             index = in_articles.index(True)
                                             splited = stat[i]['articles'][index].split(' ')
                                             stat[i]['articles'][index] = splited[0] + " " + str(int(splited[1]) + 1)
                                         else:
-                                            stat[i]['articles'] += [order.articles[j] + " 1"]
+                                            stat[i]['articles'] += [delivery.articles[j] + " 1"]
                 if is_fbos_cnt:
                     stat = sorted(stat, key=lambda o: o['fbo_cnt'], reverse=True)
 
@@ -357,20 +357,20 @@ async def admin_handler(message: types.Message):
         await message.answer('Введите номер телефона в формате 9XXXXXXX\n'
                              'Сообщение на повторную отправку придёт автоматически', reply_markup=markup)
     elif "🕙 проверить ожидаемое 🕑" in msg:
-        orders = Orders_Model.load(active=True)
-        if orders:
+        deliveries = Deliveries_Model.load(active=True, pred_end_date=datetime.now())
+        if deliveries:
             await States.CHECK_WAITS.set()
             bots_name = []
-            for order in orders:
-                print(order)
-                is_order_wait_exist = BotsWait_Model.check_exist_order_wait(order.bot_name, order.id)
-                if not is_order_wait_exist:
-                    bot_wait = BotWait_Model(bot_name=order.bot_name, event='delivery', start_datetime=datetime.now(),
-                                             end_datetime=order.pred_end_date, wait=False,
-                                             data=json.dumps('{"id": ' + str(order.id) + '}'))
-                    bot_wait.insert()
-                if order.bot_name not in bots_name:
-                    bots_name += [order.bot_name]
+            for delivery in deliveries:
+                # print(delivery)
+                # is_delivery_wait_exist = BotsWait_Model.check_exist_delivery_wait(delivery.bot_name, delivery.id)
+                # if not is_delivery_wait_exist:
+                #     bot_wait = BotWait_Model(bot_name=delivery.bot_name, event='delivery', start_datetime=datetime.now(),
+                #                              end_datetime=delivery.pred_end_date, wait=False,
+                #                              data=json.dumps('{"id": ' + str(delivery.id) + '}'))
+                #     bot_wait.insert()
+                if delivery.bot_name not in bots_name:
+                    bots_name += [delivery.bot_name]
             keyboard = get_keyboard('admin_bots', bots_name)
             await message.answer('Выберите бота', reply_markup=keyboard)
         else:
@@ -435,23 +435,14 @@ async def bot_search_callback_query_handler(call: types.CallbackQuery):
 
     await States.ADMIN.set()
 
-    orders = [[article, search_key, category, "1", "1", inn]]
+    goods = [[article, search_key, category, "1", "1", inn]]
     await call.message.edit_text(f'Начался поиск артикула {article}')
 
-    res_msg = ''
-    data_for_bots = []
-    if DEBUG:
-        run_bot = asyncio.to_thread(Admin.pre_run, orders)
-        data_for_bots = await asyncio.gather(run_bot)
-        data_for_bots = data_for_bots[0]
-    else:
-        try:
-            run_bot = asyncio.to_thread(Admin.pre_run, orders)
-            data_for_bots = await asyncio.gather(run_bot)
-            data_for_bots = data_for_bots[0]
-        except:
-            await call.message.answer(f'❌ Поиск артикула {article} упал на анализе карточки ❌')
+    data_for_bots, status_fail = await Admin.get_data_of_goods(goods)
+    if status_fail:
+        await call.message.answer(f'❌ Поиск артикула {article} упал на анализе карточки ❌')
 
+    res_msg = ''
     msgs = ''
     if DEBUG:
         msgs = await Admin.bot_search(data_for_bots)
@@ -526,7 +517,7 @@ async def check_waits_callback_query_handler(call: types.CallbackQuery):
     msg = call.data
     await States.ADMIN.set()
     await call.message.edit_text(msg + " открыт")
-    await Admin.check_order(msg, call.message)
+    await Admin.check_delivery(msg, call.message)
 
 @dp.callback_query_handler(state=States.CHECK_BOTS_BALANCE)
 async def check_waits_callback_query_handler(call: types.CallbackQuery):
@@ -548,7 +539,7 @@ async def check_waits_callback_query_handler(call: types.CallbackQuery):
         await call.message.edit_text(msg)
 
 @dp.callback_query_handler(state=States.COLLECT_OTHER_ORDERS)
-async def collect_other_orders_callback_query_handler(call: types.CallbackQuery):
+async def collect_other_deliveries_callback_query_handler(call: types.CallbackQuery):
     id = str(call.message.chat.id)
     ie = call.data
     inn = Users_Model.load(ie=ie).inn
@@ -556,13 +547,13 @@ async def collect_other_orders_callback_query_handler(call: types.CallbackQuery)
 
     await call.message.edit_text(f'Началась сборка РЕАЛЬНЫХ заказов по {ie}')
 
-    await Partner().collect_other_orders(inn)
+    await Partner().collect_other_deliveries(inn)
 
     await call.message.answer(f'Закончилась сборка РЕАЛЬНЫХ заказов по {ie}')
 
 
 @dp.callback_query_handler(state=States.COLLECT_ORDERS)
-async def collect_orders_callback_query_handler(call: types.CallbackQuery):
+async def collect_deliveries_callback_query_handler(call: types.CallbackQuery):
     id = str(call.message.chat.id)
     ie = call.data
     inn = Users_Model.load(ie=ie).inn
@@ -572,7 +563,7 @@ async def collect_orders_callback_query_handler(call: types.CallbackQuery):
     if id != "794329884":
         await tg_bot.send_message("794329884", f'Началась сборка самовыкупов по {ie}')
 
-    res = await Partner().collect_orders(inn)
+    res = await Partner().collect_deliveries(inn)
     res_msg = ''
     for r in res:
         res_msg += r + "\n\n"
@@ -586,18 +577,18 @@ async def collect_orders_callback_query_handler(call: types.CallbackQuery):
 
 
 @dp.callback_query_handler(state=States.EXCEPTED_ORDERS_LIST)
-async def excepted_orders_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
+async def excepted_deliveries_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
     id = str(call.message.chat.id)
     ie = call.data
     inn = Users_Model.load(ie=ie).inn
-    excepted_orders = ExceptedOrders_Model.load(inn=inn)
+    excepted_deliveries = ExceptedDeliveries_Model.load(inn=inn)
     await state.update_data(inn=inn)
 
-    if excepted_orders:
+    if excepted_deliveries:
 
         res_msg = f"Для клиента {ie} исключены заказы с номерами:"
-        for eo in excepted_orders:
-            res_msg += "\n" + eo.order_number
+        for ed in excepted_deliveries:
+            res_msg += "\n" + ed.delivery_number
         res_msg += f"\n\nНапишите номера заказов,которые хотите изменить или добавить"
     else:
         res_msg = f"У клиента {ie} нет исключенных заказов"
@@ -607,51 +598,51 @@ async def excepted_orders_callback_query_handler(call: types.CallbackQuery, stat
 
 
 @dp.message_handler(state=States.EXCEPTED_ORDERS_LIST_CHANGE)
-async def excepted_orders_change_handler(message: types.Message, state: FSMContext):
+async def excepted_deliveries_change_handler(message: types.Message, state: FSMContext):
     msg = message.text
     id = str(message.chat.id)
-    order_numbers = msg.replace("\n", " ").strip().split(" ")
+    delivery_numbers = msg.replace("\n", " ").strip().split(" ")
 
     data = await state.get_data()
     inn = data['inn']
-    excepted_orders = ExceptedOrders_Model.load(inn=inn)
+    excepted_deliveries = ExceptedDeliveries_Model.load(inn=inn)
 
-    if excepted_orders:
-        local_order_numbers = [eo.order_number for eo in excepted_orders]
+    if excepted_deliveries:
+        local_delivery_numbers = [ed.delivery_number for ed in excepted_deliveries]
 
     added = []
     deleted = []
-    for order_number in order_numbers:
+    for delivery_number in delivery_numbers:
         try:
-            i = local_order_numbers.index(order_number)
+            i = local_delivery_numbers.index(delivery_number)
             print(i)
-            excepted_orders[i].delete()
-            deleted += [order_number]
+            excepted_deliveries[i].delete()
+            deleted += [delivery_number]
         except:
-            eo = ExceptedOrder_Model(inn=inn, order_number=order_number, start_datetime=datetime.now())
+            eo = ExceptedDelivery_Model(inn=inn, delivery_number=delivery_number, start_datetime=datetime.now())
             eo.insert()
-            added += [order_number]
+            added += [delivery_number]
 
     res_msg = ""
     if len(added):
         res_msg = f"Добавлены заказы:"
-        for order_number in added:
-            res_msg += "\n" + order_number
+        for delivery_number in added:
+            res_msg += "\n" + delivery_number
 
         if len(deleted):
             res_msg += "\n"
     if len(deleted):
         res_msg += "\n" + "Удалены заказы:"
-        for order_number in deleted:
-            res_msg += "\n" + order_number
+        for delivery_number in deleted:
+            res_msg += "\n" + delivery_number
 
     ie = Users_Model.load(inn=inn).ie
-    excepted_orders = ExceptedOrders_Model.load(inn=inn)
+    excepted_deliveries = ExceptedDeliveries_Model.load(inn=inn)
 
-    if excepted_orders:
+    if excepted_deliveries:
         res_msg += "\n\n" + f"Для клиента {ie} исключены заказы с номерами:"
-        for eo in excepted_orders:
-            res_msg += "\n" + eo.order_number
+        for eo in excepted_deliveries:
+            res_msg += "\n" + eo.delivery_number
     else:
         res_msg += "\n\n" + f"Для клиента {ie} нет исключеных заказов"
 
@@ -703,11 +694,16 @@ async def bot_buy_handler(message: types.Message):
 
     reports = await Admin.bot_buy(message, bots_cnt)
 
-    bot_names = [report['bot_name'] for report in reports]
-
-    res_msg = "Завершен выкуп по ботам:"
-    for name in bot_names:
-        res_msg += f"\n{name}"
+    if len(reports)>1:
+        res_msg = "Завершены выкупы:"
+    else:
+        res_msg = "Завершен выкуп:"
+    for report in reports:
+        res_msg += f"\n" \
+                   f"Адрес доставки: {report['post_point']}\n" \
+                   f"Адрес доставки: {report['post_point']}\n" \
+                   f"\n" \
+                   f"Имя бота: {report['bot_name']}"
 
     await message.answer('Выкуп завершен')
 
@@ -753,42 +749,33 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
     # Поиск
     if is_go_search:
         # формируем данные о заказе
-        orders = [[article, search_key, '', "1", "1", "381108544328"]]
+        goods = [[article, search_key, '', "1", "1", "381108544328"]]
         await message.answer(f'Начался поиск артикула {article}')
 
         # собираем все данные о конкретных товарах
-        res_msg = ''
-        data_for_bots = []
-        if DEBUG:
-            run_bot = asyncio.to_thread(Admin.pre_run, orders)
-            data_for_bots = await asyncio.gather(run_bot)
-            data_for_bots = data_for_bots[0]
+        data_for_bots, status_fail = await Admin.get_data_of_goods(goods)
+        if status_fail:
+            await message.answer(f'❌ Поиск артикула {article} упал на анализе карточки ❌')
         else:
-            try:
-                run_bot = asyncio.to_thread(Admin.pre_run, orders)
-                data_for_bots = await asyncio.gather(run_bot)
-                data_for_bots = data_for_bots[0]
-            except:
-                await message.answer(f'❌ Поиск артикула {article} упал на анализе карточки ❌')
-
-        msgs = ''
-        # Запускаем поиск заказа
-        if DEBUG:
-            msgs = await Admin.bot_re_search(bot_name, data_for_bots)
-        else:
-            try:
+            msgs = ''
+            res_msg = ''
+            # Запускаем поиск заказа
+            if DEBUG:
                 msgs = await Admin.bot_re_search(bot_name, data_for_bots)
+            else:
+                try:
+                    msgs = await Admin.bot_re_search(bot_name, data_for_bots)
+                except:
+                    await message.answer(f'❌ Поиск артикула {article} упал ❌')
+            try:
+                for msg in msgs:
+                    res_msg += msg + "\n"
             except:
-                await message.answer(f'❌ Поиск артикула {article} упал ❌')
-        try:
-            for msg in msgs:
-                res_msg += msg + "\n"
-        except:
-            pass
+                pass
 
-        res_msg += '\n' + f'Поиск артикула {article} завершен'
+            res_msg += '\n' + f'Поиск артикула {article} завершен'
 
-        await message.answer(res_msg)
+            await message.answer(res_msg)
 
     # Выкуп
     if is_go_buy:
@@ -807,7 +794,7 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
 
 
 @dp.callback_query_handler(state=States.RE_BUY)
-async def excepted_orders_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
+async def excepted_deliveries_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
     id = str(call.message.chat.id)
     msg = call.data
     print(msg)
@@ -1087,7 +1074,8 @@ async def create_order_handler(message: types.Message, state: FSMContext):
         await message.answer('Не удалось создать заказ')
 
     if order:
-        BotsWait.BuildOrderFulfillmentProcess(order)
+        BotsWait.BuildOrderFullfillmentProcess(order)
+        await state.set_data({})
 
 
 @dp.callback_query_handler(state=States.WATCH_ORDER)

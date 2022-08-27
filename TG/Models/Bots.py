@@ -54,7 +54,7 @@ class Bots_Model(Model):
         path = f"SELECT b.*, coalesce (o.active_cnt, 0) as active_cnt FROM  " \
                f"(SELECT * FROM bots WHERE type = '{_type}' AND status = 'FREE' AND "+(f"'{inn}' = ANY(inns)" if inn else "inns is null")+") b " \
                f"LEFT JOIN " \
-               f"(SELECT bot_name,COUNT(active) active_cnt FROM orders WHERE active=TRUE GROUP BY bot_name, active ) o " \
+               f"(SELECT bot_name,COUNT(active) active_cnt FROM delivery WHERE active=TRUE GROUP BY bot_name, active ) o " \
                f"ON b.name=o.bot_name " \
                f"ORDER BY active_cnt " \
                f"LIMIT {limit}"
