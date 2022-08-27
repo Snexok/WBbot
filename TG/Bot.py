@@ -7,7 +7,7 @@ from aiogram import Bot as TG_Bot
 
 from TG.Models.Addresses import Addresses_Model
 from TG.Models.Bots import Bots_Model
-from TG.Models.Orders import Order_Model, Orders_Model
+from TG.Models.Delivery import Delivery_Model, Deliveries_Model
 from WB.Bot import Bot
 
 from configs import config
@@ -37,7 +37,7 @@ async def bot_buy(message, bot_wait):
         post_place = random.choice(addresses if type(addresses) is list else [addresses])
         report['post_place'] = post_place
 
-        number = Orders_Model.get_number()
+        number = Deliveries_Model.get_number()
 
         bot_wait.event = "BUYS"
 
@@ -77,16 +77,16 @@ async def bot_buy(message, bot_wait):
         if paid['payment']:
             print(paid['datetime'])
             pup_address = Addresses_Model.load(address=report['post_place'])
-            order = Order_Model(number=number, total_price=report['total_price'], services_price=50,
-                                prices=report['prices'],
-                                quantities=report['quantities'], articles=report['articles'],
-                                pup_address=report['post_place'],
-                                pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
-                                bot_surname=report['bot_username'],
-                                start_date=paid['datetime'], pred_end_date=report['pred_end_date'],
-                                active=paid['payment'] or TEST,
-                                statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
-            order.insert()
+            delivery = Delivery_Model(number=number, total_price=report['total_price'], services_price=50,
+                                   prices=report['prices'],
+                                   quantities=report['quantities'], articles=report['articles'],
+                                   pup_address=report['post_place'],
+                                   pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
+                                   bot_surname=report['bot_username'],
+                                   start_date=paid['datetime'], pred_end_date=report['pred_end_date'],
+                                   active=paid['payment'] or TEST,
+                                   statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
+            delivery.insert()
 
             if message:
                 await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"

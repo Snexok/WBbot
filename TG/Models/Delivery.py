@@ -3,11 +3,11 @@ from datetime import datetime
 from TG.Models.Model import Model
 
 
-class Order_Model(Model):
+class Delivery_Model(Model):
     COLUMNS = ['id', 'number', 'total_price', 'services_price', 'prices', 'quantities', 'articles',
                'pup_address', 'pup_tg_id', 'bot_name', 'bot_surname', 'start_date', 'pred_end_date', 'end_date',
                'code_for_approve', 'active', 'statuses', 'inn', 'collected', 'commented', 'order_id']
-    table_name = 'orders'
+    table_name = 'delivery'
 
     def __init__(self, id=1, number=0, total_price=0, services_price=0, prices=[], quantities=[], articles=[],
                  pup_address='', pup_tg_id='', bot_name='', bot_surname='', start_date='', pred_end_date='',
@@ -47,8 +47,8 @@ class Order_Model(Model):
                 'order_id': self.order_id}
 
 
-class Orders_Model(Model):
-    single_model = Order_Model
+class Deliveries_Model(Model):
+    single_model = Delivery_Model
     table_name = single_model.table_name
 
     @classmethod
@@ -83,18 +83,18 @@ class Orders_Model(Model):
         path = path[:-5]
 
         print(path)
-        orders = cls.format_data(cls.execute(path, cls.fetchall))
+        deliveries = cls.format_data(cls.execute(path, cls.fetchall))
 
-        return orders
+        return deliveries
 
     @classmethod
     def load_stat(cls, pup_tg_id):
         path = f"SELECT total_price, quantities, pup_address FROM {cls.table_name} WHERE pup_tg_id = '{str(pup_tg_id)}'"
 
         print(path)
-        orders = cls.format_data_stat(cls.execute(path, cls.fetchall))
+        deliveries = cls.format_data_stat(cls.execute(path, cls.fetchall))
 
-        return orders
+        return deliveries
 
     @classmethod
     def format_data_stat(cls, data):
@@ -120,9 +120,9 @@ class Orders_Model(Model):
         path = f"SELECT pup_address, statuses, articles FROM {cls.table_name} WHERE pup_tg_id = '{str(pup_tg_id)}'"
 
         print(path)
-        orders = cls.format_check_state(cls.execute(path, cls.fetchall))
+        deliveries = cls.format_check_state(cls.execute(path, cls.fetchall))
 
-        return orders
+        return deliveries
 
     @classmethod
     def format_check_state(cls, data):

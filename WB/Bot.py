@@ -11,7 +11,7 @@ from aiogram import Bot as TG_Bot
 
 from TG.Models.Bots import Bots_Model, Bot_Model
 from TG.Models.Admins import Admins_Model as Admins_model
-from TG.Models.Orders import Order_Model, Orders_Model
+from TG.Models.Delivery import Delivery_Model, Deliveries_Model
 from WB.Pages.Basket import Basket
 from WB.Browser import Browser
 from WB.Pages.Catalog import Catalog
@@ -173,8 +173,11 @@ class Bot:
         age_validation_btn = self.driver.find_element(By.XPATH, f'//button[text()="Да, мне есть 18 лет"]')
         print(age_validation_btn)
         if age_validation_btn:
-            age_validation_btn.click()
-            sleep(1)
+            try:
+                age_validation_btn.click()
+                sleep(1)
+            except:
+                pass
 
         data = {}
 
@@ -246,71 +249,71 @@ class Bot:
         else:
             return data
 
-    async def check_readiness(self, orders, message):
+    async def check_readiness(self, deliveries, message):
         bot = TG_Bot(token=API_TOKEN)
         sleep(1)
         # открываем страницу с заказами бота
         self.open_delivery()
         sleep(2)
         # полуыаем все заказы бота
-        local_orders = self.get_all_orders()
-        for _order in local_orders:
-            print("local_orders", _order)
+        local_deliveries = self.get_all_deliveries()
+        for _delivery in local_deliveries:
+            print("local_deliveries", _delivery)
         sleep(1)
 
         admin = Admins_model().get_sentry_admin()
-        for order in orders:
-            print("local_orders[0].pup_address", local_orders[0].pup_address)
-            print("order.pup_address", order.pup_address)
+        for delivery in deliveries:
+            print("local_deliveries[0].pup_address", local_deliveries[0].pup_address)
+            print("delivery.pup_address", delivery.pup_address)
             # фильтруем заказы бота адресу
-            local_orders_by_address = [_order for _order in local_orders if _order.pup_address == order.pup_address]
-            print(local_orders_by_address)
+            local_deliveries_by_address = [_delivery for _delivery in local_deliveries if _delivery.pup_address == delivery.pup_address]
+            print(local_deliveries_by_address)
             # берем единственное совпадение по адресу
-            _order = local_orders_by_address[0]
+            _delivery = local_deliveries_by_address[0]
 
             statuses = []
-            for article in order.articles:
-                for i in range(len(_order.articles)):
-                    _article = _order.articles[i]
+            for article in delivery.articles:
+                for i in range(len(_delivery.articles)):
+                    _article = _delivery.articles[i]
                     print("article: ", article)
                     print("_article: ", _article)
                     if article == _article:
-                        for _status in _order.statuses:
+                        for _status in _delivery.statuses:
                             print("_status: ", _status)
                             if _status != "Платный отказ":
                                 statuses += [_status]
             print(statuses)
 
-            if len(statuses) < len(order.articles):
-                msg = f'Один из артикулов заказа {order.id} не был найден.\n' \
-                      f'Артикулы {str(order.articles)}'
+            if len(statuses) < len(delivery.articles):
+                msg = f'Один из артикулов заказа {delivery.id} не был найден.\n' \
+                      f'Артикулы {str(delivery.articles)}'
                 if message:
                     await message.answer(msg)
                 else:
                     await bot.send_message(admin.id, msg)
             else:
-                order.statuses = statuses
-                order.code_for_approve = _order.code_for_approve
+                delivery.statuses = statuses
+                delivery.code_for_approve = _delivery.code_for_approve
                 for i, status in enumerate(statuses):
                     if status in ["Готов к получению", "Отгружено по данным Продавца", 'Готов к выдаче', 'Прибыл на пункт выдачи']:
                         msg_pup = 'Заказ готов\n' + \
-                                  f'Код: {order.code_for_approve}\n' + \
-                                  f'Фио: {order.bot_surname}\n' + \
-                                  f'Адрес: {order.pup_address}\n' + \
-                                  f'Артикул: {order.articles[i]}'
+                                  f'Код: {delivery.code_for_approve}\n' + \
+                                  f'Фио: {delivery.bot_surname}\n' + \
+                                  f'Адрес: {delivery.pup_address}\n' + \
+                                  f'Артикул: {delivery.articles[i]}'
                         msg_admin = msg_pup + '\n' + \
-                                    f'Номер заказа: {order.number}\n' + \
-                                    f'Id заказа: {order.id}\n' \
+                                    f'Номер заказа: {delivery.number}\n' + \
+                                    f'Id заказа: {delivery.id}\n' \
                                     f'Имя бота: {self.data.name}\n'
 
-                        order.end_date = date.today()
-                        order.active = False
+                        delivery.end_date = date.today()
+                        delivery.active = False
                         await bot.send_message(admin.id, msg_admin, parse_mode="HTML")
-                        if order.pup_tg_id:
-                            await bot.send_message(order.pup_tg_id, msg_pup, parse_mode="HTML")
+                        if delivery.pup_tg_id:
+                            await bot.send_message(delivery.pup_tg_id, msg_pup, parse_mode="HTML")
                     else:
                         pred_end_date = ''
-                        for status in order.statuses:
+                        for status in delivery.statuses:
                             if 'Ожидается' in status:
                                 msg = status
                                 admin = Admins_model().get_sentry_admin()
@@ -318,8 +321,8 @@ class Bot:
                                 await bot.send_message(admin.id, msg, parse_mode="HTML")
                         if not pred_end_date:
                             pred_end_date = datetime.fromisoformat(str(date.today() + timedelta(days=1)))
-                    print('order ', order)
-                    order.update()
+                    print('delivery ', delivery)
+                    delivery.update()
 
     @staticmethod
     def get_end_date(wb_day_month) -> str:
@@ -343,27 +346,27 @@ class Bot:
 
         return str(date(year, month, day))
 
-    def get_all_orders(self) -> list:
-        orders = []
+    def get_all_deliveries(self) -> list:
+        deliveries = []
         sleep(2)
-        for order_row in self.driver.find_elements(By.XPATH, '//div[@class="delivery-block__content"]'):
-            order = Order_Model()
-            order.pup_address = order_row.find_element(By.XPATH,
+        for delivery_row in self.driver.find_elements(By.XPATH, '//div[@class="delivery-block__content"]'):
+            delivery = Delivery_Model()
+            delivery.pup_address = delivery_row.find_element(By.XPATH,
                                                        './div/div/div[contains(@class, "delivery-address__info")]').text
-            item_imgs = order_row.find_elements(By.XPATH, './div/ul/li/div/div/img')
+            item_imgs = delivery_row.find_elements(By.XPATH, './div/ul/li/div/div/img')
             img_ext_len = len('/images/c516x688/1.jpg')
-            order.articles = [img.get_attribute('src')[-img_ext_len - ARTICLE_LEN:-img_ext_len] for img in item_imgs]
-            statuses = order_row.find_elements(By.XPATH,
+            delivery.articles = [img.get_attribute('src')[-img_ext_len - ARTICLE_LEN:-img_ext_len] for img in item_imgs]
+            statuses = delivery_row.find_elements(By.XPATH,
                                                './div/ul/li/div/div/div[@class="goods-list-delivery__price-status"]')
-            order.statuses = [status.text for status in statuses]  # Ожидается 19-21 мая, Отсортирован в сортировочном центре, В пути на пункт выдачи, Готов к выдаче
+            delivery.statuses = [status.text for status in statuses]  # Ожидается 19-21 мая, Отсортирован в сортировочном центре, В пути на пункт выдачи, Готов к выдаче
             try:
-                order.code_for_approve = order_row.find_element(By.XPATH,
+                delivery.code_for_approve = delivery_row.find_element(By.XPATH,
                                                                 "./div/div/div[contains(@class,'delivery-code__value')]").text
             except:
-                order.code_for_approve = ""
+                delivery.code_for_approve = ""
 
-            orders += [order]
-        return orders
+            deliveries += [delivery]
+        return deliveries
 
     def hover_profile_modal(self):
         hover = ActionChains(self.driver)
@@ -414,13 +417,16 @@ class Bot:
                 except:
                     pass
 
-            sleep(1)
+            try:
+                sleep(1)
 
-            self.driver.find_element(By.XPATH, f'//button[text()="Да, мне есть 18 лет"]').click()
+                self.driver.find_element(By.XPATH, f'//button[text()="Да, мне есть 18 лет"]').click()
 
-            sleep(2.5)
+                sleep(2.5)
 
-            self.driver.back()
+                self.driver.back()
 
-            sleep(2.5)
+                sleep(2.5)
+            except:
+                pass
 
