@@ -33,6 +33,14 @@ class BotsWait:
                 bot_wait.running = True
                 bot_wait.update()
                 # Запускаем обработку события, все параметры передаются в self
+                #
+                # loop = asyncio.get_event_loop()
+                # loop.create_task(BotsWait(tg_bot).main())
+                # loop.run_until_complete(do_io())
+                # loop.run_until_complete(do_other_things())
+                #
+                # loop.close()
+                # executor.start_polling(dp)
                 await self.exec_event()
                 # Сбрасываем индикатор ожидания
                 bot_wait.running = False
@@ -173,10 +181,13 @@ class BotsWait:
         if status_fail:
             await self.tg_bot.send_message(admin.id, f'❌ Поиск артикула {article} упал на анализе карточки ❌')
 
-        bot_data = Bots_Model.load_must_free(limit=1, _type="WB")[0]
 
-        self.bot_wait.bot_name = bot_data.name
-        self.bot_wait.update()
+        if self.bot_wait.bot_name:
+            bot_data = Bots_Model.load(name=self.bot_wait.bot_name)
+        else:
+            bot_data = Bots_Model.load_must_free(limit=1, _type="WB")[0]
+            self.bot_wait.bot_name = bot_data.name
+            self.bot_wait.update()
 
         bot_data.set(status="SEARCH")
         bot_data.update()

@@ -13,6 +13,7 @@ from TG.Models.Bots import Bots_Model as Bots_Model
 from TG.Models.BotsWaits import BotWait_Model, BotsWait_Model
 from TG.Models.Delivery import Delivery_Model as Order_Model, Deliveries_Model as Orders_Model, Delivery_Model, \
     Deliveries_Model
+from TG.Models.Users import Users_Model
 from TG.States import States
 
 from WB.Bot import Bot
@@ -116,14 +117,13 @@ class Admin:
             print(report)
             data = ujson.dumps(report)
             bot_wait = BotWait_Model(bot_name=bot.data.name, event="RE_FOUND", wait=True,
-                               start_datetime=datetime.now(), data=data)
+                                     start_datetime=datetime.now(), data=data)
             bot_wait.insert()
 
             msgs += [f"✅ Собран заказ бота {report['bot_name']}✅\n"
                      f"Артикулы {report['articles']}"]
 
         print("bot_search ended")
-
 
         del bot
 
@@ -191,24 +191,28 @@ class Admin:
                     print(paid['datetime'])
                     pup_address = Addresses_Model.load(address=report['post_place'])
                     delivery = Delivery_Model(number=number, total_price=report['total_price'], services_price=50,
-                                           prices=report['prices'],
-                                           quantities=report['quantities'], articles=report['articles'],
-                                           pup_address=report['post_place'],
-                                           pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
-                                           bot_surname=report['bot_username'],
-                                           start_date=paid['datetime'], pred_end_date=report['pred_end_date'],
-                                           active=paid['payment'] or TEST,
-                                           statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
+                                              prices=report['prices'],
+                                              quantities=report['quantities'], articles=report['articles'],
+                                              pup_address=report['post_place'],
+                                              pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
+                                              bot_surname=report['bot_username'],
+                                              start_date=paid['datetime'], pred_end_date=report['pred_end_date'],
+                                              active=paid['payment'] or TEST,
+                                              statuses=['payment' for _ in range(len(report['articles']))],
+                                              inn=report['inn'])
                     delivery.insert()
 
                     if message:
+                        user_name = Users_Model.load(inn=report['inn']).name
                         await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"
-                                         f"Артикулы {report['articles']}\n\n"
-                                         f"Адрес доставки {report['post_place']}\n\n"
-                                         f"Время оплаты {paid['datetime']}")
+                                             f"Клиент: {user_name}\n"
+                                             f"Артикулы {report['articles']}\n\n"
+                                             f"Адрес доставки {report['post_place']}\n\n"
+                                             f"Время оплаты {paid['datetime']}")
                 else:
                     bot_wait.event = "PAID_LOSE"
-                    await message.answer(f"❌ НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
+                    await message.answer(
+                        f"❌ НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
                 bot_wait.end_datetime = datetime.now()
                 bot_wait.wait = False
                 bot_wait.data = []
@@ -217,8 +221,8 @@ class Admin:
                 bot_data.set(status="HOLD")
                 bot_data.update()
 
-        return reports\
-
+        return reports \
+ \
     @staticmethod
     async def bot_re_buy(message, bot_wait):
         reports = []
@@ -264,14 +268,15 @@ class Admin:
                 print(report['payment_datetime'])
                 pup_address = Addresses_Model.load(address=report['post_place'])
                 delivery = Delivery_Model(number=number, total_price=report['total_price'], services_price=50,
-                                       prices=report['prices'],
-                                       quantities=report['quantities'], articles=report['articles'],
-                                       pup_address=report['post_place'],
-                                       pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
-                                       bot_surname=report['bot_username'],
-                                       start_date=report['payment_datetime'], pred_end_date=report['pred_end_date'],
-                                       active=report['payment'] or TEST,
-                                       statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
+                                          prices=report['prices'],
+                                          quantities=report['quantities'], articles=report['articles'],
+                                          pup_address=report['post_place'],
+                                          pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
+                                          bot_surname=report['bot_username'],
+                                          start_date=report['payment_datetime'], pred_end_date=report['pred_end_date'],
+                                          active=report['payment'] or TEST,
+                                          statuses=['payment' for _ in range(len(report['articles']))],
+                                          inn=report['inn'])
                 delivery.insert()
 
                 await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"
@@ -417,7 +422,7 @@ class Admin:
         minutes = random.randint(1, 59)
         seconds = random.randint(1, 59)
 
-        while abs(hours+now_hour)%24 < 8:
+        while abs(hours + now_hour) % 24 < 8:
             hours = random.randint(1, 48)
 
         res_datetime = now_datetime + timedelta(hours=hours, minutes=minutes, seconds=seconds)

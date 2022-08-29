@@ -58,6 +58,7 @@ async def back_handler(message: types.Message, state: FSMContext):
             return
     else:
         markup = get_markup('main_main', Users_Model.load(id).role)
+    await state.set_data({})
     await States.MAIN.set()
     await message.answer('Главное меню', reply_markup=markup)
 
@@ -694,18 +695,7 @@ async def bot_buy_handler(message: types.Message):
 
     reports = await Admin.bot_buy(message, bots_cnt)
 
-    if len(reports)>1:
-        res_msg = "Завершены выкупы:"
-    else:
-        res_msg = "Завершен выкуп:"
-    for report in reports:
-        res_msg += f"\n" \
-                   f"Адрес доставки: {report['post_point']}\n" \
-                   f"Адрес доставки: {report['post_point']}\n" \
-                   f"\n" \
-                   f"Имя бота: {report['bot_name']}"
-
-    await message.answer('Выкуп завершен')
+    await message.answer('Выкупы завершены')
 
 
 @dp.message_handler(state=States.RE_BUY)

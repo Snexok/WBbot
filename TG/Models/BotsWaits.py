@@ -66,9 +66,9 @@ class BotsWait_Model(Model):
     @classmethod
     def load_last(cls):
         path = f"SELECT * FROM {cls.table_name} WHERE " \
-               f"datetime_to_run = (SELECT MIN(datetime_to_run) FROM {cls.table_name} WHERE wait=TRUE AND running!=TRUE) " \
-               f"AND datetime_to_run < '{str(datetime.now())}' AND wait=TRUE AND running!=TRUE AND " \
-               f"event NOT IN {str(cls.exceptional_events).replace('[', '(').replace(']', ')')} " \
+               f"datetime_to_run = (SELECT MIN(datetime_to_run) FROM {cls.table_name} WHERE wait=TRUE AND running!=TRUE " \
+               f"AND event NOT IN {str(cls.exceptional_events).replace('[', '(').replace(']', ')')}) " \
+               f"AND datetime_to_run < '{str(datetime.now())}' AND wait=TRUE AND running!=TRUE " \
                f"LIMIT 1"
         data = cls.execute(path, cls.fetchall)
         if data:
