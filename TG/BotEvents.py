@@ -84,7 +84,7 @@ class BotEvents:
                 return
             elif self.bot_event.event == 'CHECK_DELIVERY':
                 # Проверка готовности товара
-                status = await Admin.check_order(self.bot_event.data.bot_name)
+                status = await Admin.check_delivery(self.bot_wait.data.bot_name)
 
                 if status:
                     self.bot_event.event = "CHECK_CLAIM"
@@ -144,13 +144,12 @@ class BotEvents:
         return res_datetime
 
     @classmethod
-    def BuildOrderFulfillmentProcess(cls, order: OrderOfOrders_Model):
+    def BuildOrderFullfillmentProcess(cls, order: OrderOfOrders_Model):
         admin: Admin_Model = Admins_Model.get_sentry_admin()
         datas = []
         for i, article in enumerate(order.articles):
             for j in range(order.quantities_to_bought[i]):
-                datas += [
-                    {'article': article, 'search_key': order.search_keys[i], 'inn': order.inn, 'chat_id': admin.id}]
+                datas += [{'article': article, 'search_key': order.search_keys[i], 'inn': order.inn, 'chat_id':admin.id, }]
 
         # Перетасовываем заказы
         random.shuffle(datas)
@@ -173,18 +172,9 @@ class BotEvents:
         goods = [[article, search_key, category, "1", "1", inn]]
         await self.tg_bot.send_message(admin.id, f'Начался поиск артикула {article}')
 
-        data_for_bots = None
-        if DEBUG:
-            run_bot = asyncio.to_thread(Admin.pre_run, goods)
-            data_for_bots = await asyncio.gather(run_bot)
-            data_for_bots = data_for_bots[0]
-        else:
-            try:
-                run_bot = asyncio.to_thread(Admin.pre_run, goods)
-                data_for_bots = await asyncio.gather(run_bot)
-                data_for_bots = data_for_bots[0]
-            except:
-                await self.tg_bot.send_message(admin.id, f'❌ Поиск артикула {article} упал на анализе карточки ❌')
+        data_for_bots, status_fail = await Admin.get_data_of_goods(goods)
+        if status_fail:
+            await self.tg_bot.send_message(admin.id, f'❌ Поиск артикула {article} упал на анализе карточки ❌')
 
         bot_data = Bots_Model.load_must_free(limit=1, _type="WB")[0]
 

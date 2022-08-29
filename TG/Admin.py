@@ -11,7 +11,7 @@ from TG.Models.Addresses import Addresses_Model
 from TG.Models.Admins import Admins_Model as Admins_Model
 from TG.Models.Bots import Bots_Model as Bots_Model
 from TG.Models.BotEvents import BotEvent_Model, BotsEvents_Model
-from TG.Models.Orders import Order_Model as Order_Model, Orders_Model as Orders_Model
+from TG.Models.Delivery import Delivery_Model, Deliveries_Model
 from TG.States import States
 
 from WB.Bot import Bot
@@ -21,6 +21,9 @@ import pandas as pd
 
 USLUGI_PRICE = 50
 
+from configs import config
+
+DEBUG = config['DEBUG']
 TEST = False
 
 
@@ -36,19 +39,6 @@ class Admin:
     async def open_bot(bot_name):
         bot = Bot(name=bot_name)
         await asyncio.gather(asyncio.to_thread(bot.open_bot))
-
-    # @classmethod
-    # async def inside(cls, message, number):
-    #
-    #
-    #
-    #     # for i, bot in enumerate(bots):
-    #     #     # cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], message)
-    #     #     loop = asyncio.get_event_loop()
-    #     #     print(reports[i]['post_place'])
-    #     #     pup_address = Addresses.load(address=reports[i]['post_place'])[0]
-    #     #     print(pup_address.address)
-    #     #     loop.create_task(cls.wait_order_ended(bot, reports[i]['pred_end_date'], reports[i]['articles'], pup_address.address, number, message))
 
     @classmethod
     async def bot_search(cls, data):
@@ -168,7 +158,7 @@ class Admin:
                 post_place = random.choice(addresses if type(addresses) is list else [addresses])
                 report['post_place'] = post_place
 
-                number = Orders_Model.get_number()
+                number = Deliveries_Model.get_number()
 
                 bot_event.event = "BUYS"
 
@@ -199,16 +189,16 @@ class Admin:
                     bot_event.event = "PAID"
                     print(paid['datetime'])
                     pup_address = Addresses_Model.load(address=report['post_place'])
-                    order = Order_Model(number=number, total_price=report['total_price'], services_price=50,
-                                        prices=report['prices'],
-                                        quantities=report['quantities'], articles=report['articles'],
-                                        pup_address=report['post_place'],
-                                        pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
-                                        bot_surname=report['bot_username'],
-                                        start_date=paid['datetime'], pred_end_date=report['pred_end_date'],
-                                        active=paid['payment'] or TEST,
-                                        statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
-                    order.insert()
+                    delivery = Delivery_Model(number=number, total_price=report['total_price'], services_price=50,
+                                           prices=report['prices'],
+                                           quantities=report['quantities'], articles=report['articles'],
+                                           pup_address=report['post_place'],
+                                           pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
+                                           bot_surname=report['bot_username'],
+                                           start_date=paid['datetime'], pred_end_date=report['pred_end_date'],
+                                           active=paid['payment'] or TEST,
+                                           statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
+                    delivery.insert()
 
                     if message:
                         await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"
@@ -237,7 +227,7 @@ class Admin:
 
         bot_name = bot_event.bot_name
         print("Bot Name _ ", bot_name)
-        bot_data = Bots_model.load(bot_name)
+        bot_data = Bots_Model.load(bot_name)
 
         bot_data.set(status="BUYS")
         bot_data.update()
@@ -250,7 +240,7 @@ class Admin:
         post_place = random.choice(addresses if type(addresses) is list else [addresses])
         report['post_place'] = post_place
 
-        number = Orders_Model.get_number()
+        number = Deliveries_Model.get_number()
 
         bot_event.event = "BUYS"
 
@@ -271,17 +261,17 @@ class Admin:
             reports += [report]
             if report['payment']:
                 print(report['payment_datetime'])
-                pup_address = Addresses.load(address=report['post_place'])
-                order = Order_Model(number=number, total_price=report['total_price'], services_price=50,
-                                    prices=report['prices'],
-                                    quantities=report['quantities'], articles=report['articles'],
-                                    pup_address=report['post_place'],
-                                    pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
-                                    bot_surname=report['bot_username'],
-                                    start_date=report['payment_datetime'], pred_end_date=report['pred_end_date'],
-                                    active=report['payment'] or TEST,
-                                    statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
-                order.insert()
+                pup_address = Addresses_Model.load(address=report['post_place'])
+                delivery = Delivery_Model(number=number, total_price=report['total_price'], services_price=50,
+                                       prices=report['prices'],
+                                       quantities=report['quantities'], articles=report['articles'],
+                                       pup_address=report['post_place'],
+                                       pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
+                                       bot_surname=report['bot_username'],
+                                       start_date=report['payment_datetime'], pred_end_date=report['pred_end_date'],
+                                       active=report['payment'] or TEST,
+                                       statuses=['payment' for _ in range(len(report['articles']))], inn=report['inn'])
+                delivery.insert()
 
                 await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"
                                      f"Артикулы {report['articles']}\n\n"
@@ -297,16 +287,16 @@ class Admin:
         return reports
 
     @classmethod
-    def pre_run(cls, orders):
-        additional_data = cls.get_additional_data(orders)
+    def pre_run(cls, goods):
+        additional_data = cls.get_additional_data(goods)
         for i, a_data in enumerate(additional_data):
-            orders[i] += [a_data]
+            goods[i] += [a_data]
 
-        # max_bots = max([order[3] for order in orders])
-        max_bots = len(orders)
+        # max_bots = max([order[3] for order in goods])
+        max_bots = len(goods)
         data_for_bots = [[] for _ in range(max_bots)]
 
-        for j, order in enumerate(orders):
+        for j, order in enumerate(goods):
             article, search_key, category, quantity, pvz_cnt, inn, additional_data = order
             data_for_bots[j] += [
                 {'article': article, 'search_key': search_key, 'category': category, 'quantity': quantity, 'inn': inn,
@@ -320,10 +310,10 @@ class Admin:
         return data_for_bots
 
     @staticmethod
-    def get_additional_data(orders):
+    def get_additional_data(goods):
         watch_bot = Bot(name="Watcher")
 
-        articles = [order[0] for order in orders]
+        articles = [good[0] for good in goods]
         additional_data = []
         for i, article in enumerate(articles):
             data = watch_bot.get_data_cart(article)
@@ -406,30 +396,15 @@ class Admin:
         secret_key = secrets.token_urlsafe(64)
 
         return secret_key
-    #
-    # @classmethod
-    # async def wait_order_ended(cls, bot: Bot, pred_end_date, articles, address, order_number, message):
-    #     start_datetime = datetime.now()
-    #     rnd_time = timedelta(hours=random.randint(7, 14), minutes=random.randint(0, 60), seconds=random.randint(0, 60))
-    #     end_datetime = pred_end_date + rnd_time
-    #
-    #     time_to_end = (end_datetime - start_datetime).total_seconds()
-    #
-    #     await asyncio.sleep(time_to_end)
-    #
-    #     await bot.check_readiness(articles, address, order_number, message, cls.wait_order_ended)
 
     @classmethod
-    async def check_order(cls, bot_name, message=None) -> bool:
+    async def check_delivery(cls, bot_name, message=None) -> bool:
         bot = Bot(name=bot_name)
-        orders = Orders_Model.load(bot_name=bot_name, active=True, pred_end_date=datetime.now())
+        deliveries = Deliveries_Model.load(bot_name=bot_name, active=True, pred_end_date=datetime.now())
         bot.open_bot(manual=False)
-        status: bool = await bot.check_readiness(orders, message)
+        status: bool = await bot.check_readiness(deliveries, message)
 
         return status
-
-
-        # await asyncio.gather(asyncio.to_thread(check_order(bot)))
 
     @classmethod
     def get_work_time(cls):
@@ -447,6 +422,25 @@ class Admin:
         res_datetime = now_datetime + timedelta(hours=hours, minutes=minutes, seconds=seconds)
 
         return res_datetime
+
+    @classmethod
+    async def get_data_of_goods(cls, goods):
+        data_for_bots = []
+        status_fail = False
+        if DEBUG:
+            run_bot = asyncio.to_thread(cls.pre_run, goods)
+            data_for_bots = await asyncio.gather(run_bot)
+            data_for_bots = data_for_bots[0]
+        else:
+            try:
+                run_bot = asyncio.to_thread(cls.pre_run, goods)
+                data_for_bots = await asyncio.gather(run_bot)
+                data_for_bots = data_for_bots[0]
+            except:
+                status_fail = True
+
+        return data_for_bots, status_fail
+
 
 if __name__ == '__main__':
     a = {"w": 2, "r": 3}
