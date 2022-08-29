@@ -16,12 +16,12 @@ DEBUG = config['DEBUG']
 TEST = config['TEST']
 
 
-async def bot_buy(message, bot_wait):
+async def bot_buy(message, bot_event):
     reports = []
 
-    report = bot_wait.data
+    report = bot_event.data
 
-    bot_name = bot_wait.bot_name
+    bot_name = bot_event.bot_name
     print("Bot Name : ", bot_name)
     bot_data = Bots_Model.load(bot_name)
 
@@ -31,7 +31,7 @@ async def bot_buy(message, bot_wait):
 
     bot.open_bot(manual=False)
     try:
-        bot_wait.event = "CHOOSE_ADDRESS"
+        bot_event.event = "CHOOSE_ADDRESS"
 
         addresses = bot.data.addresses
         post_place = random.choice(addresses if type(addresses) is list else [addresses])
@@ -39,27 +39,27 @@ async def bot_buy(message, bot_wait):
 
         number = Deliveries_Model.get_number()
 
-        bot_wait.event = "BUYS"
+        bot_event.event = "BUYS"
 
         run_bot = asyncio.to_thread(bot.buy, report, post_place, number)
         reports = await asyncio.gather(run_bot)
         report = reports[0]
 
-        bot_wait.event = "CHECK_DELIVERY"
+        bot_event.event = "CHECK_DELIVERY"
         hours = random.randint(10, 16)
         minutes = random.randint(0, 59)
         seconds = random.randint(0, 59)
-        bot_wait.datetime_to_run = report['pred_end_date'] + timedelta(hours=hours, minutes=minutes, seconds=seconds)
-        bot_wait.wait = True
+        bot_event.datetime_to_run = report['pred_end_date'] + timedelta(hours=hours, minutes=minutes, seconds=seconds)
+        bot_event.wait = True
     except Exception as e:
         print(e)
-        bot_wait.event += " FAIL"
-        bot_wait.end_datetime = datetime.now()
-        bot_wait.wait = False
+        bot_event.event += " FAIL"
+        bot_event.end_datetime = datetime.now()
+        bot_event.wait = False
 
-    bot_wait.update()
+    bot_event.update()
 
-    if "FAIL" in bot_wait.event:
+    if "FAIL" in bot_event.event:
         if message:
             await message.answer('❌ Ошибка выкупа ❌')
     else:
@@ -98,14 +98,14 @@ async def bot_buy(message, bot_wait):
                 await message.answer(
                     f"❌ НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
 
-        bot_wait.event = "CHECK_DELIVERY"
+        bot_event.event = "CHECK_DELIVERY"
 
         print(report['pred_end_date'], 'предварительная дата доставки заказа\n', 'Если забудешь это поправить, это TG/Bot')
         days = 0
         end_datetime = get_work_time(days)
-        bot_wait.end_datetime = end_datetime
+        bot_event.end_datetime = end_datetime
 
-        bot_wait.update()
+        bot_event.update()
 
         bot_data.set(status="HOLD")
         bot_data.update()

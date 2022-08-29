@@ -1,7 +1,7 @@
-create table bots_wait
+create table bot_events
 (
 	id serial not null
-		constraint bots_waits_pk
+		constraint bots_events_pk
 			primary key,
     order_id text,
 	bot_name text,
@@ -16,5 +16,5 @@ create table bots_wait
 	end_datetime timestamp
 );
 
-alter table bots_wait owner to postgres;
+alter table bot_events owner to postgres;
 
