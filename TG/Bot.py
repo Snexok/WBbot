@@ -2,6 +2,8 @@ import asyncio
 import random
 from datetime import datetime, timedelta
 
+from loguru import logger
+
 from TG.Admin import Admin
 from aiogram import Bot as TG_Bot
 
@@ -22,7 +24,7 @@ async def bot_buy(message, bot_event):
     report = bot_event.data
 
     bot_name = bot_event.bot_name
-    print("Bot Name : ", bot_name)
+    logger.info("Bot Name : ", bot_name)
     bot_data = Bots_Model.load(bot_name)
 
     bot_data.set(status="BUYS")
@@ -41,7 +43,7 @@ async def bot_buy(message, bot_event):
 
         bot_event.event = "BUYS"
 
-        run_bot = asyncio.to_thread(bot.buy, report, post_place, number)
+        run_bot = asyncio.to_thread(bot.buy, [report], post_place, number)
         reports = await asyncio.gather(run_bot)
         report = reports[0]
 

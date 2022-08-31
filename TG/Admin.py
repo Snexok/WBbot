@@ -70,6 +70,7 @@ class Admin:
 
             bot_event = BotsEvents_Model.load(bots[i].data.name, "SEARCH")
             if bot_event:
+                bot_event = bot_event[0]
                 bot_event.event = "FOUND"
                 bot_event.wait = True
                 bot_event.start_datetime = datetime.now()
@@ -138,12 +139,17 @@ class Admin:
     async def bot_buy(message=None, bots_cnt=1):
         bots_event = BotsEvents_Model.load(event="FOUND", limit=bots_cnt)
 
-        reports = []
-
         for bot_event in bots_event:
-            print(type(bot_event.data))
-            report = bot_event.data
-            # report = ujson.loads(bot_event.data)
+            all_current_bot_events = BotsEvents_Model.load(event="FOUND", bot_name=bot_event.bot_name)
+
+            reports = []
+            if len(all_current_bot_events) > 1:
+                for bot_event in all_current_bot_events:
+                    reports += bot_event.data
+            else:
+                reports += [all_current_bot_events[0].data]
+
+            print(all_current_bot_events[0])
 
             bot_name = bot_event.bot_name
             print("Bot Name _ ", bot_name)
@@ -159,15 +165,16 @@ class Admin:
 
                 addresses = bot.data.addresses
                 post_place = random.choice(addresses if type(addresses) is list else [addresses])
-                report['post_place'] = post_place
+                for i in range(len(reports)):
+                    reports[i]['post_place'] = post_place
 
                 number = Deliveries_Model.get_number()
 
                 bot_event.event = "BUYS"
 
-                run_bot = asyncio.to_thread(bot.buy, report, post_place, number)
+                run_bot = asyncio.to_thread(bot.buy, reports, post_place, number)
                 reports = await asyncio.gather(run_bot)
-                report = reports[0]
+                reports = reports[0]
 
             except Exception as e:
                 print(e)
@@ -177,52 +184,51 @@ class Admin:
                 if message:
                     await message.answer('❌ Ошибка выкупа ❌')
             else:
-                if message:
-                    await message.answer_photo(open(report['qr_code'], 'rb'))
-
-                if TEST:
-                    paid = {'payment': True, 'datetime': datetime.now()}
-                else:
-                    run_bot = asyncio.to_thread(bot.expect_payment)
-                    paid = await asyncio.gather(run_bot)
-                    paid = paid[0]
-
-                reports += [report]
-                if paid['payment']:
-                    bot_event.event = "PAID"
-                    print(paid['datetime'])
-                    pup_address = Addresses_Model.load(address=report['post_place'])
-                    delivery = Delivery_Model(number=number, total_price=report['total_price'], services_price=50,
-                                              prices=report['prices'],
-                                              quantities=report['quantities'], articles=report['articles'],
-                                              pup_address=report['post_place'],
-                                              pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
-                                              bot_surname=report['bot_username'],
-                                              start_date=paid['datetime'], pred_end_date=report['pred_end_date'],
-                                              active=paid['payment'] or TEST,
-                                              statuses=['payment' for _ in range(len(report['articles']))],
-                                              inn=report['inn'])
-                    delivery.insert()
-
+                for report in reports:
                     if message:
-                        user_name = Users_Model.load(inn=report['inn']).name
-                        await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"
-                                             f"Клиент: {user_name}\n"
-                                             f"Артикулы {report['articles']}\n\n"
-                                             f"Адрес доставки {report['post_place']}\n\n"
-                                             f"Время оплаты {paid['datetime']}")
-                else:
-                    bot_event.event = "PAID_LOSE"
-                    await message.answer(f"❌ НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
-                bot_event.end_datetime = datetime.now()
-                bot_event.wait = False
-                bot_event.data = []
-                bot_event.update()
+                        await message.answer_photo(open(report['qr_code'], 'rb'))
 
-                bot_data.set(status="HOLD")
-                bot_data.update()
+                    if TEST:
+                        paid = {'payment': True, 'datetime': datetime.now()}
+                    else:
+                        run_bot = asyncio.to_thread(bot.expect_payment)
+                        paid = await asyncio.gather(run_bot)
+                        paid = paid[0]
 
-        return reports
+                    if paid['payment']:
+                        bot_event.event = "PAID"
+                        print(paid['datetime'])
+                        pup_address = Addresses_Model.load(address=report['post_place'])
+                        delivery = Delivery_Model(number=number, total_price=report['total_price'], services_price=50,
+                                                  prices=report['prices'],
+                                                  quantities=report['quantities'], articles=report['articles'],
+                                                  pup_address=report['post_place'],
+                                                  pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
+                                                  bot_surname=report['bot_username'],
+                                                  start_date=paid['datetime'], pred_end_date=report['pred_end_date'],
+                                                  active=paid['payment'] or TEST,
+                                                  statuses=['payment' for _ in range(len(report['articles']))],
+                                                  inn=report['inn'])
+                        delivery.insert()
+
+                        if message:
+                            user_name = Users_Model.load(inn=report['inn']).name
+                            await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"
+                                                 f"Клиент: {user_name}\n"
+                                                 f"Артикулы {report['articles']}\n\n"
+                                                 f"Адрес доставки {report['post_place']}\n\n"
+                                                 f"Время оплаты {paid['datetime']}")
+                    else:
+                        bot_event.event = "PAID_LOSE"
+                        await message.answer(f"❌ НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
+                    bot_event.end_datetime = datetime.now()
+                    bot_event.wait = False
+                    bot_event.data = []
+                    bot_event.update()
+
+                    bot_data.set(status="HOLD")
+                    bot_data.update()
+
     @staticmethod
     async def bot_re_buy(message, bot_event):
         reports = []

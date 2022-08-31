@@ -56,10 +56,6 @@ class BotsEvents_Model(Model):
 
         data = cls.format_data(cls.execute(path, cls.fetchall))
 
-        if bot_name:
-            if data:
-                return data[0]
-
         return data
 
 

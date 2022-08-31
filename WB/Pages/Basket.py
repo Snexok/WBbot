@@ -42,6 +42,7 @@ class Basket():
                 sleep(random.uniform(1, 5))
                 counter.find_element(By.CLASS_NAME, 'btn__del').click()
             if len(card_names) <= len(articles):
+                max([len(article) for article in articles])
                 card_names = [card.get_attribute('href')[catalog_url_len:catalog_url_len + 8]
                               for card in card_names]
                 # Могут встречаться артикулы с длинной 7, а не 8. Их вырезаем не корректно

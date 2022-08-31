@@ -1,5 +1,6 @@
 from datetime import datetime, date, timedelta
 
+from loguru import logger
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.by import By
 from time import sleep
@@ -96,7 +97,8 @@ class Bot:
 
         return False
 
-    def buy(self, report, post_place, order_id):
+    def buy(self, reports, post_place, order_id):
+        logger.info("started")
         sleep(1)
         try:
             self.page = Utils.go_to_basket(self.driver)  # basket
@@ -107,30 +109,35 @@ class Bot:
         self.driver.refresh()
         sleep(2)
 
-        self.basket.delete_other_cards_in_basket(report['articles'])
+        articles = [report['articles'] for report in reports]
+        articles = sum(articles, [])
+        logger.info(f"articles = {articles}")
+        self.basket.delete_other_cards_in_basket(articles)
 
-        report['prices'] = []
-        for article in report['articles']:
-            price = self.basket.get_price(article)
-            report['prices'] += [price]
+        for i in range(len(reports)):
+            reports[i]['post_place'] = post_place
+            reports[i]['prices'] = []
+            for article in reports[i]['articles']:
+                price = self.basket.get_price(article)
+                reports[i]['prices'] += [price]
 
-        report['total_price'] = sum(report['prices'])
+            reports[i]['total_price'] = sum(reports[i]['prices'])
 
-        report['quantities'] = []
-        for article in report['articles']:
-            quantity = self.basket.get_quantity(article)
-            report['quantities'] += [int(quantity)]
+            reports[i]['quantities'] = []
+            for article in reports[i]['articles']:
+                quantity = self.basket.get_quantity(article)
+                reports[i]['quantities'] += [int(quantity)]
 
-        sleep(3)
-        print("in WB\Bot", post_place)
-        self.basket.choose_post_place(post_place)
-        self.basket.choose_payment_method()
-        shipment_date = self.basket.get_shipment_date()
+            sleep(3)
+            print("in WB\Bot", post_place)
+            self.basket.choose_post_place(post_place)
+            self.basket.choose_payment_method()
+            shipment_date = self.basket.get_shipment_date()
 
-        report['pred_end_date'] = datetime.fromisoformat(self.get_end_date(shipment_date))
-        report['qr_code'] = self.basket.get_qr_code(order_id, self.data.name)
+            reports[i]['pred_end_date'] = datetime.fromisoformat(self.get_end_date(shipment_date))
+            reports[i]['qr_code'] = self.basket.get_qr_code(order_id, self.data.name)
 
-        return report
+        return reports
 
     def re_buy(self, report, post_place, order_id):
         self.page = Utils.go_to_basket(self.driver)  # basket

@@ -6,7 +6,10 @@ from datetime import datetime, timedelta
 
 import ujson
 from aiogram import Bot as TG_Bot
+from loguru import logger
+
 from TG.Markups import get_keyboard
+from TG.Models.Users import Users_Model
 
 from configs import config
 from TG.Admin import Admin
@@ -25,31 +28,27 @@ class BotEvents:
         self.bot_event: BotEvent_Model = None
 
     async def main(self):
+        logger.info("run main")
+
         while True:
             await sleep(5)
             bot_event = BotsEvents_Model.load_last()
             if bot_event:
-                print(bot_event)
-                self.bot_event = bot_event
-                bot_event.running = True
-                bot_event.update()
-                # Запускаем обработку события, все параметры передаются в self
-                #
-                # loop = asyncio.get_event_loop()
-                # loop.create_task(BotsWait(tg_bot).main())
-                # loop.run_until_complete(do_io())
-                # loop.run_until_complete(do_other_things())
-                #
-                # loop.close()
-                # executor.start_polling(dp)
-                await self.exec_event()
-                # Сбрасываем индикатор ожидания
-                bot_event.running = False
-                bot_event.update()
-                # bots_event.delete()
+                logger.info(f"find bot_event {bot_event.data}")
+                break
+
+        print(bot_event)
+        self.bot_event = bot_event
+        bot_event.running = True
+        bot_event.update()
+        task1 = asyncio.create_task(self.exec_event())
+        task2 = asyncio.create_task(BotEvents(self.tg_bot).main())
+        res = await asyncio.gather(task1, task2, return_exceptions=True)
+        print("run BotEvents main ended")
+        print("res = ", res)
 
     async def exec_event(self):
-        print(self.bot_event.event)
+        logger.info(f"event = {self.bot_event.event} | bot_name = {self.bot_event.bot_name}")
         if self.bot_event.sub_event:
             if self.bot_event.sub_event == 'SURF':
                 pass
@@ -91,8 +90,9 @@ class BotEvents:
                 await self.send_notify_for_buy()
                 return
             elif self.bot_event.event == 'CHECK_DELIVERY':
+                logger.info(f"CHECK_DELIVERY id = {self.bot_event.id}")
                 # Проверка готовности товара
-                status = await Admin.check_delivery(self.bot_wait.data.bot_name)
+                status = await Admin.check_delivery(self.bot_event.data.bot_name)
 
                 if status:
                     self.bot_event.event = "CHECK_CLAIM"
@@ -104,6 +104,10 @@ class BotEvents:
                 return True
             elif self.bot_event.event == 'ADD_COMMENT':
                 pass
+
+        # Сбрасываем индикатор ожидания
+        self.bot_event.running = False
+        self.bot_event.update()
 
     @classmethod
     def set_event_for_order(cls, order_id):
@@ -152,12 +156,12 @@ class BotEvents:
         return res_datetime
 
     @classmethod
-    def BuildOrderFullfillmentProcess(cls, order: OrderOfOrders_Model):
+    def BuildOrderFulfillmentProcess(cls, order: OrderOfOrders_Model):
         admin: Admin_Model = Admins_Model.get_sentry_admin()
         datas = []
         for i, article in enumerate(order.articles):
             for j in range(order.quantities_to_bought[i]):
-                datas += [{'article': article, 'search_key': order.search_keys[i], 'inn': order.inn, 'chat_id':admin.id, }]
+                datas += [{'article': article, 'search_key': order.search_keys[i], 'inn': order.inn, 'chat_id':admin.id}]
 
         # Перетасовываем заказы
         random.shuffle(datas)
@@ -169,7 +173,7 @@ class BotEvents:
                 bonus_hours += 24
                 in_day_cnt = 0
             data = json.dumps(data)
-            bw = BotEvent_Model(event="SEARCH", wait=True, datetime_to_run=cls.get_work_time(i + bonus_hours),
+            bw = BotEvent_Model(event="SEARCH", order_id=order.id, wait=True, datetime_to_run=cls.get_work_time(i + bonus_hours),
                                 data=data)
             bw.insert()
             in_day_cnt += 1
@@ -185,7 +189,7 @@ class BotEvents:
             await self.tg_bot.send_message(admin.id, f'❌ Поиск артикула {article} упал на анализе карточки ❌')
 
         if self.bot_event.bot_name:
-            bot_data = Bots_Model.load(name=self.bot_wait.bot_name)
+            bot_data = Bots_Model.load(name=self.bot_event.bot_name)
         else:
             bot_data = Bots_Model.load_must_free(limit=1, _type="WB")[0]
             self.bot_event.bot_name = bot_data.name
@@ -202,31 +206,26 @@ class BotEvents:
         report = reports[0]
 
         msgs = []
-        print(report)
         datetime_to_run = self.get_work_time()
 
         if self.bot_event:
             self.bot_event.event = "FOUND"
             self.bot_event.wait = True
             self.bot_event.datetime_to_run = datetime_to_run
-            print(self.bot_event.data)
-            print(type(self.bot_event.data))
             # добавляем данные из поиска
             for key, value in report.items():
                 self.bot_event.data[key] = value
             self.bot_event.data = ujson.dumps(self.bot_event.data)
             self.bot_event.update()
-        else:
-            bot_event = BotEvent_Model(bot_name=bot.data.name, event="FOUND", wait=True,
-                                       start_datetime=datetime.now(), datetime_to_run=datetime_to_run,
-                                       data=data)
-            bot_event.insert()
 
-        msgs += [f"✅ Собран заказ бота {report['bot_name']}✅\n"
-                 f"Артикулы {report['articles']}\n"
-                 f"Адреса: {bot_data.addresses}"]
+        articles_text = '\n'.join(report['articles']) if len(report['articles']) > 1 else report['articles'][0]
+        bot_addresses = '\n'.join(bot_data.addresses)
+        msgs += [f"✅ Собран заказ ✅\n\n"
+                 f"Бот: {report['bot_name']}\n"
+                 f"Артикул{'ы' if len(report['articles']) > 1 else ''}: {articles_text}\n"
+                 f"Адреса: {bot_addresses}"]
 
-        print("bot_search ended")
+        logger.info(f"bot_search completed by bot {report['bot_name']} with article {articles_text}")
 
         del bot
 
@@ -237,7 +236,12 @@ class BotEvents:
 
     async def send_notify_for_buy(self):
         keyboard = get_keyboard('admin_notify_for_buy', self.bot_event.bot_name)
-        await self.tg_bot.send_message(self.bot_event.data['chat_id'], 'Готов выкуп', reply_markup=keyboard)
+        user_name = Users_Model.load(inn=self.bot_event.data['inn']).name
+        msg = 'Готов выкуп\n\n' \
+              f'Клиент: {user_name}\n' \
+              f'Артикул: {self.bot_event.data["article"]}\n\n' \
+              f'Бот: {self.bot_event.bot_name}'
+        await self.tg_bot.send_message(self.bot_event.data['chat_id'], msg, reply_markup=keyboard)
         self.bot_event.event = "PAYMENT"
         self.bot_event.update()
 
@@ -253,5 +257,5 @@ class BotEvents:
 
 if __name__ == '__main__':
     # BotsWait.set_event_for_order('2')
-    order = OrdersOfOrders_Model.load('куц')
+    order = OrdersOfOrders_Model.load('Booth')
     BotEvents.BuildOrderFulfillmentProcess(order)

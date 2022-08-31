@@ -366,10 +366,10 @@ async def admin_handler(message: types.Message):
                 # print(delivery)
                 # is_delivery_wait_exist = BotsWait_Model.check_exist_delivery_wait(delivery.bot_name, delivery.id)
                 # if not is_delivery_wait_exist:
-                #     bot_wait = BotWait_Model(bot_name=delivery.bot_name, event='delivery', start_datetime=datetime.now(),
+                #     bot_event = BotWait_Model(bot_name=delivery.bot_name, event='delivery', start_datetime=datetime.now(),
                 #                              end_datetime=delivery.pred_end_date, wait=False,
                 #                              data=json.dumps('{"id": ' + str(delivery.id) + '}'))
-                #     bot_wait.insert()
+                #     bot_event.insert()
                 if delivery.bot_name not in bots_name:
                     bots_name += [delivery.bot_name]
             keyboard = get_keyboard('admin_bots', bots_name)
@@ -693,7 +693,7 @@ async def bot_buy_handler(message: types.Message):
 
     await message.answer('Выкуп начался')
 
-    reports = await Admin.bot_buy(message, bots_cnt)
+    await Admin.bot_buy(message, bots_cnt)
 
     await message.answer('Выкупы завершены')
 
@@ -725,6 +725,7 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
     is_go_search = True
     is_go_buy = True
     if bot_event:
+        bot_event = bot_event[0]
         if bot_event.event == "RE_FOUND":
             is_go_search = False
             is_go_buy = True
@@ -775,12 +776,16 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
         if not bot_event:
             bot_event = BotsEvents_Model.load(bot_name=bot_name, wait=True)
 
-        # запускаем выкуп
-        await Admin.bot_re_buy(message, bot_event)
+        if bot_event:
+            bot_event = bot_event[0]
 
-        res_msg = f"Завершен выкуп по боту: {bot_name}"
+            # запускаем выкуп
+            await Admin.bot_re_buy(message, bot_event)
 
-        await message.answer(res_msg)
+            res_msg = f"Завершен выкуп по боту: {bot_name}"
+
+            await message.answer(res_msg)
+        await message.answer("ERROR")
 
 
 @dp.callback_query_handler(state=States.RE_BUY)
@@ -1066,6 +1071,8 @@ async def create_order_handler(message: types.Message, state: FSMContext):
     if order:
         BotEvents.BuildOrderFulfillmentProcess(order)
 
+    await state.set_data({})
+
 
 @dp.callback_query_handler(state=States.WATCH_ORDER)
 async def watch_orders_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
@@ -1155,17 +1162,13 @@ async def others_callback_query_handler(call: types.CallbackQuery):
 
     print(msg)
 
-    await call.message.edit_text('Начался выкуп')
+    if bot_event:
+        bot_event = bot_event[0]
+        await call.message.edit_text('Начался выкуп')
 
-    reports = await bot_buy(call.message, bot_event)
+        await bot_buy(call.message, bot_event)
 
-    bot_names = [report['bot_name'] for report in reports]
-
-    res_msg = "Завершен выкуп по ботам:"
-    for name in bot_names:
-        res_msg += f"\n{name}"
-
-    await call.message.answer(res_msg)
+        await call.message.answer("res_msg")
 
 
 if __name__ == '__main__':
