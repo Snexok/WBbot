@@ -46,17 +46,22 @@ class Basket():
                 card_names = [card.get_attribute('href')[catalog_url_len:catalog_url_len + 8]
                               for card in card_names]
                 # Могут встречаться артикулы с длинной 7, а не 8. Их вырезаем не корректно
-                card_names = [card_name.replace('/', '') for card_name in card_names]
-                card_names.sort()
+                card_articles = [card_name.replace('/', '') for card_name in card_names]
+                card_articles.sort()
                 articles.sort()
-                print(card_names, card_names != articles, articles)
-                if card_names != articles:
-                    for card_name in card_names:
-                        if card_name in articles:
-                            counter = card_name.find_element(By.XPATH, '../../../div[contains(@class,"count")]')
-                            hover.move_to_element(counter).perform()
-                            sleep(random.uniform(1, 5))
-                            counter.find_element(By.CLASS_NAME, 'btn__del').click()
+                # Проверка, что все карточки из списка искаемых артикулов
+                are_all_cards_targeted = all([any([card_article in articles[i] for i in range(len(articles))]) for card_article in card_articles])
+                if not are_all_cards_targeted:
+                    for card_article in card_articles:
+                        # Удаление карточки, которая не является целевой
+                        if card_article not in articles:
+                            manual_msg = "Мы потеряли минимум один товар и минимум один товар в корзине пустой, требуется ручноре действие"
+                            logger.info(manual_msg)
+                            return manual_msg
+                            # counter = card.find_element(By.XPATH, '../../../div[contains(@class,"count")]')
+                            # hover.move_to_element(counter).perform()
+                            # sleep(random.uniform(1, 5))
+                            # counter.find_element(By.CLASS_NAME, 'btn__del').click()
                 else:
                     logger.info("end")
                     return
