@@ -98,7 +98,7 @@ class Bot:
         return False
 
     def buy(self, reports, post_place, order_id):
-        logger.info("started")
+        logger.info("start")
         sleep(1)
         try:
             self.page = Utils.go_to_basket(self.driver)  # basket
@@ -114,6 +114,12 @@ class Bot:
         logger.info(f"articles = {articles}")
         self.basket.delete_other_cards_in_basket(articles)
 
+        sleep(3)
+        self.basket.choose_post_place(post_place)
+        self.basket.choose_payment_method()
+        shipment_date = self.basket.get_shipment_date()
+        logger.info(shipment_date)
+
         for i in range(len(reports)):
             reports[i]['post_place'] = post_place
             reports[i]['prices'] = []
@@ -128,15 +134,11 @@ class Bot:
                 quantity = self.basket.get_quantity(article)
                 reports[i]['quantities'] += [int(quantity)]
 
-            sleep(3)
-            print("in WB\Bot", post_place)
-            self.basket.choose_post_place(post_place)
-            self.basket.choose_payment_method()
-            shipment_date = self.basket.get_shipment_date()
-
             reports[i]['pred_end_date'] = datetime.fromisoformat(self.get_end_date(shipment_date))
-            reports[i]['qr_code'] = self.basket.get_qr_code(order_id, self.data.name)
 
+        reports[0]['qr_code'] = self.basket.get_qr_code(order_id, self.data.name)
+
+        logger.info("end")
         return reports
 
     def re_buy(self, report, post_place, order_id):

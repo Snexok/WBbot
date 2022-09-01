@@ -5,6 +5,7 @@ from asyncio import sleep
 import ujson
 
 from aiogram import Bot as TG_Bot
+from loguru import logger
 
 from TG.Markups import get_markup, get_keyboard
 from TG.Models.Addresses import Addresses_Model
@@ -149,10 +150,12 @@ class Admin:
             else:
                 reports += [all_current_bot_events[0].data]
 
-            print(all_current_bot_events[0])
+            articles = sum([report["articles"] for report in reports], [])
+
+            logger.info(all_current_bot_events[0])
 
             bot_name = bot_event.bot_name
-            print("Bot Name _ ", bot_name)
+            logger.info("Bot Name _ ", bot_name)
             bot_data = Bots_Model.load(bot_name)
 
             bot_data.set(status="BUYS")
@@ -177,17 +180,20 @@ class Admin:
                 reports = reports[0]
 
             except Exception as e:
-                print(e)
+                logger.info(e)
                 bot_event.event += " FAIL"
 
             if "FAIL" in bot_event.event:
+                msg = '❌ Ошибка выкупа ❌\n\n' \
+                     f'ID заказа {bot_event.id}\n' \
+                     f'Бот {bot_event.bot_name}\n' \
+                     f'Артикул {" ".join(articles)}'
                 if message:
-                    await message.answer('❌ Ошибка выкупа ❌')
+                    await message.answer(msg)
             else:
+                if message:
+                    await message.answer_photo(open(reports[0]['qr_code'], 'rb'))
                 for report in reports:
-                    if message:
-                        await message.answer_photo(open(report['qr_code'], 'rb'))
-
                     if TEST:
                         paid = {'payment': True, 'datetime': datetime.now()}
                     else:
@@ -197,7 +203,7 @@ class Admin:
 
                     if paid['payment']:
                         bot_event.event = "PAID"
-                        print(paid['datetime'])
+                        logger.info(paid['datetime'])
                         pup_address = Addresses_Model.load(address=report['post_place'])
                         delivery = Delivery_Model(number=number, total_price=report['total_price'], services_price=50,
                                                   prices=report['prices'],
@@ -215,7 +221,7 @@ class Admin:
                             user_name = Users_Model.load(inn=report['inn']).name
                             await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"
                                                  f"Клиент: {user_name}\n"
-                                                 f"Артикулы {report['articles']}\n\n"
+                                                 f"Артикулы {' '.join(articles)}\n\n"
                                                  f"Адрес доставки {report['post_place']}\n\n"
                                                  f"Время оплаты {paid['datetime']}")
                     else:

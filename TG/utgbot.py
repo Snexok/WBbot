@@ -695,7 +695,7 @@ async def bot_buy_handler(message: types.Message):
 
     await Admin.bot_buy(message, bots_cnt)
 
-    await message.answer('Выкупы завершены')
+    await message.answer('Выкуп завершен')
 
 
 @dp.message_handler(state=States.RE_BUY)
