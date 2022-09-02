@@ -137,7 +137,7 @@ class Admin:
         return msgs
 
     @staticmethod
-    async def bot_buy(message=None, bots_cnt=1):
+    async def bot_buy(message, bots_cnt=1):
         bots_event = BotsEvents_Model.load(event="FOUND", limit=bots_cnt)
 
         for bot_event in bots_event:
@@ -145,10 +145,13 @@ class Admin:
 
             reports = []
             if len(all_current_bot_events) > 1:
-                for bot_event in all_current_bot_events:
-                    reports += bot_event.data
+                for bot_event_from_all in all_current_bot_events:
+                    reports += bot_event_from_all.data
+                    await message.answer(f"Выкупается сразу {len(all_current_bot_events)} события id = {bot_event_from_all.id}")
             else:
                 reports += [all_current_bot_events[0].data]
+                await message.edit_text(f"Выкуп:\n\n"
+                                        f"ID события {all_current_bot_events[0].id}")
 
             articles = sum([report["articles"] for report in reports], [])
 
@@ -176,8 +179,16 @@ class Admin:
                 bot_event.event = "BUYS"
 
                 run_bot = asyncio.to_thread(bot.buy, reports, post_place, number)
-                reports = await asyncio.gather(run_bot)
-                reports = reports[0]
+                buy_res = await asyncio.gather(run_bot)
+                buy_res = buy_res[0]
+
+                if buy_res is list:
+                    reports = buy_res
+                elif reports is str:
+                    msg = reports
+
+                    await message.answer(msg)
+                    return
 
             except Exception as e:
                 logger.info(e)
@@ -188,11 +199,10 @@ class Admin:
                      f'ID заказа {bot_event.id}\n' \
                      f'Бот {bot_event.bot_name}\n' \
                      f'Артикул {" ".join(articles)}'
-                if message:
-                    await message.answer(msg)
+
+                await message.answer(msg)
             else:
-                if message:
-                    await message.answer_photo(open(reports[0]['qr_code'], 'rb'))
+                await message.answer_photo(open(reports[0]['qr_code'], 'rb'))
                 for report in reports:
                     if TEST:
                         paid = {'payment': True, 'datetime': datetime.now()}
@@ -203,7 +213,12 @@ class Admin:
 
                     if paid['payment']:
                         bot_event.event = "PAID"
-                        logger.info(paid['datetime'])
+                        bot_event.end_datetime = datetime.now()
+                        bot_event.wait = False
+                        bot_event.data = []
+                        bot_event.update()
+
+                        logger.info(bot_event.bot_name, "create delivery")
                         pup_address = Addresses_Model.load(address=report['post_place'])
                         delivery = Delivery_Model(number=number, total_price=report['total_price'], services_price=50,
                                                   prices=report['prices'],
@@ -217,23 +232,22 @@ class Admin:
                                                   inn=report['inn'])
                         delivery.insert()
 
-                        if message:
-                            user_name = Users_Model.load(inn=report['inn']).name
-                            await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"
-                                                 f"Клиент: {user_name}\n"
-                                                 f"Артикулы {' '.join(articles)}\n\n"
-                                                 f"Адрес доставки {report['post_place']}\n\n"
-                                                 f"Время оплаты {paid['datetime']}")
+                        logger.info(bot_event.bot_name, "send notify to action owner")
+                        user_name = Users_Model.load(inn=report['inn']).name
+                        await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"
+                                             f"Клиент: {user_name}\n"
+                                             f"Артикулы {' '.join(articles)}\n\n"
+                                             f"Адрес доставки {report['post_place']}\n\n"
+                                             f"Время оплаты {paid['datetime']}")
                     else:
+                        error_msg = f"❌ НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}"
+                        logger.info(bot_event.bot_name, error_msg)
                         bot_event.event = "PAID_LOSE"
-                        await message.answer(f"❌ НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}")
-                    bot_event.end_datetime = datetime.now()
-                    bot_event.wait = False
-                    bot_event.data = []
-                    bot_event.update()
+                        await message.answer(error_msg)
 
                     bot_data.set(status="HOLD")
                     bot_data.update()
+                    logger.info(bot_event.bot_name, "go to HOLD")
 
     @staticmethod
     async def bot_re_buy(message, bot_event):

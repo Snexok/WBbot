@@ -112,7 +112,10 @@ class Bot:
         articles = [report['articles'] for report in reports]
         articles = sum(articles, [])
         logger.info(f"articles = {articles}")
-        self.basket.delete_other_cards_in_basket(articles)
+        msg = self.basket.delete_other_cards_in_basket(articles)
+
+        if msg:
+            return msg
 
         sleep(3)
         self.basket.choose_post_place(post_place)

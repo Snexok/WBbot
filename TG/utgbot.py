@@ -403,6 +403,8 @@ async def admin_handler(message: types.Message):
                     bots_name.sort()
                     markup = get_keyboard('admin_bots', bots_name)
                     await message.answer('Выберите бота', reply_markup=markup)
+                    await sleep(5)
+                    await message.edit_text("Истёк срок ожидания нажатия на бота")
                 if "🤖 статус ботов 🤖":
                     pass
         else:
@@ -694,8 +696,6 @@ async def bot_buy_handler(message: types.Message):
     await message.answer('Выкуп начался')
 
     await Admin.bot_buy(message, bots_cnt)
-
-    await message.answer('Выкуп завершен')
 
 
 @dp.message_handler(state=States.RE_BUY)
