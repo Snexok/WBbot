@@ -54,7 +54,7 @@ async def bot_buy(message, bot_event):
         bot_event.datetime_to_run = report['pred_end_date'] + timedelta(hours=hours, minutes=minutes, seconds=seconds)
         bot_event.wait = True
     except Exception as e:
-        print(e)
+        logger.info(e)
         bot_event.event += " FAIL"
         bot_event.end_datetime = datetime.now()
         bot_event.wait = False
@@ -77,7 +77,7 @@ async def bot_buy(message, bot_event):
 
         reports += [report]
         if paid['payment']:
-            print(paid['datetime'])
+            logger.info(paid['datetime'])
             pup_address = Addresses_Model.load(address=report['post_place'])
             delivery = Delivery_Model(number=number, total_price=report['total_price'], services_price=50,
                                    prices=report['prices'],
@@ -102,7 +102,7 @@ async def bot_buy(message, bot_event):
 
         bot_event.event = "CHECK_DELIVERY"
 
-        print(report['pred_end_date'], 'предварительная дата доставки заказа\n', 'Если забудешь это поправить, это TG/Bot')
+        logger.info(f"{report['pred_end_date']} предварительная дата доставки заказа")
         days = 0
         end_datetime = get_work_time(days)
         bot_event.end_datetime = end_datetime

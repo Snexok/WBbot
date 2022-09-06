@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta
 
+from loguru import logger
 from selenium.webdriver import ActionChains, Keys
 from selenium.webdriver.common.by import By
 import pickle
@@ -45,15 +46,22 @@ class Partner:
         await sleep(5)
 
         is_add_to_assembly = await self.add_to_assembly()
-        if is_add_to_assembly:
-            await self.go_to_assembly()
-            await self.create_assembly()
-            await self.open_and_send_shks()
-            await self.pick_all_tasks()
+        # if is_add_to_assembly:
+        #     await self.go_to_assembly()
+            # await self.create_assembly()
+
+            # await sleep(2)
+            # self.driver.find_element(By.XPATH, "//span[text()='Готово']/..").click()
+            # await sleep(2)
+            # self.driver.find_element(By.XPATH, "//div[contains(@class, 'Modal__close')]/button").click()
+            # await sleep(2)
+
+            # await self.open_and_send_shks()
+            # await self.pick_all_tasks()
 
             # delivery_numbers = [task['delivery_number'] for task in tasks]
             # res += await self.choose_task(delivery)
-            await self.print_all_tasks_shk()
+            # await self.print_all_tasks_shk()
             # await self.close_assembly()
 
         return res
@@ -137,7 +145,6 @@ class Partner:
         и схожему адресу доставки.
         """
 
-        hover = ActionChains(self.driver)
         tasks = await self.get_tasks()
         res = []
         for i in range(len(delivery.articles)):
@@ -149,8 +156,13 @@ class Partner:
                         # Выбираем товар из списка
                         check_box = WebDriverWait(task['row'], 60).until(
                             lambda d: d.find_element(By.XPATH, "./div/div/label"))
-                        hover.move_to_element(check_box).perform()
+
+                        hover = ActionChains(self.driver)
+                        hover.move_to_element(task['row']).perform()
+                        await sleep(0.2)
+                        logger.info(task)
                         check_box.click()
+                        del hover
 
                         # Формируем ответное сообщение по данному заказу
                         msg = f"✅ В сборку добавлен заказ ✅\n" \
@@ -177,7 +189,6 @@ class Partner:
                     delivery.update()
 
                     res += [msg]
-        del hover
         return res
 
     async def choose_tasks(self, deliveries):
@@ -226,11 +237,6 @@ class Partner:
     async def create_assembly(self):
         self.driver.switch_to.window(self.driver.window_handles[0])
         self.driver.find_element(By.XPATH, "//span[text()='Создать поставку']/..").click()
-        await sleep(2)
-        self.driver.find_element(By.XPATH, "//span[text()='Готово']/..").click()
-        await sleep(2)
-        self.driver.find_element(By.XPATH, "//div[contains(@class, 'Modal__close')]/button").click()
-        await sleep(2)
 
     async def get_target_task(self, article, delivery_datetime):
         self.tasks = self.get_tasks()

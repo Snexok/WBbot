@@ -28,11 +28,13 @@ class Basket():
         logger.info("start")
         hover = ActionChains(self.driver)
         while True:
-            card_names = self.driver.find_elements(By.XPATH, '//a[contains(@href, "catalog") and @class="good-info__title j-product-popup"]')
-            logger.info(type(card_names), card_names)
-            if not card_names:
+            try:
+                card_names = self.driver.find_elements(By.XPATH, '//a[contains(@href, "catalog") and @class="good-info__title j-product-popup"]')
+            except:
                 logger.info("basket is empty")
-                user_notify_msg = "😓 Прости, корзина этого бота пуста 😓"
+                user_notify_msg = "❌ Ошибка выкупа ❌\n" \
+                                  "😓 Прости, корзина этого бота пуста 😓\n\n" \
+                                  "Скоро будет фича, позволяющая запустить поиск в такой ситуации"
                 return user_notify_msg
 
             card = card_names[random.choice(list(range(len(card_names))))]
@@ -70,7 +72,7 @@ class Basket():
                             # counter.find_element(By.CLASS_NAME, 'btn__del').click()
                 else:
                     logger.info("end")
-                    return
+                    return False
 
     def choose_post_place(self, address, rerun=False):
         logger.info(address)
