@@ -34,21 +34,21 @@ class BotEvents:
             await sleep(5)
             bot_event = BotsEvents_Model.load_last()
             if bot_event:
-                logger.info(f"find bot_event {bot_event.data}")
+                logger.info(f"{bot_event.bot_name} {bot_event.id} find bot_event ")
                 break
 
-        print(bot_event)
+        logger.info(bot_event)
         self.bot_event = bot_event
         bot_event.running = True
         bot_event.update()
         task1 = asyncio.create_task(self.exec_event())
         task2 = asyncio.create_task(BotEvents(self.tg_bot).main())
         res = await asyncio.gather(task1, task2, return_exceptions=True)
-        print("run BotEvents main ended")
-        print("res = ", res)
+        logger.info("run BotEvents main ended")
+        logger.info("res = ", res)
 
     async def exec_event(self):
-        logger.info(f"event = {self.bot_event.event} | bot_name = {self.bot_event.bot_name}")
+        logger.info(f"{self.bot_event.bot_name} | {self.bot_event.id} {self.bot_event.event}")
         if self.bot_event.sub_event:
             if self.bot_event.sub_event == 'SURF':
                 pass
@@ -79,8 +79,6 @@ class BotEvents:
                 res_msg = ''
                 for msg in msgs:
                     res_msg += msg + "\n"
-
-                res_msg += '\n' + f'Поиск артикула {data["article"]} завершен'
 
                 await self.tg_bot.send_message(admin.id, res_msg)
                 return True

@@ -13,6 +13,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram import Bot as TG_Bot
 from aiogram import Dispatcher, executor, types
 from aiogram.utils.json import json
+from loguru import logger
 
 from TG.Bot import bot_buy
 from TG.BotEvents import BotEvents
@@ -1160,13 +1161,20 @@ async def others_callback_query_handler(call: types.CallbackQuery):
 
     bot_event = BotsEvents_Model.load(event="PAYMENT", bot_name=bot_name, wait=True)
 
-    print(msg)
+    logger.info(msg)
 
     if bot_event:
         bot_event = bot_event[0]
         await call.message.edit_text('Начался выкуп')
 
-        await bot_buy(call.message, bot_event)
+        try:
+            status = await bot_buy(call.message, bot_event)
+        except:
+            status = False
+
+        if not status:
+            keyboard = get_keyboard('admin_notify_for_buy', bot_event.bot_name)
+            await call.message.edit_text("Можно запустить выкуп повторно", reply_markup=keyboard)
 
         await call.message.answer("res_msg")
 
