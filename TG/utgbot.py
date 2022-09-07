@@ -1174,8 +1174,12 @@ async def others_callback_query_handler(call: types.CallbackQuery):
         if not status:
             keyboard = get_keyboard('admin_notify_for_buy', bot_event.bot_name)
             await call.message.edit_text("Можно запустить выкуп повторно", reply_markup=keyboard)
+        elif type(status) is str:
+            msg = status
+            logger.info(msg)
+            await call.message.answer(msg)
 
-        await call.message.answer("res_msg")
+        await call.message.answer("Выкуп завершен")
 
 
 if __name__ == '__main__':
