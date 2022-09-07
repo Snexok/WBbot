@@ -104,7 +104,7 @@ async def bot_buy(message, bot_event):
 
         orders_data += [order_data]
         if paid['payment']:
-            print(paid['datetime'])
+            logger.info(paid['datetime'])
             pup_address = Addresses_Model.load(address=order_data['post_place'])
             delivery = Delivery_Model(number=number, total_price=order_data['total_price'], services_price=50,
                                    prices=order_data['prices'],
@@ -129,7 +129,7 @@ async def bot_buy(message, bot_event):
 
         bot_event.event = "CHECK_DELIVERY"
 
-        print(order_data['pred_end_date'], 'предварительная дата доставки заказа\n', 'Если забудешь это поправить, это TG/Bot')
+        logger.info(f"{order_data['pred_end_date']} предварительная дата доставки заказа")
         days = 0
         end_datetime = get_work_time(days)
         bot_event.end_datetime = end_datetime

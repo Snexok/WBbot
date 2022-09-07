@@ -59,7 +59,7 @@ class Bot:
         report = {}
         report['bot_name'] = self.data.name
         report['bot_username'] = self.data.username
-        print(f'Bot {self.data.name} started')
+        logger.info(f'Bot {self.data.name} started')
         for d in data:
             if d['search_key']:
                 Utils.search(self.driver, d['search_key'])
@@ -84,7 +84,7 @@ class Bot:
 
         articles = [str(d['article']) for d in data]
         report['articles'] = articles
-        print(self.data.name, articles)
+        logger.info(self.data.name, articles)
 
         return report
 
@@ -97,7 +97,7 @@ class Bot:
 
         return False
 
-    def buy(self, reports, post_place, order_id):
+    def buy(self, bots_event_data, post_place, order_id):
         logger.info("start")
         sleep(1)
         try:
@@ -109,10 +109,11 @@ class Bot:
         self.driver.refresh()
         sleep(2)
 
-        articles = [report['articles'] for report in reports]
+        articles = [[bot_event_data['article']] for bot_event_data in bots_event_data]
         articles = sum(articles, [])
         logger.info(f"articles = {articles}")
         msg = self.basket.delete_other_cards_in_basket(articles)
+        logger.info(msg)
 
         if msg:
             return msg
@@ -123,26 +124,26 @@ class Bot:
         shipment_date = self.basket.get_shipment_date()
         logger.info(shipment_date)
 
-        for i in range(len(reports)):
-            reports[i]['post_place'] = post_place
-            reports[i]['prices'] = []
-            for article in reports[i]['articles']:
+        for i in range(len(bots_event_data)):
+            bots_event_data[i]['post_place'] = post_place
+            bots_event_data[i]['prices'] = []
+            for article in bots_event_data[i]['articles']:
                 price = self.basket.get_price(article)
-                reports[i]['prices'] += [price]
+                bots_event_data[i]['prices'] += [price]
 
-            reports[i]['total_price'] = sum(reports[i]['prices'])
+            bots_event_data[i]['total_price'] = sum(bots_event_data[i]['prices'])
 
-            reports[i]['quantities'] = []
-            for article in reports[i]['articles']:
+            bots_event_data[i]['quantities'] = []
+            for article in bots_event_data[i]['articles']:
                 quantity = self.basket.get_quantity(article)
-                reports[i]['quantities'] += [int(quantity)]
+                bots_event_data[i]['quantities'] += [int(quantity)]
 
-            reports[i]['pred_end_date'] = datetime.fromisoformat(self.get_end_date(shipment_date))
+            bots_event_data[i]['pred_end_date'] = datetime.fromisoformat(self.get_end_date(shipment_date))
 
-        reports[0]['qr_code'] = self.basket.get_qr_code(order_id, self.data.name)
+        bots_event_data[0]['qr_code'] = self.basket.get_qr_code(order_id, self.data.name)
 
         logger.info("end")
-        return reports
+        return bots_event_data
 
     def re_buy(self, report, post_place, order_id):
         self.page = Utils.go_to_basket(self.driver)  # basket
@@ -275,11 +276,18 @@ class Bot:
 
         admin = Admins_model().get_sentry_admin()
         for delivery in deliveries:
-            print("local_deliveries[0].pup_address", local_deliveries[0].pup_address)
-            print("delivery.pup_address", delivery.pup_address)
+            logger.info("local_deliveries[0].pup_address", local_deliveries[0].pup_address)
+            logger.info("delivery.pup_address", delivery.pup_address)
             # фильтруем заказы бота адресу
             local_deliveries_by_address = [_delivery for _delivery in local_deliveries if _delivery.pup_address == delivery.pup_address]
-            print(local_deliveries_by_address)
+            logger.info(local_deliveries_by_address)
+            if not local_deliveries_by_address:
+                msg = "Адреса не совпадают\n\n" \
+                      f"Адрес в таблице доставки: {delivery.pup_address}\n" \
+                      f"Адреса в доставке аккаунта: {[local_deliverie.pup_address for local_deliverie in local_deliveries]}"
+                await bot.send_message(admin.id, msg, parse_mode="HTML")
+                continue
+
             # берем единственное совпадение по адресу
             _delivery = local_deliveries_by_address[0]
 
@@ -287,14 +295,14 @@ class Bot:
             for article in delivery.articles:
                 for i in range(len(_delivery.articles)):
                     _article = _delivery.articles[i]
-                    print("article: ", article)
-                    print("_article: ", _article)
+                    logger.info("article: ", article)
+                    logger.info("_article: ", _article)
                     if article == _article:
                         for _status in _delivery.statuses:
-                            print("_status: ", _status)
+                            logger.info("_status: ", _status)
                             if _status != "Платный отказ":
                                 statuses += [_status]
-            print(statuses)
+            logger.info(statuses)
 
             if len(statuses) < len(delivery.articles):
                 msg = f'Один из артикулов заказа {delivery.id} не был найден.\n' \
@@ -333,7 +341,7 @@ class Bot:
                                 await bot.send_message(admin.id, msg, parse_mode="HTML")
                         if not pred_end_date:
                             pred_end_date = datetime.fromisoformat(str(date.today() + timedelta(days=1)))
-                    print('delivery ', delivery)
+                    logger.info('delivery ', delivery)
                     delivery.update()
 
     @staticmethod

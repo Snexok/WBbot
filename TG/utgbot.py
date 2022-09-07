@@ -119,7 +119,7 @@ async def main_handler(message: types.Message):
     id = str(message.chat.id)
     user = Users_Model.load(id)
 
-    print(user)
+    logger.info(user)
 
     if not user:
         if "⚡ регистрация ⚡" in msg:
@@ -129,19 +129,20 @@ async def main_handler(message: types.Message):
             return
     elif user.role in "FF":
         if "🚀 собрать самовыкупы 🚀" in msg:
-            deliveries = Deliveries_Model.load(collected=False)
-            for delivery in deliveries:
-                await message.answer(f'Артикулы заказа {delivery.articles}\n\n'
-                                     f'Адрес заказа {delivery.pup_address}\n\n'
-                                     f'Время заказа {delivery.start_date}')
-            await message.answer('⛔ 🚀 Сборка самовыкупов пока не доступна 🚀 ⛔')
-            # users = Users_Model.load(role='IE')
-            # ies = [user.ie for user in users]
-            # print(ies)
-            # await States.COLLECT_ORDERS.set()
-            # markup = get_list_keyboard(ies)
-            # await message.answer('Выберите ИП, по которому хотите собрать самовыкупы', reply_markup=markup)
-            # return
+            # deliveries = Deliveries_Model.load(collected=False, inn="771375894400")
+            # for delivery in deliveries:
+            #     await message.answer(f'Артикулы заказа {delivery.articles}\n\n'
+            #                          f'Адрес заказа {delivery.pup_address}\n\n'
+            #                          f'Время заказа {delivery.start_date}')
+            # await message.answer('⛔ 🚀 Сборка самовыкупов пока не доступна 🚀 ⛔')
+            users = Users_Model.load(role='IE')
+            ies = [user.ie for user in users]
+            logger.info(ies)
+            await States.COLLECT_ORDERS.set()
+            markup = get_list_keyboard(ies)
+            logger.info(markup)
+            await message.answer('Выберите ИП, по которому хотите собрать самовыкупы', reply_markup=markup)
+            return
         elif "⛔ собрать реальные заказы 🚚" in msg:
             await message.answer('⛔ Сборка РЕАЛЬНЫХ заказов ПОКА НЕДОСТУПНА ⛔')
             # users = Users.load(role='IE')
@@ -402,10 +403,8 @@ async def admin_handler(message: types.Message):
                     bots = Bots_Model.load()
                     bots_name = [f"{bots[i].name}" for i in range(len(bots))]
                     bots_name.sort()
-                    markup = get_keyboard('admin_bots', bots_name)
-                    await message.answer('Выберите бота', reply_markup=markup)
-                    await sleep(5)
-                    await message.edit_text("Истёк срок ожидания нажатия на бота")
+                    # markup = get_keyboard('admin_bots', bots_name)
+                    await message.answer('Введите имя бота')
                 if "🤖 статус ботов 🤖":
                     pass
         else:
@@ -712,7 +711,7 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
     data = await state.get_data()
     bot_name = data['bot_name']
 
-    print(bot_name, article, search_key)
+    logger.info(f"{bot_name} {article} {search_key}")
 
     # Возвращаем состояние на обработку команд для Адимина,
     # чтобы всё введенное после, снова обрабатывалось обработчиком админа
@@ -720,7 +719,7 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
 
     # Получаем текуще активное событие
     bot_event = BotsEvents_Model.load(bot_name=bot_name, wait=True)
-    print(bot_event)
+    logger.info(bot_event)
 
     # Определяем необходимость поиска или только выкуп
     is_go_search = True
@@ -736,7 +735,7 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
             is_go_search = False
             is_go_buy = False
 
-    print("is_go_search = ", is_go_search, "\nis_go_buy = ", is_go_buy)
+    logger.info(f"is_go_search = {is_go_search}\nis_go_buy = {is_go_buy}")
 
     # Поиск
     if is_go_search:
@@ -793,7 +792,7 @@ async def re_bot_buy_handler(message: types.Message, state: FSMContext):
 async def excepted_deliveries_callback_query_handler(call: types.CallbackQuery, state: FSMContext):
     id = str(call.message.chat.id)
     msg = call.data
-    print(msg)
+    logger.info(msg)
 
     bot_name, balance, _ = msg.split(" ")
     await state.set_data({'bot_name': bot_name})
@@ -953,7 +952,7 @@ async def create_order_handler(message: types.Message, state: FSMContext):
     elif 'quantities_to_bought' not in data.keys():
         quantities_to_bought = msg.replace("\n", " ").strip().split(" ")
 
-        print(quantities_to_bought)
+        logger.info(quantities_to_bought)
 
         try:
             if len(quantities_to_bought) == 1:
@@ -985,7 +984,7 @@ async def create_order_handler(message: types.Message, state: FSMContext):
 
         data['search_keys'] += [search_keys]
         await state.set_data(data)
-        print(len(data['search_keys']), len(data['articles']))
+        logger.info(f"{len(data['search_keys'])} {len(data['articles'])}")
         if len(data['search_keys']) == len(data['articles']):
             await message.answer('Сколько комментариев нужно оставить на каждый артикул')
         else:
@@ -1141,7 +1140,7 @@ async def pup_addresses_continue_handler(message: types.Message):
 async def default_handler(message: types.Message):
     username = message.chat.username
     id = str(message.chat.id)
-    print(username, id, 'in default')
+    logger.info(f"{username} {id} in default")
     whitelisted = Whitelist_Model.check(id)
     if whitelisted:
         is_admin = Admin.is_admin(id)

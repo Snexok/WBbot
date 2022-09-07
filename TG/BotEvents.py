@@ -207,6 +207,7 @@ class BotEvents:
         datetime_to_run = self.get_work_time()
 
         if self.bot_event:
+            logger.info(report)
             self.bot_event.event = "FOUND"
             self.bot_event.wait = True
             self.bot_event.datetime_to_run = datetime_to_run

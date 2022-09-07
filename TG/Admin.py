@@ -47,7 +47,7 @@ class Admin:
 
     @classmethod
     async def bot_search(cls, data):
-        print("bot_search started")
+        logger.info("start")
 
         bots_data = Bots_Model.load_must_free(limit=len(data), _type="WB")
 
@@ -65,7 +65,7 @@ class Admin:
 
         msgs = []
         for i, report in enumerate(reports):
-            print(report)
+            logger.info(report)
             data = ujson.dumps(report)
             end_datetime = cls.get_work_time()
 
@@ -88,7 +88,6 @@ class Admin:
             msgs += [f"✅ Собран заказ бота {report['bot_name']}✅\n"
                      f"Артикулы {report['articles']}"]
 
-        print("bot_search ended")
 
         for bot in bots:
             del bot
@@ -98,11 +97,12 @@ class Admin:
             bot_data.status = "FOUND"
             bot_data.update()
 
+        logger.info("end")
         return msgs
 
     @classmethod
     async def bot_re_search(cls, bot_name, data):
-        print("bot_search started")
+        logger.info("start")
 
         bot_data = Bots_Model.load(name=bot_name)
 
@@ -118,7 +118,7 @@ class Admin:
 
         msgs = []
         for i, report in enumerate(reports):
-            print(report)
+            logger.info(report)
             data = ujson.dumps(report)
             bot_event = BotEvent_Model(bot_name=bot.data.name, event="RE_FOUND", wait=True,
                                        start_datetime=datetime.now(), data=data)
@@ -127,7 +127,7 @@ class Admin:
             msgs += [f"✅ Собран заказ бота {report['bot_name']}✅\n"
                      f"Артикулы {report['articles']}"]
 
-        print("bot_search ended")
+        logger.info("end")
 
         del bot
 
@@ -141,24 +141,28 @@ class Admin:
         bots_event = BotsEvents_Model.load(event="FOUND", limit=bots_cnt)
 
         for bot_event in bots_event:
+            logger.info(f"{bot_event.bot_name} started")
             all_current_bot_events = BotsEvents_Model.load(event="FOUND", bot_name=bot_event.bot_name)
 
-            reports = []
+            bots_event_data = []
             if len(all_current_bot_events) > 1:
                 for bot_event_from_all in all_current_bot_events:
-                    reports += bot_event_from_all.data
-                    await message.answer(f"Выкупается сразу {len(all_current_bot_events)} события id = {bot_event_from_all.id}")
+                    bots_event_data += [bot_event_from_all.data]
+                    # await message.answer(f"Выкупается сразу {len(all_current_bot_events)} события id = {bot_event_from_all.id}")
             else:
-                reports += [all_current_bot_events[0].data]
-                await message.edit_text(f"Выкуп:\n\n"
-                                        f"ID события {all_current_bot_events[0].id}")
+                bots_event_data += [all_current_bot_events[0].data]
+                # await message.edit_text(f"Выкуп:\n\n"
+                #                         f"ID события {all_current_bot_events[0].id}")
 
-            articles = sum([report["articles"] for report in reports], [])
+            logger.info(bots_event_data)
+
+            articles = sum([[bot_event_data["article"]] for bot_event_data in bots_event_data], [])
+            logger.info(articles)
 
             logger.info(all_current_bot_events[0])
 
             bot_name = bot_event.bot_name
-            logger.info("Bot Name _ ", bot_name)
+            logger.info(f"Bot Name _ {bot_name}")
             bot_data = Bots_Model.load(bot_name)
 
             bot_data.set(status="BUYS")
@@ -171,21 +175,24 @@ class Admin:
 
                 addresses = bot.data.addresses
                 post_place = random.choice(addresses if type(addresses) is list else [addresses])
-                for i in range(len(reports)):
-                    reports[i]['post_place'] = post_place
+                for i in range(len(bots_event_data)):
+                    bots_event_data[i]['post_place'] = post_place
 
                 number = Deliveries_Model.get_number()
 
                 bot_event.event = "BUYS"
 
-                run_bot = asyncio.to_thread(bot.buy, reports, post_place, number)
+                run_bot = asyncio.to_thread(bot.buy, bots_event_data, post_place, number)
                 buy_res = await asyncio.gather(run_bot)
+                logger.info(buy_res)
                 buy_res = buy_res[0]
 
-                if buy_res is list:
-                    reports = buy_res
-                elif reports is str:
-                    msg = reports
+                if type(buy_res) is list:
+                    logger.info(buy_res)
+                    bots_event_data = buy_res
+                elif type(buy_res) is str:
+                    msg = buy_res
+                    logger.info(msg)
 
                     await message.answer(msg)
                     return
@@ -202,8 +209,9 @@ class Admin:
 
                 await message.answer(msg)
             else:
-                await message.answer_photo(open(reports[0]['qr_code'], 'rb'))
-                for report in reports:
+                logger.info(bots_event_data)
+                await message.answer_photo(open(bots_event_data[0]['qr_code'], 'rb'))
+                for bot_event_data in bots_event_data:
                     if TEST:
                         paid = {'payment': True, 'datetime': datetime.now()}
                     else:
@@ -218,36 +226,36 @@ class Admin:
                         bot_event.data = []
                         bot_event.update()
 
-                        logger.info(bot_event.bot_name, "create delivery")
-                        pup_address = Addresses_Model.load(address=report['post_place'])
-                        delivery = Delivery_Model(number=number, total_price=report['total_price'], services_price=50,
-                                                  prices=report['prices'],
-                                                  quantities=report['quantities'], articles=report['articles'],
-                                                  pup_address=report['post_place'],
-                                                  pup_tg_id=pup_address.tg_id, bot_name=report['bot_name'],
-                                                  bot_surname=report['bot_username'],
-                                                  start_date=paid['datetime'], pred_end_date=report['pred_end_date'],
+                        logger.info(f"{bot_event.bot_name} create delivery")
+                        pup_address = Addresses_Model.load(address=bot_event_data['post_place'])
+                        delivery = Delivery_Model(number=number, total_price=bot_event_data['total_price'], services_price=50,
+                                                  prices=bot_event_data['prices'],
+                                                  quantities=bot_event_data['quantities'], articles=bot_event_data['articles'],
+                                                  pup_address=bot_event_data['post_place'],
+                                                  pup_tg_id=pup_address.tg_id, bot_name=bot_event_data['bot_name'],
+                                                  bot_surname=bot_event_data['bot_username'],
+                                                  start_date=paid['datetime'], pred_end_date=bot_event_data['pred_end_date'],
                                                   active=paid['payment'] or TEST,
-                                                  statuses=['payment' for _ in range(len(report['articles']))],
-                                                  inn=report['inn'])
+                                                  statuses=['payment' for _ in range(len(bot_event_data['articles']))],
+                                                  inn=bot_event_data['inn'])
                         delivery.insert()
 
-                        logger.info(bot_event.bot_name, "send notify to action owner")
-                        user_name = Users_Model.load(inn=report['inn']).name
-                        await message.answer(f"✅ Оплачен заказ бота {report['bot_name']} ✅\n\n"
+                        logger.info(f"{bot_event.bot_name} send notify to action owner")
+                        user_name = Users_Model.load(inn=bot_event_data['inn']).name
+                        await message.answer(f"✅ Оплачен заказ бота {bot_event_data['bot_name']} ✅\n\n"
                                              f"Клиент: {user_name}\n"
                                              f"Артикулы {' '.join(articles)}\n\n"
-                                             f"Адрес доставки {report['post_place']}\n\n"
+                                             f"Адрес доставки {bot_event_data['post_place']}\n\n"
                                              f"Время оплаты {paid['datetime']}")
                     else:
-                        error_msg = f"❌ НЕ оплачен заказ бота {report['bot_name']} с артикулами {report['articles']}"
-                        logger.info(bot_event.bot_name, error_msg)
+                        error_msg = f"❌ НЕ оплачен заказ бота {bot_event_data['bot_name']} с артикулами {bot_event_data['articles']}"
+                        logger.info(f"{bot_event.bot_name}, {error_msg}")
                         bot_event.event = "PAID_LOSE"
                         await message.answer(error_msg)
 
                     bot_data.set(status="HOLD")
                     bot_data.update()
-                    logger.info(bot_event.bot_name, "go to HOLD")
+                    logger.info(f"{bot_event.bot_name} go to HOLD")
 
     @staticmethod
     async def bot_re_buy(message, bot_event):
@@ -257,7 +265,7 @@ class Admin:
         # report = ujson.loads(bot_event.data)
 
         bot_name = bot_event.bot_name
-        print("Bot Name _ ", bot_name)
+        logger.info(f"Bot Name _ {bot_name}")
         bot_data = Bots_Model.load(bot_name)
 
         bot_data.set(status="BUYS")
@@ -291,7 +299,7 @@ class Admin:
         else:
             reports += [report]
             if report['payment']:
-                print(report['payment_datetime'])
+                logger.info(report['payment_datetime'])
                 pup_address = Addresses_Model.load(address=report['post_place'])
                 delivery = Delivery_Model(number=number, total_price=report['total_price'], services_price=50,
                                           prices=report['prices'],
