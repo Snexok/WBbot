@@ -40,7 +40,16 @@ class BotsEvents_Model(Model):
         if bot_name:
             path += f" bot_name='{bot_name}' AND "
         if event:
-            path += f" event='{event}' AND "
+            if type(event) is str:
+                path += f" event='{event}' AND "
+            elif type(event) is list:
+                path += "("
+                for e in event:
+                    path += f" event='{e}' OR "
+
+                path = path[:-4]
+                path += ") AND "
+
         if type(wait) == bool:
             wait = "TRUE" if wait else "FALSE"
             path += f"wait={wait} AND "

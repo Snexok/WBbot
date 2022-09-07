@@ -195,7 +195,7 @@ class Admin:
                     logger.info(msg)
 
                     await message.answer(msg)
-                    return
+                    continue
 
             except Exception as e:
                 logger.info(e)

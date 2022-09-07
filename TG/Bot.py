@@ -26,7 +26,7 @@ async def bot_buy(message, bot_event):
     logger.info(f"{bot_name} start")
 
     # получаем все данные заказов из событий в статусе FOUND
-    bot_events = BotsEvents_Model.load(event="FOUND", bot_name=bot_name)
+    bot_events = BotsEvents_Model.load(event=["FOUND", "PAYMENT"], bot_name=bot_name)
 
     orders_data = [bot_event_from_all.data for bot_event_from_all in bot_events]
 
@@ -65,15 +65,6 @@ async def bot_buy(message, bot_event):
         elif type(orders_data) is str:
             msg = orders_data
             return msg
-
-        for bot_event in bot_events:
-            bot_event.event = "CHECK_DELIVERY"
-            hours = random.randint(10, 16)
-            minutes = random.randint(0, 59)
-            seconds = random.randint(0, 59)
-            bot_event.datetime_to_run = orders_data[0]['pred_end_date'] + timedelta(hours=hours, minutes=minutes, seconds=seconds)
-            bot_event.wait = True
-            bot_event.update()
     except Exception as e:
         logger.info(e)
         msg = ''
@@ -89,7 +80,7 @@ async def bot_buy(message, bot_event):
         return msg
 
     if message:
-        await message.answer_photo(open(order_data['qr_code'], 'rb'))
+        await message.answer_photo(open(orders_data[0]['qr_code'], 'rb'))
     for order_data in orders_data:
         if TEST:
             paid = {'payment': True, 'datetime': datetime.now()}
@@ -126,12 +117,14 @@ async def bot_buy(message, bot_event):
 
     for bot_event in bot_events:
         bot_event.event = "CHECK_DELIVERY"
+        hours = random.randint(10, 16)
+        minutes = random.randint(0, 59)
+        seconds = random.randint(0, 59)
+        bot_event.datetime_to_run = orders_data[0]['pred_end_date'] + timedelta(hours=hours, minutes=minutes,
+                                                                                seconds=seconds)
+        logger.info(f"{orders_data[0]['pred_end_date']} предварительная дата доставки заказа")
 
-        logger.info(f"{order_data['pred_end_date']} предварительная дата доставки заказа")
-        days = 0
-        end_datetime = get_work_time(days)
-        bot_event.end_datetime = end_datetime
-
+        bot_event.wait = True
         bot_event.update()
 
     bot_data.set(status="HOLD")

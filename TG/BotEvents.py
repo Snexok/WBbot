@@ -159,7 +159,7 @@ class BotEvents:
         datas = []
         for i, article in enumerate(order.articles):
             for j in range(order.quantities_to_bought[i]):
-                datas += [{'article': article, 'search_key': order.search_keys[i], 'inn': order.inn, 'chat_id':admin.id}]
+                datas += [{'article': article, 'search_key': order.search_keys[i], 'inn': order.inn, 'chat_id':'791436094'}]
 
         # Перетасовываем заказы
         random.shuffle(datas)
@@ -236,7 +236,7 @@ class BotEvents:
     async def send_notify_for_buy(self):
         keyboard = get_keyboard('admin_notify_for_buy', self.bot_event.bot_name)
         user_name = Users_Model.load(inn=self.bot_event.data['inn']).name
-        msg = 'Готов выкуп\n\n' \
+        msg = '💰Готов выкуп💰\n\n' \
               f'Клиент: {user_name}\n' \
               f'Артикул: {self.bot_event.data["article"]}\n\n' \
               f'Бот: {self.bot_event.bot_name}'
