@@ -58,10 +58,12 @@ class Bot:
                 pass
 
     def search(self, data):
-        report = {}
-        report['bot_name'] = self.data.name
-        report['bot_username'] = self.data.username
         logger.info(f'Bot {self.data.name} started')
+
+        order_data = {}
+        order_data['bot_name'] = self.data.name
+        order_data['bot_username'] = self.data.username
+
         for d in data:
             if d['search_key']:
                 Utils.search(self.driver, d['search_key'])
@@ -81,14 +83,14 @@ class Bot:
             sleep(1)
         sleep(2)
 
-        report['inn'] = data[0]['inn']
+        order_data['inn'] = data[0]['inn']
 
 
         articles = [str(d['article']) for d in data]
-        report['articles'] = articles
+        order_data['articles'] = articles
         logger.info(self.data.name, articles)
 
-        return report
+        return order_data
 
     def check_basket(self, article=None, bot_events=None):
         if article:

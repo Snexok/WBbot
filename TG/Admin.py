@@ -99,42 +99,42 @@ class Admin:
 
         logger.info("end")
         return msgs
-
-    @classmethod
-    async def bot_re_search(cls, bot_name, data):
-        logger.info("start")
-
-        bot_data = Bots_Model.load(name=bot_name)
-
-        bot_data.set(status="SEARCH")
-        bot_data.update()
-
-        bot = Bot(data=bot_data)
-
-        bot.open_bot()
-
-        run_bots = asyncio.to_thread(bot.search, data[0])
-        reports = await asyncio.gather(run_bots)
-
-        msgs = []
-        for i, report in enumerate(reports):
-            logger.info(report)
-            data = ujson.dumps(report)
-            bot_event = BotEvent_Model(bot_name=bot.data.name, event="RE_FOUND", wait=True,
-                                       start_datetime=datetime.now(), data=data)
-            bot_event.insert()
-
-            msgs += [f"✅ Собран заказ бота {report['bot_name']}✅\n"
-                     f"Артикулы {report['articles']}"]
-
-        logger.info("end")
-
-        del bot
-
-        bot_data.set(status="RE_FOUND")
-        bot_data.update()
-
-        return msgs
+    #
+    # @classmethod
+    # async def bot_re_search(cls, bot_name, data):
+    #     logger.info("start")
+    #
+    #     bot_data = Bots_Model.load(name=bot_name)
+    #
+    #     bot_data.set(status="SEARCH")
+    #     bot_data.update()
+    #
+    #     bot = Bot(data=bot_data)
+    #
+    #     bot.open_bot(manual=False)
+    #
+    #     run_bots = asyncio.to_thread(bot.search, data[0])
+    #     reports = await asyncio.gather(run_bots)
+    #
+    #     msgs = []
+    #     for i, report in enumerate(reports):
+    #         logger.info(report)
+    #         data = ujson.dumps(report)
+    #         bot_event = BotEvent_Model(bot_name=bot.data.name, event="RE_FOUND", wait=True,
+    #                                    start_datetime=datetime.now(), data=data)
+    #         bot_event.insert()
+    #
+    #         msgs += [f"✅ Собран заказ бота {report['bot_name']}✅\n"
+    #                  f"Артикулы {report['articles']}"]
+    #
+    #     logger.info("end")
+    #
+    #     del bot
+    #
+    #     bot_data.set(status="RE_FOUND")
+    #     bot_data.update()
+    #
+    #     return msgs
 
     @staticmethod
     async def bot_buy(message, bots_cnt=1):
