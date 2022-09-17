@@ -344,12 +344,12 @@ async def admin_handler(message: types.Message):
             markup = get_markup('admin_main', id=id)
             await message.answer('----------🎉Поздравляю!🎉--------\n'
                                  '💲Вы выкупили все заказы!💲', reply_markup=markup)
-    elif "💸 повторный выкуп 💸" in msg:
-        await States.RE_BUY.set()
-        tg_bots = Bots_Model.load_with_balance()
-        bots_name = [f"{tg_bots[i].name} {tg_bots[i].balance} ₽" for i in range(len(tg_bots))]
-        markup = get_keyboard('admin_bots', bots_name)
-        await message.answer('Выберите бота', reply_markup=markup)
+    # elif "💸 повторный выкуп 💸" in msg:
+    #     await States.RE_BUY.set()
+    #     tg_bots = Bots_Model.load_with_balance()
+    #     bots_name = [f"{tg_bots[i].name} {tg_bots[i].balance} ₽" for i in range(len(tg_bots))]
+    #     markup = get_keyboard('admin_bots', bots_name)
+    #     await message.answer('Выберите бота', reply_markup=markup)
     elif "➕ добавить пользователя ➕" in msg:
         await States.TO_WL.set()
         markup = get_markup('admin_add_user')
@@ -697,76 +697,76 @@ async def bot_buy_handler(message: types.Message):
 
     await Admin.bot_buy(message, bots_cnt)
 
-
-@dp.message_handler(state=States.RE_BUY)
-async def re_bot_buy_handler(message: types.Message, state: FSMContext):
-    id = str(message.chat.id)
-    msg = message.text
-
-    # Первым был введён артикул, всё последующее - это ключевое слово
-    article = msg.split(' ')[0]
-    search_key = msg[len(article) + 1:]
-
-    # Получаем имя бота, которые было указано в предыдущем шаге обработки операции
-    data = await state.get_data()
-    bot_name = data['bot_name']
-
-    logger.info(f"{bot_name} {article} {search_key}")
-
-    # Возвращаем состояние на обработку команд для Адимина,
-    # чтобы всё введенное после, снова обрабатывалось обработчиком админа
-    await States.ADMIN.set()
-
-    # Получаем текуще активное событие
-    bot_event = BotsEvents_Model.load(bot_name=bot_name, wait=True)
-    logger.info(bot_event)
-
-    # Определяем необходимость поиска или только выкуп
-    is_go_search = True
-    is_go_buy = True
-    if bot_event:
-        bot_event = bot_event[0]
-        if bot_event.event == "RE_FOUND":
-            is_go_search = False
-            is_go_buy = True
-        try:
-            int(article)
-        except:
-            is_go_search = False
-            is_go_buy = False
-
-    logger.info(f"is_go_search = {is_go_search}\nis_go_buy = {is_go_buy}")
-
-    # Поиск
-    if is_go_search:
-        # формируем данные о заказе
-        goods = [[article, search_key, '', "1", "1", "381108544328"]]
-        await message.answer(f'Начался поиск артикула {article}')
-
-        # собираем все данные о конкретных товарах
-        data_for_bots, status_fail = await Admin.get_data_of_goods(goods)
-        if status_fail:
-            await message.answer(f'❌ Поиск артикула {article} упал на анализе карточки ❌')
-        else:
-            msgs = ''
-            res_msg = ''
-            # Запускаем поиск заказа
-            if DEBUG:
-                msgs = await Admin.bot_re_search(bot_name, data_for_bots)
-            else:
-                try:
-                    msgs = await Admin.bot_re_search(bot_name, data_for_bots)
-                except:
-                    await message.answer(f'❌ Поиск артикула {article} упал ❌')
-            try:
-                for msg in msgs:
-                    res_msg += msg + "\n"
-            except:
-                pass
-
-            res_msg += '\n' + f'Поиск артикула {article} завершен'
-
-            await message.answer(res_msg)
+#
+# @dp.message_handler(state=States.RE_BUY)
+# async def re_bot_buy_handler(message: types.Message, state: FSMContext):
+#     id = str(message.chat.id)
+#     msg = message.text
+#
+#     # Первым был введён артикул, всё последующее - это ключевое слово
+#     article = msg.split(' ')[0]
+#     search_key = msg[len(article) + 1:]
+#
+#     # Получаем имя бота, которые было указано в предыдущем шаге обработки операции
+#     data = await state.get_data()
+#     bot_name = data['bot_name']
+#
+#     logger.info(f"{bot_name} {article} {search_key}")
+#
+#     # Возвращаем состояние на обработку команд для Адимина,
+#     # чтобы всё введенное после, снова обрабатывалось обработчиком админа
+#     await States.ADMIN.set()
+#
+#     # Получаем текуще активное событие
+#     bot_event = BotsEvents_Model.load(bot_name=bot_name, wait=True)
+#     logger.info(bot_event)
+#
+#     # Определяем необходимость поиска или только выкуп
+#     is_go_search = True
+#     is_go_buy = True
+#     if bot_event:
+#         bot_event = bot_event[0]
+#         if bot_event.event == "RE_FOUND":
+#             is_go_search = False
+#             is_go_buy = True
+#         try:
+#             int(article)
+#         except:
+#             is_go_search = False
+#             is_go_buy = False
+#
+#     logger.info(f"is_go_search = {is_go_search}\nis_go_buy = {is_go_buy}")
+#
+#     # Поиск
+#     if is_go_search:
+#         # формируем данные о заказе
+#         goods = [[article, search_key, '', "1", "1", "381108544328"]]
+#         await message.answer(f'Начался поиск артикула {article}')
+#
+#         # собираем все данные о конкретных товарах
+#         data_for_bots, status_fail = await Admin.get_data_of_goods(goods)
+#         if status_fail:
+#             await message.answer(f'❌ Поиск артикула {article} упал на анализе карточки ❌')
+#         else:
+#             msgs = ''
+#             res_msg = ''
+#             # Запускаем поиск заказа
+#             if DEBUG:
+#                 msgs = await Admin.bot_re_search(bot_name, data_for_bots)
+#             else:
+#                 try:
+#                     msgs = await Admin.bot_re_search(bot_name, data_for_bots)
+#                 except:
+#                     await message.answer(f'❌ Поиск артикула {article} упал ❌')
+#             try:
+#                 for msg in msgs:
+#                     res_msg += msg + "\n"
+#             except:
+#                 pass
+#
+#             res_msg += '\n' + f'Поиск артикула {article} завершен'
+#
+#             await message.answer(res_msg)
 
     # Выкуп
     if is_go_buy:
