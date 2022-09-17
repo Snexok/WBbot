@@ -18,7 +18,7 @@ class Basket():
     def check_card(self, article):
         try:
             WebDriverWait(self.driver, 5).until(
-                lambda d: d.find_elements(By.XPATH, f'//a[contains(@href, "{article}")]'))
+                lambda d: d.find_elements(By.XPATH, f'//a[contains(@href, "{article}") and contains(@class,"good-info__title")]'))
             return True
         except:
             return False
@@ -86,12 +86,22 @@ class Basket():
                                          '//h2[text()="Способ доставки"]/../button/span[text()="Изменить"]').click()
                 logger.info("edit post place")
             sleep(1)
+
             try:
-                self.driver.find_element(By.XPATH, '//button[text()="Выбрать адрес доставки"]').click()
-                logger.info("choose post place")
+                self.driver.find_element(By.XPATH,
+                                    f'//ul[contains(@class,"history__list")]/li/label/span/span[contains(@class,"history__address") and contains(text(),"{address}")]').click()
+                sleep(1)
+                self.driver.find_element(By.XPATH, '//button[@class="popup__btn-main"]').click()
+                logger.info("history__address finish")
+                sleep(2)
+                return
             except:
-                self.driver.find_element(By.XPATH, '//button[text()="Выбрать другой адрес"]').click()
-                logger.info("choose other post place")
+                try:
+                    self.driver.find_element(By.XPATH, '//button[text()="Выбрать адрес доставки"]').click()
+                    logger.info("choose post place")
+                except:
+                    self.driver.find_element(By.XPATH, '//button[text()="Выбрать другой адрес"]').click()
+                    logger.info("choose other post place")
 
         sleep(2)
         address_input = WebDriverWait(self.driver, 5).until(

@@ -18,7 +18,7 @@ class Browser():
         options.add_argument("--window-size=1920x1080")
         self.driver = webdriver.Chrome(path, options=options)
 
-    def open_site(self, url):
+    def open_site(self, url="https://www.wildberries.ru"):
         self.driver.get(url)
 
     def save(self, file_name):

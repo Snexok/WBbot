@@ -1,6 +1,7 @@
 import asyncio
 import sys
 
+from loguru import logger
 from selenium.webdriver.common.by import By
 from selenium.webdriver import Keys
 from time import sleep
@@ -32,6 +33,8 @@ class Catalog():
                       f'//span[text()="{filter_name}" and contains(@class,"filter__name")]/../../div/div/input')
 
     next_page = lambda self: self.driver.find_element(By.CLASS_NAME, 'pagination__next').click()
+    get_first_card = lambda self: WebDriverWait(self.driver, 60).until(
+        lambda d: d.find_element(By.XPATH, '//div[contains(@class, "product-card j-card-item")]'))
     get_cards = lambda self: WebDriverWait(self.driver, 60).until(
         lambda d: d.find_elements(By.XPATH, '//div[contains(@class, "product-card j-card-item")]'))
     like = lambda self: self.driver.find_element(By.CLASS_NAME, 'btn-heart').click()
@@ -70,9 +73,9 @@ class Catalog():
                             self.card.add_card(article, target=False)
                             new_url = self.driver.current_url
                             if current_url != new_url:
-                                self.driver.open(current_url)
+                                self.driver.get(current_url)
                 except:
-                    print("article = c.get_attribute(id)")
+                    logger.info("article = c.get_attribute(id)")
             try:
                 self.next_page()
             except:

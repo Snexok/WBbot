@@ -13,15 +13,17 @@ from aiogram import Bot as TG_Bot
 from TG.Models.Bots import Bots_Model, Bot_Model
 from TG.Models.Admins import Admins_Model as Admins_model
 from TG.Models.Delivery import Delivery_Model, Deliveries_Model
+from WB.Card import Card
 from WB.Pages.Basket import Basket
 from WB.Browser import Browser
 from WB.Pages.Catalog import Catalog
+from WB.Pages.Delivery import Delivery
 from WB.Utils import Utils
 from configs import config
 
 API_TOKEN = config['tokens']['telegram']
 
-ARTICLE_LEN = 8
+ARTICLE_LEN = 9
 
 NOT_FOUND, READY, NOT_READY = range(3)
 
@@ -38,7 +40,7 @@ class Bot:
         elif name:
             self.data: Bot_Model = Bots_Model.load(name=name)
 
-    def open_bot(self, manual=True):
+    def open_bot(self, manual=False):
         self.driver.maximize_window()
         if self.data.type == "WB":
             path = 'https://www.wildberries.ru'
@@ -88,12 +90,57 @@ class Bot:
 
         return report
 
-    def check_basket(self, article):
-        basket_cnt = Utils.get_basket_cnt(self.driver)
-        if basket_cnt:
-            if int(basket_cnt)>0:
-                Utils.go_to_basket(self.driver)
-                return self.basket.check_card(article)
+    def check_basket(self, article=None, bot_events=None):
+        if article:
+            basket_cnt = Utils.get_basket_cnt(self.driver)
+            if basket_cnt:
+                if int(basket_cnt)>0:
+                    Utils.go_to_basket(self.driver)
+                    return self.basket.check_card(article)
+        if bot_events:
+            logger.info(f"Bot name = {bot_events[0].bot_name}")
+            self.open_bot()
+
+            Utils.go_to_basket(self.driver)
+            articles = []
+            for bot_event in bot_events:
+                article = bot_event.data['article']
+                logger.info(f"{bot_events[0].bot_name} : article = {article}")
+                if not self.basket.check_card(article):
+                    articles += [article]
+
+            logger.info(f"{bot_events[0].bot_name} : articles = {articles}")
+
+            for bot_event in bot_events:
+                article = bot_event.data['article']
+                if article in articles:
+                    logger.info(f"{bot_event.bot_name} : finding article {article}")
+                    Utils.search(self.driver, bot_event.data['search_key'])
+
+                    sleep(2)
+
+                    self.age_verification()
+
+                    first_card = self.catalog.get_first_card()
+                    first_card.click()
+                    sleep(2)
+
+                    current_url = self.driver.current_url # https://www.wildberries.ru/catalog/*article*/detail.aspx?targetUrl=XS
+                    detail_index = current_url.index("/detail")
+                    new_url = "https://www.wildberries.ru/catalog/" + article + current_url[detail_index:]
+                    self.driver.get(new_url)
+                    logger.info(f"self.driver.current_url {self.driver.current_url}")
+
+                    sleep(2) # Ожидаем открытия карточки товара
+
+                    # Инициируем карточку
+                    card = Card(self.driver)
+
+                    card.to_basket()
+
+                    logger.info("⚡Yes⚡")
+
+
 
         return False
 
@@ -118,11 +165,51 @@ class Bot:
         if msg:
             return msg
 
+        delivery = Delivery_Model()
+        try:
+            card_names = self.driver.find_elements(By.XPATH, '//a[contains(@href, "catalog") and @class="good-info__title j-product-popup"]')
+            catalog_url_len = len('https://www.wildberries.ru/catalog/')
+            local_articles = [card.get_attribute('href')[catalog_url_len:catalog_url_len + 10].split("/")[0] for card in card_names]
+            logger.info(local_articles)
+            if not all([article in local_articles for article in articles]):
+                not_found_article = " ".join([local_article for local_article in local_articles if local_article not in articles])
+                user_notify_msg = "❌ Ошибка выкупа ❌\n" \
+                                  "😓 В корзине не все артикулы 😓" \
+                                  f"артикул {not_found_article}\n\n"
+                return user_notify_msg
+        except:
+            logger.info("basket is empty")
+            user_notify_msg = "❌ Ошибка выкупа ❌\n" \
+                              "😓 Прости, корзина этого бота пуста 😓\n\n" \
+                              "Скоро будет фича, позволяющая запустить поиск в такой ситуации"
+            return user_notify_msg
+
+        # for delivery_row in card_names:
+        #     address = delivery_row.find_element(By.XPATH,
+        #                                                './div/div/div[contains(@class, "delivery-address__info")]').text
+        #     if address == target_address:
+        #         delivery.pup_address = address
+        #         item_imgs = delivery_row.find_elements(By.XPATH, './div/ul/li/div/div/img')
+        #         # img_ext_len = len('/images/c516x688/1.jpg') # Раньше было так
+        #         img_ext_len = len('-1.jpg')
+        #         # пример, если артикул 9 символов "/117567980" ⬇
+        #         logger.info([img.get_attribute('src') for img in item_imgs])
+        #         delivery.articles = [''.join(img.get_attribute('src')[-img_ext_len - ARTICLE_LEN:-img_ext_len].split('/')[-1]) for img in item_imgs]
+        #         statuses = delivery_row.find_elements(By.XPATH,
+        #                                            './div/ul/li/div/div/div[@class="goods-list-delivery__price-status"]')
+        #         delivery.statuses = [status.text for status in statuses if status.text != "Платный отказ"]  # Ожидается 19-21 мая, Отсортирован в сортировочном центре, В пути на пункт выдачи, Готов к выдаче
+        #         try:
+        #             delivery.code_for_approve = delivery_row.find_element(By.XPATH,
+        #                                                             "./div/div/div[contains(@class,'delivery-code__value')]").text
+        #         except:
+        #             delivery.code_for_approve = ""
+
         sleep(3)
         self.basket.choose_post_place(post_place)
         self.basket.choose_payment_method()
         shipment_date = self.basket.get_shipment_date()
         logger.info(shipment_date)
+
 
         for i in range(len(bots_event_data)):
             bots_event_data[i]['post_place'] = post_place
@@ -140,6 +227,7 @@ class Bot:
 
             bots_event_data[i]['pred_end_date'] = datetime.fromisoformat(self.get_end_date(shipment_date))
 
+        # Жмем кнопку "Оплатить заказ" и получаем QR-code
         bots_event_data[0]['qr_code'] = self.basket.get_qr_code(order_id, self.data.name)
 
         logger.info("end")
@@ -262,6 +350,80 @@ class Bot:
         else:
             return data
 
+    async def check_readiness_auto(self, deliveries):
+        bot = TG_Bot(token=API_TOKEN)
+        sleep(1)
+        admin = Admins_model().get_sentry_admin()
+
+        self.open_delivery()
+        delivery_page = Delivery()
+
+        for delivery in deliveries:
+            # получаем все заказы бота по адресу в его доставке
+            local_delivery = delivery_page.get_deliveries_by_address(delivery.pup_address)
+
+            # проверка, что адресс есть в списке доставки
+            if not local_delivery:
+                msg = "Адреса не совпадают\n\n" \
+                      f"Адрес в таблице доставки: {delivery.pup_address}\n" \
+                      f"Адреса в доставке аккаунта: {local_delivery.pup_address}"
+                await bot.send_message(admin.id, msg)
+                continue
+
+            # Обновляем delivery.statuses
+            delivery_page.update_statuses(delivery)
+
+            if len(delivery.statuses) < len(delivery.articles):
+                msg = '📦 Проверка готовности заказа 📦\n\n' \
+                      f'❌ Проблема ❌\n' \
+                      f'Один из артикулов заказа не был найден.\n\n' + \
+                      f'Id заказа: {delivery.id}\n\n' + \
+                      f'Адрес: {delivery.pup_address}\n' + \
+                      f'Артикулы: {str(delivery.articles)}\n\n' + \
+                      f'Имя бота: {self.data.name}\n'
+                await bot.send_message(admin.id, msg)
+            else:
+                delivery.code_for_approve = local_delivery.code_for_approve
+                redines_articles = []
+                for i, status in enumerate(delivery.statuses):
+                    if status in ["Готов к получению", "Отгружено по данным Продавца", 'Готов к выдаче',
+                                  'Прибыл на пункт выдачи']:
+
+                        redines_articles += [delivery.articles[i]]
+                        msg_pup = '📦 Заказ готов 📦\n\n' + \
+                                  f'Адрес: {delivery.pup_address}\n' + \
+                                  f'Фио: {delivery.bot_surname}\n' + \
+                                  f'Код: {delivery.code_for_approve}\n' + \
+                                  f'Артикул: {delivery.articles[i]}'
+                        msg_admin = f'{msg_pup}\n' + \
+                                    f'Номер заказа: {delivery.number}\n' + \
+                                    f'Id заказа: {delivery.id}\n\n' \
+                                    f'Имя бота: {self.data.name}\n'
+
+                        await bot.send_message(admin.id, msg_admin, parse_mode="HTML")
+                        if delivery.pup_tg_id:
+                            await bot.send_message(delivery.pup_tg_id, msg_pup, parse_mode="HTML")
+                            logger.info(f"Отправлено уведомление на th_id {delivery.pup_tg_id}")
+                        else:
+                            await bot.send_message(admin.id, "Не найден tg id ПВЗ")
+                    else:
+                        pred_end_date = ""
+                        for i, status in enumerate(delivery.statuses):
+                            if "Ожидается" in status:
+                                pred_end_date = datetime.fromisoformat(self.get_end_date(status[len('Ожидается '):]))
+                                msg = f"Товар с артикулом {delivery.articles[i]} {status}"
+                                await bot.send_message(admin.id, msg, parse_mode="HTML")
+                        if not pred_end_date:
+                            pred_end_date = datetime.fromisoformat(str(date.today() + timedelta(days=1)))
+                        delivery.pred_end_date = pred_end_date
+                logger.info(f"delivery {delivery}")
+                if len(redines_articles) == len(delivery.articles):
+                    delivery.end_date = date.today()
+                    logger.info(delivery.end_date)
+                    delivery.active = False
+                delivery.update()
+
+
     async def check_readiness(self, deliveries, message):
         bot = TG_Bot(token=API_TOKEN)
         sleep(1)
@@ -271,16 +433,13 @@ class Bot:
         # полуыаем все заказы бота
         local_deliveries = self.get_all_deliveries()
         for _delivery in local_deliveries:
-            print("local_deliveries", _delivery)
+            logger.info("local_deliveries", _delivery)
         sleep(1)
 
         admin = Admins_model().get_sentry_admin()
         for delivery in deliveries:
-            logger.info("local_deliveries[0].pup_address", local_deliveries[0].pup_address)
-            logger.info("delivery.pup_address", delivery.pup_address)
             # фильтруем заказы бота адресу
             local_deliveries_by_address = [_delivery for _delivery in local_deliveries if _delivery.pup_address == delivery.pup_address]
-            logger.info(local_deliveries_by_address)
             if not local_deliveries_by_address:
                 msg = "Адреса не совпадают\n\n" \
                       f"Адрес в таблице доставки: {delivery.pup_address}\n" \
@@ -295,11 +454,11 @@ class Bot:
             for article in delivery.articles:
                 for i in range(len(_delivery.articles)):
                     _article = _delivery.articles[i]
-                    logger.info("article: ", article)
-                    logger.info("_article: ", _article)
-                    if article == _article:
+                    logger.info(f"article: {article}")
+                    logger.info(f"_article: {_article}")
+                    if _article == article:
                         for _status in _delivery.statuses:
-                            logger.info("_status: ", _status)
+                            logger.info(f"_status: {_status}")
                             if _status != "Платный отказ":
                                 statuses += [_status]
             logger.info(statuses)
@@ -331,17 +490,19 @@ class Bot:
                         await bot.send_message(admin.id, msg_admin, parse_mode="HTML")
                         if delivery.pup_tg_id:
                             await bot.send_message(delivery.pup_tg_id, msg_pup, parse_mode="HTML")
+                        else:
+                            await bot.send_message(admin.id, "❌ Не найден tg id ПВЗ ❌")
                     else:
-                        pred_end_date = ''
+                        pred_end_date = ""
                         for status in delivery.statuses:
-                            if 'Ожидается' in status:
+                            if "Ожидается" in status:
                                 msg = status
                                 admin = Admins_model().get_sentry_admin()
                                 pred_end_date = datetime.fromisoformat(self.get_end_date(status[len('Ожидается '):]))
                                 await bot.send_message(admin.id, msg, parse_mode="HTML")
                         if not pred_end_date:
                             pred_end_date = datetime.fromisoformat(str(date.today() + timedelta(days=1)))
-                    logger.info('delivery ', delivery)
+                    logger.info(f"delivery {delivery}")
                     delivery.update()
 
     @staticmethod
@@ -368,14 +529,15 @@ class Bot:
 
     def get_all_deliveries(self) -> list:
         deliveries = []
-        sleep(2)
+        sleep(5)
         for delivery_row in self.driver.find_elements(By.XPATH, '//div[@class="delivery-block__content"]'):
             delivery = Delivery_Model()
             delivery.pup_address = delivery_row.find_element(By.XPATH,
                                                        './div/div/div[contains(@class, "delivery-address__info")]').text
             item_imgs = delivery_row.find_elements(By.XPATH, './div/ul/li/div/div/img')
             img_ext_len = len('/images/c516x688/1.jpg')
-            delivery.articles = [img.get_attribute('src')[-img_ext_len - ARTICLE_LEN:-img_ext_len] for img in item_imgs]
+            # пример, если артикул 9 символов "/117567980" ⬇
+            delivery.articles = [''.join(img.get_attribute('src')[-img_ext_len - ARTICLE_LEN:-img_ext_len].split('/')[-1]) for img in item_imgs]
             statuses = delivery_row.find_elements(By.XPATH,
                                                './div/ul/li/div/div/div[@class="goods-list-delivery__price-status"]')
             delivery.statuses = [status.text for status in statuses]  # Ожидается 19-21 мая, Отсортирован в сортировочном центре, В пути на пункт выдачи, Готов к выдаче
@@ -390,21 +552,19 @@ class Bot:
 
     def hover_profile_modal(self):
         hover = ActionChains(self.driver)
-
-        profile_btn = self.driver.find_element(By.XPATH, "//span[contains(@class,'navbar-pc__icon--profile')]")
+        profile_btn = WebDriverWait(self.driver, 10).until(
+            lambda d: d.find_element(By.XPATH, "//span[contains(@class,'navbar-pc__icon--profile')]"))
         hover.move_to_element(profile_btn).perform()
 
     def open_delivery(self):
-        sleep(3)
         self.hover_profile_modal()
-        sleep(3)
-        delivery_btn = self.driver.find_element(By.XPATH,
-                                                "//span[text()='Доставки']/../../a[contains(@class,'profile-menu__link')]")
+        delivery_btn = WebDriverWait(self.driver, 10).until(
+            lambda d: d.find_element(By.XPATH, "//span[text()='Доставки']/../../a[contains(@class,'profile-menu__link')]"))
         delivery_btn.click()
 
     def expect_payment(self):
         payment = False
-        print("expect_payment run")
+        logger.info("expect_payment start")
         i = 0
         while True:
             try:
@@ -418,6 +578,7 @@ class Bot:
                     break
                 i += 1
         start_datetime = str(datetime.now())
+        logger.info("expect_payment end")
         return {'payment': payment, 'datetime': start_datetime}
 
     def check_balance(self):

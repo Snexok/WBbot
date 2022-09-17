@@ -180,7 +180,6 @@ class BotEvents:
         admin: Admin_Model = Admins_Model.get_sentry_admin()
 
         goods = [[article, search_key, category, "1", "1", inn]]
-        await self.tg_bot.send_message(admin.id, f'Начался поиск артикула {article}')
 
         data_for_bots, status_fail = await Admin.get_data_of_goods(goods)
         if status_fail:
@@ -193,11 +192,14 @@ class BotEvents:
             self.bot_event.bot_name = bot_data.name
             self.bot_event.update()
 
+        await self.tg_bot.send_message(admin.id, f'Начался поиск артикула {article}\n\n'
+                                                 f'Бот: {bot_data.name}')
+
         bot_data.set(status="SEARCH")
         bot_data.update()
 
         bot = Bot(data=bot_data)
-        bot.open_bot(manual=False)
+        bot.open_bot()
 
         run_bot = asyncio.to_thread(bot.search, data_for_bots[0])
         reports = await asyncio.gather(run_bot)
@@ -234,19 +236,24 @@ class BotEvents:
         return msgs
 
     async def send_notify_for_buy(self):
-        keyboard = get_keyboard('admin_notify_for_buy', self.bot_event.bot_name)
-        user_name = Users_Model.load(inn=self.bot_event.data['inn']).name
-        msg = '💰Готов выкуп💰\n\n' \
-              f'Клиент: {user_name}\n' \
-              f'Артикул: {self.bot_event.data["article"]}\n\n' \
+        # определеяем все доступные для выкупа артикулы на данном боте
+        bot_events_ready_to_buy = BotsEvents_Model.load(event=["FOUND", "PAYMENT"], bot_name=self.bot_event.bot_name)
+        articles = ", ".join([bot_event.data["article"] for bot_event in bot_events_ready_to_buy])
+        inns = list(set([bot_event.data['inn'] for bot_event in bot_events_ready_to_buy]))
+        clients = ", ".join([Users_Model.load(inn=inn).name for inn in inns])
+
+        msg = '💰 Требуется ВЫКУП 💰\n\n' \
+              f'Клиент(-ы): {clients}\n' \
+              f'Артикул(-ы): {articles}\n\n' \
               f'Бот: {self.bot_event.bot_name}'
+        keyboard = get_keyboard('admin_notify_for_buy', self.bot_event.bot_name)
         await self.tg_bot.send_message(self.bot_event.data['chat_id'], msg, reply_markup=keyboard)
         self.bot_event.event = "PAYMENT"
         self.bot_event.update()
 
     async def check_balance(self):
         bot = Bot(self.bot_event.bot_name)
-        bot.open_bot(manual=False)
+        bot.open_bot()
         balance = bot.check_balance()
         bot.data.balance = balance
         bot.data.update()

@@ -15,7 +15,7 @@ from aiogram import Dispatcher, executor, types
 from aiogram.utils.json import json
 from loguru import logger
 
-from TG.Bot import bot_buy
+from TG.Bot import bot_buy, check_active_deliveries
 from TG.BotEvents import BotEvents
 from TG.Admin import Admin
 from TG.Models.BotEvents import BotsEvents_Model, BotEvent_Model
@@ -362,22 +362,9 @@ async def admin_handler(message: types.Message):
     elif "🕙 проверить ожидаемое 🕑" in msg:
         deliveries = Deliveries_Model.load(active=True, pred_end_date=datetime.now())
         if deliveries:
-            await States.CHECK_WAITS.set()
-            bots_name = []
-            for delivery in deliveries:
-                # print(delivery)
-                # is_delivery_wait_exist = BotsWait_Model.check_exist_delivery_wait(delivery.bot_name, delivery.id)
-                # if not is_delivery_wait_exist:
-                #     bot_event = BotWait_Model(bot_name=delivery.bot_name, event='delivery', start_datetime=datetime.now(),
-                #                              end_datetime=delivery.pred_end_date, wait=False,
-                #                              data=json.dumps('{"id": ' + str(delivery.id) + '}'))
-                #     bot_event.insert()
-                if delivery.bot_name not in bots_name:
-                    bots_name += [delivery.bot_name]
-            keyboard = get_keyboard('admin_bots', bots_name)
-            await message.answer('Выберите бота', reply_markup=keyboard)
+            await message.answer(f'Готово {len(deliveries)} заказов')
+            await check_active_deliveries()
         else:
-            await States.ADMIN.set()
             await message.answer('Все товары доставлены')
         return
     elif "💵 проверить баланс всех ботов 💵" in msg:
@@ -1164,7 +1151,7 @@ async def others_callback_query_handler(call: types.CallbackQuery):
 
     if bot_event:
         bot_event = bot_event[0]
-        await call.message.edit_text('Начался выкуп')
+        await call.message.edit_text(call.message.text + '\n\n⭐ Начался выкуп ⭐')
 
         try:
             status = await bot_buy(call.message, bot_event)
@@ -1172,17 +1159,17 @@ async def others_callback_query_handler(call: types.CallbackQuery):
             logger.info("Выкуп упал")
             status = False
 
+        keyboard = get_keyboard('admin_notify_for_buy', bot_event.bot_name)
         if not status:
-            keyboard = get_keyboard('admin_notify_for_buy', bot_event.bot_name)
-            await call.message.edit_text(call.message.text+"\n\n❌ Ошибка выкупа ❌", reply_markup=keyboard)
+            await call.message.edit_text(call.message.text + "\n\n❌ Ошибка выкупа ❌", reply_markup=keyboard)
         elif type(status) is str:
             msg = status
             logger.info(msg)
-            await call.message.answer(msg)
-
-        await call.message.answer("Выкуп завершен")
+            await call.message.edit_text(call.message.text + '\n\n' + msg, reply_markup=keyboard)
+        elif type(status) is bool and status:
+            await call.message.edit_text(call.message.text + '\n\n🏁 Выкуп успешно завершен 🏁')
     else:
-        await call.message.answer("Эта сборка уже выкуплена или произошла ошибка")
+        await call.message.edit_text(call.message.text + '\n\nЭта сборка уже выкуплена или произошла ошибка')
 
 
 if __name__ == '__main__':

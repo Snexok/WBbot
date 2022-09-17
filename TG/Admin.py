@@ -43,7 +43,7 @@ class Admin:
     @staticmethod
     async def open_bot(bot_name):
         bot = Bot(name=bot_name)
-        await asyncio.gather(asyncio.to_thread(bot.open_bot))
+        await asyncio.gather(asyncio.to_thread(bot.open_bot, True))
 
     @classmethod
     async def bot_search(cls, data):
@@ -58,7 +58,7 @@ class Admin:
         bots = [Bot(data=bot_data) for bot_data in bots_data]
 
         for bot in bots:
-            bot.open_bot(manual=False)
+            bot.open_bot()
 
         run_bots = [asyncio.to_thread(bot.search, data[i]) for i, bot in enumerate(bots)]
         reports = await asyncio.gather(*run_bots)
@@ -111,7 +111,7 @@ class Admin:
 
         bot = Bot(data=bot_data)
 
-        bot.open_bot(manual=False)
+        bot.open_bot()
 
         run_bots = asyncio.to_thread(bot.search, data[0])
         reports = await asyncio.gather(run_bots)
@@ -169,7 +169,7 @@ class Admin:
             bot_data.update()
             bot = Bot(data=bot_data)
 
-            bot.open_bot(manual=False)
+            bot.open_bot()
             try:
                 bot_event.event = "CHOOSE_ADDRESS"
 
@@ -272,7 +272,7 @@ class Admin:
         bot_data.update()
         bot = Bot(data=bot_data)
 
-        bot.open_bot(manual=False)
+        bot.open_bot()
         bot_event.event = "CHOOSE_ADDRESS"
 
         addresses = bot.data.addresses
@@ -441,7 +441,7 @@ class Admin:
     async def check_delivery(cls, bot_name, message=None) -> bool:
         bot = Bot(name=bot_name)
         deliveries = Deliveries_Model.load(bot_name=bot_name, active=True, pred_end_date=datetime.now())
-        bot.open_bot(manual=False)
+        bot.open_bot()
         status: bool = await bot.check_readiness(deliveries, message)
 
         return status
