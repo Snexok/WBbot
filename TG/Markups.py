@@ -14,7 +14,7 @@ def get_markup(markup_name, role='', is_admin=False, id=''):
                 markup.add("🤖 Открыть бота 🤖")
                 markup.add("🕙 Проверить ожидаемое 🕑")
                 markup.add("💵 Проверить баланс ВСЕХ ботов 💵")
-        markup.add("💰 Выкуп собраных заказов 💰")
+        # markup.add("💰 Выкуп собраных заказов 💰")
         markup.add("🔍 Поиск товаров 🔎")
         markup.add("➕ Добавить пользователя ➕")
         markup.add("💰 Создать заказ 💰")
@@ -108,6 +108,14 @@ def get_keyboard(keyboard_name, *args):
         bot_name = args[0]
         keyboard = types.InlineKeyboardMarkup()
         btns = [types.InlineKeyboardButton(text="Выкупить", callback_data="_bw_buy "+bot_name)]
+        keyboard.add(*btns)
+
+        return keyboard
+    elif 'collect_order_approve' == keyboard_name:
+        inn = args[0]
+        keyboard = types.InlineKeyboardMarkup()
+        btns = [types.InlineKeyboardButton(text="Собран", callback_data="_col_ord_y "+inn),
+                types.InlineKeyboardButton(text="Не собирается", callback_data="_col_ord_n "+inn)]
         keyboard.add(*btns)
 
         return keyboard

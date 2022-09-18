@@ -47,7 +47,7 @@ class Delivery():
 
     def update_statuses(self, delivery):
         delivery.statuses = []
-        for article in delivery.articles:
+        for article in set(delivery.articles):
             for i, _article in enumerate(self.local_delivery.articles):
 
                 logger.info(f"article: {article}\n"

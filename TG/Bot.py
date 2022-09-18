@@ -1,8 +1,10 @@
 import asyncio
 import random
+import time
 from datetime import datetime, timedelta
 
 from loguru import logger
+from selenium.webdriver.common.by import By
 
 from TG.Admin import Admin
 from aiogram import Bot as TG_Bot
@@ -211,6 +213,25 @@ async def check_all_found_events():
     #         paid = paid[0]
     #
     #         bot_used += [b_e.bot_name]
+
+async def save_article_img(article):
+    run_bot = asyncio.to_thread(bot_save_article_img, [article])
+    data_for_bots = await asyncio.gather(run_bot)
+
+def bot_save_article_img(article):
+    watch_bot = Bot(name="Watcher")
+
+    watch_bot.open_bot()
+
+    watch_bot.driver.get("https://www.wildberries.ru/")
+    time.sleep(2)
+    watch_bot.driver.get(f"https://www.wildberries.ru/catalog/{str(article)}/detail.aspx?targetUrl=MI")
+    time.sleep(2)
+
+    cart_img = watch_bot.driver.find_element(By.XPATH, '//div[@class="zoom-image-container"]')
+    cart_img = cart_img.screenshot(cart_img)
+
+    open(f"cart_imgs/{article}.png", "wb").write(cart_img)
 
 
 

@@ -15,18 +15,18 @@ from aiogram import Dispatcher, executor, types
 from aiogram.utils.json import json
 from loguru import logger
 
-from TG.Bot import bot_buy, check_active_deliveries
+from TG.Bot import bot_buy, check_active_deliveries, save_article_img
 from TG.BotEvents import BotEvents
 from TG.Admin import Admin
 from TG.Models.BotEvents import BotsEvents_Model, BotEvent_Model
 from TG.Models.Addresses import Addresses_Model, Address_Model
 from TG.Models.ExceptedDeliveries import ExceptedDeliveries_Model, ExceptedDelivery_Model
-from TG.Models.Delivery import Deliveries_Model
+from TG.Models.Delivery import Deliveries_Model, Delivery_Model
 from TG.Models.OrdersOfOrders import OrderOfOrders_Model, OrdersOfOrders_Model
 from TG.Models.Users import Users_Model, User_Model
 from TG.Models.Bots import Bots_Model
 from TG.Models.Whitelist import Whitelist_Model
-from TG.Models.Admins import Admin_Model as Admin_model
+from TG.Models.Admins import Admin_Model as Admin_model, Admins_Model
 from TG.Markups import get_markup, get_keyboard, get_list_keyboard
 from TG.States import States
 from WB.Partner import Partner
@@ -334,16 +334,16 @@ async def admin_handler(message: types.Message):
         await message.answer('Пришлите Excel файл заказа\n'
                              'Или выберите артикул и выкупиться 1 товар с таким артикулом', reply_markup=keyboard)
         await States.BOT_SEARCH.set()
-    elif "💰 выкуп собраных заказов 💰" in msg:
-        bots_event = BotsEvents_Model.load(event="FOUND")
-        if bots_event:
-            await message.answer(f'{len(bots_event)} ботов ожидают выкупа, скольких вы хотите выкупить?')
-            await message.answer('<b>ФИЧА</b>: <i>нажмите кнопку</i> <b>"💰 выкуп собраных заказов 💰"</b> <i>для того, чтобы выкупить</i> <b>только один</b>.', parse_mode="HTML")
-            await States.BOT_BUY.set()
-        else:
-            markup = get_markup('admin_main', id=id)
-            await message.answer('----------🎉Поздравляю!🎉--------\n'
-                                 '💲Вы выкупили все заказы!💲', reply_markup=markup)
+    # elif "💰 выкуп собраных заказов 💰" in msg:
+    #     bots_event = BotsEvents_Model.load(event="FOUND")
+    #     if bots_event:
+    #         await message.answer(f'{len(bots_event)} ботов ожидают выкупа, скольких вы хотите выкупить?')
+    #         await message.answer('<b>ФИЧА</b>: <i>нажмите кнопку</i> <b>"💰 выкуп собраных заказов 💰"</b> <i>для того, чтобы выкупить</i> <b>только один</b>.', parse_mode="HTML")
+    #         await States.BOT_BUY.set()
+    #     else:
+    #         markup = get_markup('admin_main', id=id)
+    #         await message.answer('----------🎉Поздравляю!🎉--------\n'
+    #                              '💲Вы выкупили все заказы!💲', reply_markup=markup)
     # elif "💸 повторный выкуп 💸" in msg:
     #     await States.RE_BUY.set()
     #     tg_bots = Bots_Model.load_with_balance()
@@ -550,20 +550,50 @@ async def collect_deliveries_callback_query_handler(call: types.CallbackQuery):
     await States.MAIN.set()
 
     await call.message.edit_text(f'Началась сборка самовыкупов по {ie}')
+
+    # Отправляем уведомление создателю
     if id != "794329884":
         await tg_bot.send_message("794329884", f'Началась сборка самовыкупов по {ie}')
 
-    res = await Partner().collect_deliveries(inn)
-    res_msg = ''
-    for r in res:
-        res_msg += r + "\n\n"
-    if ('Не найден заказ' not in res_msg) and ('Самовыкупов по данному ИП нет' not in res_msg) \
-            and ('Слетела авторизация в аккаунт Партнёров' not in res_msg):
-        res_msg = '✅ Все заказы собраны успешно ✅' + '\n\n'
+    deliveries = Deliveries_Model.load(inn=inn, collected=False)
 
-    await call.message.answer(res_msg + f'Закончилась сборка самовыкупов по {ie}')
-    if id != "794329884":
-        await tg_bot.send_message("794329884", res_msg + f'Закончилась сборка самовыкупов по {ie}')
+    articles = list(set([delivery.articles for delivery in deliveries]))
+
+    grouped_deliveries = list(map(lambda article: {article: [delivery for delivery in deliveries if article in delivery.articles]}, articles))
+
+    for deliveries in grouped_deliveries:
+        article = deliveries[0].articless[0]
+        msg = f"Фейковые товары по артиклу {article}\n\n" \
+              f"\n".join([delivery.start_date for delivery in deliveries])
+        try:
+            cart_imgs = open(f"card_imgs/{article}.png", "rb")
+        except:
+            await save_article_img(article)
+            cart_imgs = open(f"card_imgs/{article}.png", "rb")
+
+        keyboard = get_keyboard("collect_order_approve", inn)
+
+        msg = f'{msg}\n\nЗакончилась сборка самовыкупов по {ie}'
+
+        await call.message.answer_photo(cart_imgs, msg, reply_markup=keyboard)
+        if id != "794329884":
+            await tg_bot.send_photo("794329884", cart_imgs, msg, reply_markup=keyboard)
+
+        await call.message.answer_photo(cart_imgs, msg)
+
+    # # Сборка в Партнёрке
+    # res = await Partner().collect_deliveries(inn)
+    # res_msg = ''
+    # for r in res:
+    #     res_msg += r + "\n\n"
+    # if ('Не найден заказ' not in res_msg) and ('Самовыкупов по данному ИП нет' not in res_msg) \
+    #         and ('Слетела авторизация в аккаунт Партнёров' not in res_msg):
+    #     res_msg = '✅ Все заказы собраны успешно ✅' + '\n\n'
+
+    # await call.message.answer(res_msg + f'Закончилась сборка самовыкупов по {ie}')
+    # if id != "794329884":
+    #     await tg_bot.send_message("794329884", res_msg + f'Закончилась
+
 
 
 @dp.callback_query_handler(state=States.EXCEPTED_ORDERS_LIST)
@@ -755,24 +785,24 @@ async def bot_buy_handler(message: types.Message):
 #
 #             await message.answer(res_msg)
 
-    # Выкуп
-    if is_go_buy:
-        await message.answer('Выкуп начался')
-
-        # Если до этого не существовало активного события, получаем текуще активное событие по боту
-        if not bot_event:
-            bot_event = BotsEvents_Model.load(bot_name=bot_name, wait=True)
-
-        if bot_event:
-            bot_event = bot_event[0]
-
-            # запускаем выкуп
-            await Admin.bot_re_buy(message, bot_event)
-
-            res_msg = f"Завершен выкуп по боту: {bot_name}"
-
-            await message.answer(res_msg)
-        await message.answer("ERROR")
+    # # Выкуп
+    # if is_go_buy:
+    #     await message.answer('Выкуп начался')
+    #
+    #     # Если до этого не существовало активного события, получаем текуще активное событие по боту
+    #     if not bot_event:
+    #         bot_event = BotsEvents_Model.load(bot_name=bot_name, wait=True)
+    #
+    #     if bot_event:
+    #         bot_event = bot_event[0]
+    #
+    #         # запускаем выкуп
+    #         await Admin.bot_re_buy(message, bot_event)
+    #
+    #         res_msg = f"Завершен выкуп по боту: {bot_name}"
+    #
+    #         await message.answer(res_msg)
+    #     await message.answer("ERROR")
 
 
 @dp.callback_query_handler(state=States.RE_BUY)
@@ -1171,6 +1201,22 @@ async def others_callback_query_handler(call: types.CallbackQuery):
     else:
         await call.message.edit_text(call.message.text + '\n\nЭта сборка уже выкуплена или произошла ошибка')
 
+@dp.callback_query_handler(text_contains='_col_ord_', state="*")
+async def collect_orders_approve_callback_query_handler(call: types.CallbackQuery):
+    id = str(call.message.chat.id)
+    msg = call.data
+    inn = msg.split(" ")[1]
+
+    if "_col_ord_y" in msg:
+        deliveries = Deliveries_Model.load(inn=inn, collected=False)
+        for delivery in deliveries:
+            delivery.collected = True
+            delivery.update()
+        await call.message.edit_text(f"{call.message.text}\n\nПо клиенту собраны все товары")
+    else:
+        user = Users_Model.load(id)
+        admin = Admins_Model.get_sentry_admin()
+        await tg_bot.send_message(admin.id, f"у пользователя {user.name} проблемы со сборкой товаров\n\n{call.message.text}")
 
 if __name__ == '__main__':
     dp.loop.create_task(BotEvents(tg_bot).main())
