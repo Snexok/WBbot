@@ -366,6 +366,7 @@ async def admin_handler(message: types.Message):
             await check_active_deliveries()
         else:
             await message.answer('Все товары доставлены')
+        await message.answer('📦 Отправлены все уведомления о готовности доставки 📦')
         return
     elif "💵 проверить баланс всех ботов 💵" in msg:
         await States.CHECK_BOTS_BALANCE.set()
