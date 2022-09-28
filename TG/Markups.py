@@ -114,8 +114,8 @@ def get_keyboard(keyboard_name, *args):
     elif 'collect_order_approve' == keyboard_name:
         inn = args[0]
         keyboard = types.InlineKeyboardMarkup()
-        btns = [types.InlineKeyboardButton(text="Собран", callback_data="_col_ord_y "+inn),
-                types.InlineKeyboardButton(text="Не собирается", callback_data="_col_ord_n "+inn)]
+        btns = [types.InlineKeyboardButton(text="Собраны", callback_data="_col_ord_y "+inn),
+                types.InlineKeyboardButton(text="Возникли проблемы", callback_data="_col_ord_n "+inn)]
         keyboard.add(*btns)
 
         return keyboard

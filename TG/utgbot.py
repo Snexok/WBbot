@@ -547,7 +547,8 @@ async def collect_other_deliveries_callback_query_handler(call: types.CallbackQu
 async def collect_deliveries_callback_query_handler(call: types.CallbackQuery):
     id = str(call.message.chat.id)
     ie = call.data
-    inn = Users_Model.load(ie=ie).inn
+    user = Users_Model.load(ie=ie)
+    inn = user.inn
     await States.MAIN.set()
 
     await call.message.edit_text(f'Началась сборка самовыкупов по {ie}')
@@ -558,29 +559,45 @@ async def collect_deliveries_callback_query_handler(call: types.CallbackQuery):
 
     deliveries = Deliveries_Model.load(inn=inn, collected=False)
 
-    articles = list(set([delivery.articles for delivery in deliveries]))
+    logger.info(deliveries)
+
+    await call.message.answer(f"У клиента {user.name}\n\n"
+                              f"{len(deliveries) if deliveries else 0} фейков")
+
+    if not deliveries:
+        return
+
+    articles = list(set([delivery.articles[0] for delivery in deliveries]))
 
     grouped_deliveries = list(map(lambda article: {article: [delivery for delivery in deliveries if article in delivery.articles]}, articles))
 
     for deliveries in grouped_deliveries:
-        article = deliveries[0].articless[0]
-        msg = f"Фейковые товары по артиклу {article}\n\n" \
-              f"\n".join([delivery.start_date for delivery in deliveries])
+        article, deliveries = list(deliveries.items())[0]
+        logger.info(article)
+        msg = f"Фейковые товары по артиклу\n\n" \
+              f"{article}\n\n" \
+              f"Время заказа каждого фейка:\n"
+        msg += "\n".join([str(delivery.start_date)[:-7] for delivery in deliveries])
         try:
-            cart_imgs = open(f"card_imgs/{article}.png", "rb")
+            cart_imgs = open(f"cart_imgs/{article}.png", "rb")
         except:
             await save_article_img(article)
-            cart_imgs = open(f"card_imgs/{article}.png", "rb")
+            cart_imgs = open(f"cart_imgs/{article}.png", "rb")
 
-        keyboard = get_keyboard("collect_order_approve", inn)
 
-        msg = f'{msg}\n\nЗакончилась сборка самовыкупов по {ie}'
-
-        await call.message.answer_photo(cart_imgs, msg, reply_markup=keyboard)
-        if id != "794329884":
-            await tg_bot.send_photo("794329884", cart_imgs, msg, reply_markup=keyboard)
+        msg = f'{msg}\n\n🏁 Найдены 🏁'
 
         await call.message.answer_photo(cart_imgs, msg)
+        # if id != "794329884":
+        #     await tg_bot.send_photo("794329884", cart_imgs, msg)
+
+    user = Users_Model.load(inn=inn)
+    approve_msg = f"Все товары по {user.name} собраны?"
+
+    keyboard = get_keyboard("collect_order_approve", inn)
+    await call.message.answer(approve_msg, reply_markup=keyboard)
+    if id != "794329884":
+        await tg_bot.send_message("794329884", approve_msg, reply_markup=keyboard)
 
     # # Сборка в Партнёрке
     # res = await Partner().collect_deliveries(inn)
@@ -1184,11 +1201,13 @@ async def others_callback_query_handler(call: types.CallbackQuery):
         bot_event = bot_event[0]
         await call.message.edit_text(call.message.text + '\n\n⭐ Начался выкуп ⭐')
 
-        try:
-            status = await bot_buy(call.message, bot_event)
-        except:
-            logger.info("Выкуп упал")
-            status = False
+        # try:
+        #     status = await bot_buy(call.message, bot_event)
+        # except:
+        #     logger.info("Выкуп упал")
+        #     status = False
+
+        status = await bot_buy(call.message, bot_event)
 
         keyboard = get_keyboard('admin_notify_for_buy', bot_event.bot_name)
         if not status:
@@ -1208,16 +1227,26 @@ async def collect_orders_approve_callback_query_handler(call: types.CallbackQuer
     msg = call.data
     inn = msg.split(" ")[1]
 
+    user = Users_Model.load(id)
+    admin = Admins_Model.get_sentry_admin()
+
     if "_col_ord_y" in msg:
         deliveries = Deliveries_Model.load(inn=inn, collected=False)
-        for delivery in deliveries:
-            delivery.collected = True
-            delivery.update()
-        await call.message.edit_text(f"{call.message.text}\n\nПо клиенту собраны все товары")
+        if deliveries:
+            for delivery in deliveries:
+                delivery.collected = True
+                delivery.update()
+            user = Users_Model.load(inn=inn)
+
+            await tg_bot.edit_message_text(f"По клиенту {user.name}\n"
+                                            f"ИНН: {inn}\n\n"
+                                            f"✅ Собраны все товары ✅", id, call.message.message_id)
+        else:
+            await tg_bot.edit_message_text(f"По клиенту {user.name}\n"
+                                            f"ИНН: {inn}\n\n"
+                                            f"✅ Уже собраны все товары ✅", id, call.message.message_id)
     else:
-        user = Users_Model.load(id)
-        admin = Admins_Model.get_sentry_admin()
-        await tg_bot.send_message(admin.id, f"у пользователя {user.name} проблемы со сборкой товаров\n\n{call.message.text}")
+        await tg_bot.send_message(admin.id, f"У пользователя {user.name} проблемы со сборкой товаров\n\n{call.message.caption}")
 
 if __name__ == '__main__':
     dp.loop.create_task(BotEvents(tg_bot).main())

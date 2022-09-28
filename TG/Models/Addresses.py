@@ -1,3 +1,5 @@
+from loguru import logger
+
 from TG.Models.Model import Model
 
 
@@ -29,6 +31,8 @@ class Addresses_Model(Model):
             path += "WHERE " if not is_where else ""
             path += f"address='{address}'"
 
+        logger.info(path)
+
         data = cls.format_data(cls.execute(path, cls.fetchall))
 
         if tg_id or address:
@@ -58,3 +62,7 @@ class Addresses_Model(Model):
                 comp_adrses += [s_adrs]
 
         return comp_adrses
+
+
+if __name__ == '__main__':
+    print(Addresses_Model.load(address="г Долгопрудный, Московское Шоссе 6а"))
