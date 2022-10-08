@@ -438,15 +438,6 @@ class Admin:
         return secret_key
 
     @classmethod
-    async def check_delivery(cls, bot_name, message=None) -> bool:
-        bot = Bot(name=bot_name)
-        deliveries = Deliveries_Model.load(bot_name=bot_name, active=True, pred_end_date=datetime.now())
-        bot.open_bot()
-        status: bool = await bot.check_readiness(deliveries, message)
-
-        return status
-
-    @classmethod
     def get_work_time(cls):
         now_datetime = datetime.now()
         now_hour = now_datetime.time().hour

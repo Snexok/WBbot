@@ -360,6 +360,7 @@ class Bot:
         self.open_delivery()
         delivery_page = Delivery()
 
+        statuses = []
         for delivery in deliveries:
             # получаем все заказы бота по адресу в его доставке
             local_delivery = delivery_page.get_deliveries_by_address(delivery.pup_address)
@@ -370,6 +371,7 @@ class Bot:
                       f"Адрес в таблице доставки: {delivery.pup_address}\n" \
                       f"Адреса в доставке аккаунта: {local_delivery.pup_address}"
                 await bot.send_message(admin.id, msg)
+                statuses += [False]
                 continue
 
             # Обновляем delivery.statuses
@@ -383,6 +385,7 @@ class Bot:
                       f'Адрес: {delivery.pup_address}\n' + \
                       f'Артикулы: {str(delivery.articles)}\n\n' + \
                       f'Имя бота: {self.data.name}\n'
+                statuses += [False]
                 await bot.send_message(admin.id, msg)
             else:
                 delivery.code_for_approve = local_delivery.code_for_approve
@@ -402,6 +405,8 @@ class Bot:
                                     f'Id заказа: {delivery.id}\n\n' \
                                     f'Имя бота: {self.data.name}\n'
 
+                        statuses += [True]
+
                         await bot.send_message(admin.id, msg_admin, parse_mode="HTML")
                         if delivery.pup_tg_id:
                             await bot.send_message(delivery.pup_tg_id, msg_pup, parse_mode="HTML")
@@ -418,12 +423,15 @@ class Bot:
                         if not pred_end_date:
                             pred_end_date = datetime.fromisoformat(str(date.today() + timedelta(days=1)))
                         delivery.pred_end_date = pred_end_date
+                        statuses += [False]
+
                 logger.info(f"delivery {delivery}")
                 if len(redines_articles) == len(delivery.articles):
                     delivery.end_date = date.today()
                     logger.info(delivery.end_date)
                     delivery.active = False
                 delivery.update()
+        return statuses
 
 
     async def check_readiness(self, deliveries, message):

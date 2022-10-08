@@ -8,6 +8,7 @@ import ujson
 from aiogram import Bot as TG_Bot
 from loguru import logger
 
+from TG.Bot import check_delivery
 from TG.Markups import get_keyboard
 from TG.Models.Users import Users_Model
 
@@ -81,19 +82,17 @@ class BotEvents:
                     res_msg += msg + "\n"
 
                 await self.tg_bot.send_message(admin.id, res_msg)
-                return True
 
             elif self.bot_event.event == 'FOUND':
                 # Уведомление о возможности выкупа
                 await self.send_notify_for_buy()
-                return
             elif self.bot_event.event == 'CHECK_DELIVERY':
                 logger.info(f"CHECK_DELIVERY id = {self.bot_event.id}")
                 # Проверка готовности товара
-                status = await Admin.check_delivery(self.bot_event.data.bot_name)
+                status = await check_delivery(self.bot_event.data.bot_name)
 
                 if status:
-                    self.bot_event.event = "CHECK_CLAIM"
+                    self.bot_event.event = "ADD_COMMENT"
                     self.bot_event.datetime_to_run = self.get_work_time()
 
                 return
@@ -104,7 +103,6 @@ class BotEvents:
                 pass
 
         # Сбрасываем индикатор ожидания
-        self.bot_event.running = False
         self.bot_event.update()
 
     @classmethod

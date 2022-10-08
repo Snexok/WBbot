@@ -125,6 +125,7 @@ async def bot_buy(message, bot_event):
         logger.info(f"{orders_data[0]['pred_end_date']} предварительная дата доставки заказа")
 
         bot_event.wait = True
+        bot_event.running = False
         bot_event.update()
 
     bot_data.set(status="HOLD")
@@ -152,14 +153,16 @@ def get_work_time(days=0):
 
 
 async def check_delivery(bot_name):
+    logger.info(f"{bot_name} started")
+
     bot = Bot(name=bot_name)
     deliveries = Deliveries_Model.load(bot_name=bot_name, active=True, pred_end_date=datetime.now())
     bot.open_bot()
-    status = await bot.check_readiness_auto(deliveries)
+    statuses = await bot.check_readiness_auto(deliveries)
 
-    logger.info(f"{bot_name} {status}")
+    logger.info(f"{bot_name} ended")
 
-    return status
+    return any(statuses)
 
 
 async def check_active_deliveries():
@@ -173,8 +176,7 @@ async def check_active_deliveries():
 
         # Запускаем проверку всех ботов с готовой доставкой
         for bot_name in bots_name:
-            status = await check_delivery(bot_name)
-            logger.info(f"{bot_name} {status}")
+            await check_delivery(bot_name)
 
 
 async def check_all_found_events():
