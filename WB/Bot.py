@@ -18,6 +18,7 @@ from WB.Pages.Basket import Basket
 from WB.Browser import Browser
 from WB.Pages.Catalog import Catalog
 from WB.Pages.Delivery import Delivery
+from WB.Pages.Purchases import Purchases
 from WB.Utils import Utils
 from configs import config
 
@@ -358,7 +359,7 @@ class Bot:
         admin = Admins_model().get_sentry_admin()
 
         self.open_delivery()
-        delivery_page = Delivery()
+        delivery_page = Delivery(self.browser)
 
         statuses = []
         for delivery in deliveries:
@@ -367,26 +368,72 @@ class Bot:
 
             # проверка, что адресс есть в списке доставки
             if not local_delivery:
-                msg = "Адреса не совпадают\n\n" \
-                      f"Адрес в таблице доставки: {delivery.pup_address}\n" \
-                      f"Адреса в доставке аккаунта: {local_delivery.pup_address}"
-                await bot.send_message(admin.id, msg)
-                statuses += [False]
-                continue
+                # отправляем скрин корзины
+                screen_file_name = f"basket_page_{delivery.bot_name}_{delivery.id}.png"
+                self.driver.save_screenshot(screen_file_name)
+                await bot.send_photo(admin.id, open(screen_file_name, 'rb'))
+
+                self.open_purchases()
+                purchases_page = Purchases(self.browser)
+                for article in delivery.articles:
+                    article_delivered = purchases_page.check_article(article)
+                    logger.info(f"{delivery.bot_name} article= {article} article_delivered= {article_delivered}")
+
+                    # отправляем скрин доставленных товаров
+                    screen_file_name = f"purchases_page_{delivery.bot_name}_{article}_{article_delivered}_{delivery.id}.png"
+                    self.driver.save_screenshot(screen_file_name)
+                    await bot.send_photo(admin.id, open(screen_file_name, 'rb'))
+
+                    if not article_delivered:
+                        msg = "Адреса не совпадают\n\n" \
+                              f"Адрес в таблице доставки: {delivery.pup_address}\n" \
+                              f"Адреса в доставке аккаунта: {local_delivery.pup_address}"
+                        await bot.send_message(admin.id, msg)
+                        continue
+
+                self.open_delivery()
 
             # Обновляем delivery.statuses
             delivery_page.update_statuses(delivery)
+            logger.info(f"{delivery.bot_name} articles={delivery.articles} statuses={delivery.statuses}")
 
-            if len(delivery.statuses) < len(delivery.articles):
-                msg = '📦 Проверка готовности заказа 📦\n\n' \
-                      f'❌ Проблема ❌\n' \
-                      f'Один из артикулов заказа не был найден.\n\n' + \
-                      f'Id заказа: {delivery.id}\n\n' + \
-                      f'Адрес: {delivery.pup_address}\n' + \
-                      f'Артикулы: {str(delivery.articles)}\n\n' + \
-                      f'Имя бота: {self.data.name}\n'
-                statuses += [False]
-                await bot.send_message(admin.id, msg)
+            if len(delivery.statuses) != len(delivery.articles):
+                # отправляем скрин корзины
+                screen_file_name = f"basket_page_{delivery.bot_name}_{delivery.id}.png"
+                self.driver.save_screenshot(screen_file_name)
+                await bot.send_photo(admin.id, open(screen_file_name, 'rb'), "Артикул не был найде в корзине")
+
+                self.open_purchases()
+                purchases_page = Purchases(self.browser)
+                for article in delivery.articles:
+                    article_delivered = purchases_page.check_article(article)
+                    logger.info(f"{delivery.bot_name} article= {article} article_delivered= {article_delivered}")
+
+                    if not article_delivered:
+                        msg = '📦 Проверка готовности заказа 📦\n\n' \
+                              f'❌ Проблема ❌\n' \
+                              f'Один из артикулов заказа не был найден.\n\n' + \
+                              f'Id заказа: {delivery.id}\n\n' + \
+                              f'Адрес: {delivery.pup_address}\n' + \
+                              f'Артикул: {str(article)}\n\n' + \
+                              f'Имя бота: {self.data.name}\n'
+                        await bot.send_message(admin.id, msg)
+                    else:
+                        msg = f'📦 Артикул уже был доставлен на этом боте 📦\n\n' \
+                              f'Id заказа: {delivery.id}\n\n' + \
+                              f'Адрес: {delivery.pup_address}\n' + \
+                              f'Артикул: {str(article)}\n\n' + \
+                              f'Имя бота: {self.data.name}\n'
+
+                        # отправляем скрин доставленных товаров
+                        screen_file_name = f"purchases_page_{delivery.bot_name}_{article}_{article_delivered}_{delivery.id}.png"
+                        self.driver.save_screenshot(screen_file_name)
+                        await bot.send_photo(admin.id, open(screen_file_name, 'rb'), msg)
+
+                        delivery.active = False
+                        delivery.update()
+
+                self.open_delivery()
             else:
                 delivery.code_for_approve = local_delivery.code_for_approve
                 redines_articles = []
@@ -431,7 +478,6 @@ class Bot:
                     logger.info(delivery.end_date)
                     delivery.active = False
                 delivery.update()
-        return statuses
 
 
     async def check_readiness(self, deliveries, message):
@@ -571,6 +617,12 @@ class Bot:
         delivery_btn = WebDriverWait(self.driver, 10).until(
             lambda d: d.find_element(By.XPATH, "//span[text()='Доставки']/../../a[contains(@class,'profile-menu__link')]"))
         delivery_btn.click()
+
+    def open_purchases(self):
+        self.hover_profile_modal()
+        purchases_btn = WebDriverWait(self.driver, 10).until(
+            lambda d: d.find_element(By.XPATH, "//span[text()='Покупки']/../../a[contains(@class,'profile-menu__link')]"))
+        purchases_btn.click()
 
     def expect_payment(self):
         payment = False

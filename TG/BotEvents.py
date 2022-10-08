@@ -229,6 +229,7 @@ class BotEvents:
         del bot
 
         bot_data.status = "FOUND"
+        bot_data.running = False
         bot_data.update()
 
         return msgs

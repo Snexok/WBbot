@@ -4,8 +4,8 @@ from selenium.webdriver.support.wait import WebDriverWait
 
 
 class Purchases:
-    def __init__(self, driver):
-        self.driver = driver
+    def __init__(self, browser):
+        self.driver = browser.driver
 
     def get_all_articles(self):
         cards_elements = WebDriverWait(self.driver, 5).until(
