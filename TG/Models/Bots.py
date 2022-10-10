@@ -2,10 +2,10 @@ from TG.Models.Model import Model
 
 
 class Bot_Model(Model):
-    COLUMNS = ['id', 'name', 'addresses', 'number', 'username', 'type', 'inns', 'status', 'author', 'balance']
+    COLUMNS = ['id', 'name', 'addresses', 'number', 'username', 'type', 'inns', 'status', 'balance', 'gender']
     table_name = 'bots'
 
-    def __init__(self, id='0', name='', addresses=[], number='', username='', type='', inns=[], status='', author='', balance=''):
+    def __init__(self, id=0, name='', addresses=[], number='', username='', type='', inns=[], status='', balance='', gender=''):
         super().__init__()
         self.id = id
         self.name = name
@@ -15,8 +15,8 @@ class Bot_Model(Model):
         self.type = type
         self.inns = inns
         self.status = status
-        self.author = author
         self.balance = balance
+        self.gender = gender
 
 class Bots_Model(Model):
     single_model = Bot_Model
