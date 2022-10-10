@@ -5,8 +5,7 @@ create table IF NOT EXISTS users
 			primary key,
 	pup_state integer,
 	name text,
-	addresses text[],
-	username text
+	addresses text[]
 );
 
 alter table users owner to postgres;

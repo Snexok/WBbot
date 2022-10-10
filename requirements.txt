@@ -3,6 +3,7 @@ psycopg2~=2.9.3
 selenium~=4.1.0
 telethon~=1.24.0
 PyMuPDF
+loguru
 
 asyncio~=3.4.3
 ujson~=4.0.2
