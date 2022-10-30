@@ -48,6 +48,7 @@ dp = Dispatcher(tg_bot, storage=MemoryStorage(), loop=loop)
 async def back_handler(message: types.Message, state: FSMContext):
     id = str(message.chat.id)
     is_admin = Admin.is_admin(id)
+    logger.info(id)
     if is_admin:
         current_state = await state.get_state()
         if current_state == "States:ADMIN" or current_state is None:
@@ -58,10 +59,13 @@ async def back_handler(message: types.Message, state: FSMContext):
             await message.answer('Вы в меню Админа', reply_markup=markup)
             return
     else:
-        markup = get_markup('main_main', Users_Model.load(id).role)
+        user = Users_Model.load(id)
+        if user:
+            markup = get_markup('main_main', user.role)
     await state.set_data({})
     await States.MAIN.set()
-    await message.answer('Главное меню', reply_markup=markup)
+    if markup:
+        await message.answer('Главное меню', reply_markup=markup)
 
 
 @dp.message_handler(commands=['start'])
