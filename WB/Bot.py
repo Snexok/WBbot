@@ -534,6 +534,7 @@ class Bot:
                         msg_pup = 'Заказ готов\n' + \
                                   f'Код: {delivery.code_for_approve}\n' + \
                                   f'Фио: {delivery.bot_surname}\n' + \
+                                  f'Номер: {delivery.bot_number}\n' + \
                                   f'Адрес: {delivery.pup_address}\n' + \
                                   f'Артикул: {delivery.articles[i]}'
                         msg_admin = msg_pup + '\n' + \

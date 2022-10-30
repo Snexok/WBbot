@@ -91,16 +91,22 @@ async def bot_buy(message, bot_event):
             logger.info(order_data)
             pup_address = Addresses_Model.load(address=order_data['post_place'])
             logger.info(pup_address)
-            delivery = Delivery_Model(number=number, total_price=order_data['total_price'], services_price=50,
+            delivery = Delivery_Model(number=number, 
+                                      total_price=order_data['total_price'], 
+                                      services_price=50,
                                       prices=order_data['prices'],
-                                      quantities=order_data['quantities'], articles=order_data['articles'],
+                                      quantities=order_data['quantities'], 
+                                      articles=order_data['articles'],
                                       pup_address=order_data['post_place'],
-                                      pup_tg_id=pup_address.tg_id, bot_name=order_data['bot_name'],
+                                      pup_tg_id=pup_address.tg_id, 
+                                      bot_name=order_data['bot_name'],
                                       bot_surname=order_data['bot_username'],
-                                      start_date=paid['datetime'], pred_end_date=order_data['pred_end_date'],
+                                      start_date=paid['datetime'], 
+                                      pred_end_date=order_data['pred_end_date'],
                                       active=paid['payment'] or TEST,
                                       statuses=['payment' for _ in range(len(order_data['articles']))],
-                                      inn=order_data['inn'])
+                                      inn=order_data['inn'], 
+                                      bot_number=bot_data.number)
             logger.info(delivery)
             delivery.insert()
             logger.info(f"{bot_event.bot_name} send notify to action owner")
